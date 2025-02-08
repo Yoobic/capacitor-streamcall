@@ -13,7 +13,7 @@ const app = new Hono()
 app.use('/*', cors({
   origin: '*', // In production, you should specify your actual frontend domain
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization'],
+  allowHeaders: ['Content-Type', 'Authorization', 'magic-shit'],
   exposeHeaders: ['Content-Length', 'X-Requested-With'],
   maxAge: 86400,
   credentials: true
@@ -27,8 +27,7 @@ if (!process.env.STREAM_API_KEY || !process.env.STREAM_API_SECRET) {
 
 const apiKey = process.env.STREAM_API_KEY;
 const apiSecret = process.env.STREAM_API_SECRET;
-const vailidity = 60 * 60;
-
+const vailidity = 30; // One year in seconds
 const client = new StreamClient(apiKey, apiSecret);
 
 app.get('/', (c) => {

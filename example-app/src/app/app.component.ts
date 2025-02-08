@@ -1,5 +1,4 @@
 import { Component } from '@angular/core';
-import { StreamCall } from 'stream-call';
 import { ChangeDetectorRef } from '@angular/core';
 import { StreamCall } from 'stream-call';
 
@@ -48,6 +47,10 @@ export class AppComponent {
     // register event listeners
     StreamCall.addListener('callStarted', (event) => {
       this.isInCall = true;
+      this.cdr.detectChanges();
+    });
+    StreamCall.addListener('callEnded', (event) => {
+      this.isInCall = false;
       this.cdr.detectChanges();
     });
   }

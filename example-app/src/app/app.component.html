@@ -2,11 +2,11 @@
   <ion-router-outlet *ngIf="!isInCall"></ion-router-outlet>
   <div *ngIf="isInCall" style="width: 100%; height: 100%; position: relative;">
     <div style="position: absolute; bottom: 50px; left: 0; width: 100%; height: 40px; display: flex; justify-content: center; align-items: center; gap: 16px;">
-      <ion-button [color]="isMuted ? 'medium' : 'primary'" (click)="toggleMute()">
-        <ion-icon [name]="isMuted ? 'mic-off-outline' : 'mic-outline'"></ion-icon>
+      <ion-button color="primary" (click)="toggleMute()">
+        <ion-icon name="mic-outline"></ion-icon>
       </ion-button>
-      <ion-button [color]="isCameraOff ? 'medium' : 'primary'" (click)="toggleCamera()">
-        <ion-icon [name]="isCameraOff ? 'videocam-off-outline' : 'camera-outline'"></ion-icon>
+      <ion-button color="primary" (click)="toggleCamera()">
+        <ion-icon name="camera-outline"></ion-icon>
       </ion-button>
       <ion-button color="danger" (click)="endCall()">End</ion-button>
     </div>

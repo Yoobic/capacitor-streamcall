@@ -18,6 +18,9 @@ npx cap sync
 * [`login(...)`](#login)
 * [`logout()`](#logout)
 * [`call(...)`](#call)
+* [`addListener('callStarted', ...)`](#addlistenercallstarted-)
+* [`addListener('callEnded', ...)`](#addlistenercallended-)
+* [`removeAllListeners()`](#removealllisteners)
 * [Interfaces](#interfaces)
 
 </docgen-index>
@@ -90,6 +93,47 @@ call(options: CallOptions) => Promise<SuccessResponse>
 --------------------
 
 
+### addListener('callStarted', ...)
+
+```typescript
+addListener(eventName: 'callStarted', listenerFunc: (event: CallStartedEvent) => void) => Promise<{ remove: () => Promise<void>; }>
+```
+
+| Param              | Type                                                                              |
+| ------------------ | --------------------------------------------------------------------------------- |
+| **`eventName`**    | <code>'callStarted'</code>                                                        |
+| **`listenerFunc`** | <code>(event: <a href="#callstartedevent">CallStartedEvent</a>) =&gt; void</code> |
+
+**Returns:** <code>Promise&lt;{ remove: () =&gt; Promise&lt;void&gt;; }&gt;</code>
+
+--------------------
+
+
+### addListener('callEnded', ...)
+
+```typescript
+addListener(eventName: 'callEnded', listenerFunc: (event: {}) => void) => Promise<{ remove: () => Promise<void>; }>
+```
+
+| Param              | Type                                |
+| ------------------ | ----------------------------------- |
+| **`eventName`**    | <code>'callEnded'</code>            |
+| **`listenerFunc`** | <code>(event: {}) =&gt; void</code> |
+
+**Returns:** <code>Promise&lt;{ remove: () =&gt; Promise&lt;void&gt;; }&gt;</code>
+
+--------------------
+
+
+### removeAllListeners()
+
+```typescript
+removeAllListeners() => Promise<void>
+```
+
+--------------------
+
+
 ### Interfaces
 
 
@@ -117,5 +161,12 @@ call(options: CallOptions) => Promise<SuccessResponse>
 | **`userId`** | <code>string</code>  |
 | **`type`**   | <code>string</code>  |
 | **`ring`**   | <code>boolean</code> |
+
+
+#### CallStartedEvent
+
+| Prop         | Type                |
+| ------------ | ------------------- |
+| **`callId`** | <code>string</code> |
 
 </docgen-api>
