@@ -1,4 +1,4 @@
-<ion-header [translucent]="true">
+<ion-header [translucent]="true" *ngIf="!transparent">
   <ion-toolbar>
     <ion-title>
       Tab 1
@@ -6,14 +6,29 @@
   </ion-toolbar>
 </ion-header>
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
+<ion-content [class.transparent]="transparent">
+  <ion-header collapse="condense" *ngIf="!transparent">
     <ion-toolbar>
       <ion-title size="large">Tab 1</ion-title>
     </ion-toolbar>
   </ion-header>
 
   <div class="magicDiv">
-    <ion-button (click)="clickEvent()">abc</ion-button>
+    <div class="login-buttons">
+      <ion-button (click)="login('user1')">Login as User 1</ion-button>
+      <ion-button (click)="login('user2')">Login as User 2</ion-button>
+      <ion-button (click)="logout()" color="danger">Logout</ion-button>
+    </div>
+
+    <div class="call-buttons">
+      <ion-button (click)="callUser1()" color="success">
+        <ion-icon name="call"></ion-icon>
+        Call User 1
+      </ion-button>
+      <ion-button (click)="callUser2()" color="success">
+        <ion-icon name="call"></ion-icon>
+        Call User 2
+      </ion-button>
+    </div>
   </div> 
 </ion-content>

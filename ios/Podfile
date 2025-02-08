@@ -1,11 +1,12 @@
-platform :ios, '13.0'
+platform :ios, '14.0'
 
 def capacitor_pods
   # Comment the next line if you're not using Swift and don't want to use dynamic frameworks
   use_frameworks!
   pod 'Capacitor', :path => '../node_modules/@capacitor/ios'
   pod 'CapacitorCordova', :path => '../node_modules/@capacitor/ios'
-  pod 'StreamVideo', :git => 'https://github.com/GetStream/stream-video-swift.git'
+  pod 'StreamVideo', :git => 'https://github.com/GetStream/stream-video-swift.git', :tag => '1.16.0'
+  pod 'StreamVideoSwiftUI', :git => 'https://github.com/GetStream/stream-video-swift.git', :tag => '1.16.0'
 end
 
 target 'Plugin' do
@@ -15,3 +16,67 @@ end
 target 'PluginTests' do
   capacitor_pods
 end
+
+# post_install do |installer|
+#   puts "\n\n=== Starting post install script ==="
+  
+#   installer.pods_project.targets.each do |target|
+#     puts "Processing target: #{target.name}"
+#     target.build_configurations.each do |config|
+#       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
+#       if target.name.include?('StreamVideo')
+#         puts "Applying build settings to #{target.name}"
+#         config.build_settings['OTHER_SWIFT_FLAGS'] ||= ['$(inherited)', '-D', 'DISABLE_BACKPORT']
+#         config.build_settings['SWIFT_ACTIVE_COMPILATION_CONDITIONS'] = ['$(inherited)', 'DISABLE_BACKPORT']
+#       end
+#     end
+#   end
+  
+#   # Patch the pod files
+#   def patch_file(file_path, search_text, replace_text)
+#     puts "\nChecking file: #{file_path}"
+#     if File.exist?(file_path)
+#       puts "📝 Attempting to patch file..."
+#       content = File.read(file_path)
+#       puts "   Content length: #{content.length} bytes"
+#       if content.include?(search_text)
+#         puts "✨ Found match in #{file_path}"
+#         puts "   Attempting to replace: '#{search_text}'"
+#         new_content = content.gsub(search_text, replace_text)
+#         if content != new_content
+#           File.write(file_path, new_content)
+#           puts "✅ Successfully patched #{file_path}"
+#           return true
+#         else
+#           puts "⚠️ No changes made to #{file_path} (content identical after gsub)"
+#         end
+#       else
+#         puts "❌ No matches found in #{file_path}"
+#       end
+#     else
+#       puts "❌ File not found: #{file_path}"
+#     end
+#     false
+#   end
+
+#   # Find and patch the BackportStateObject file
+#   puts "\n=== Searching for Swift files ==="
+#   swift_files = Dir.glob('Pods/StreamVideo/**/*.swift')
+#   puts "Found #{swift_files.length} Swift files"
+  
+#   swift_files.each do |file|
+#     puts "\n--- Processing #{File.basename(file)} ---"
+#     was_patched = patch_file(
+#       file,
+#       '@available(iOS, introduced: 13, obsoleted: 14)',
+#       '#if !DISABLE_BACKPORT\n@available(iOS, introduced: 13)\n'
+#     )
+    
+#     if was_patched
+#       puts "Adding #endif to #{file}"
+#       File.write(file, File.read(file) + "\n#endif\n")
+#     end
+#   end
+  
+#   puts "\n=== Post install script completed ===\n\n"
+# end

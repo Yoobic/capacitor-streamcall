@@ -1,0 +1,42 @@
+:host {
+  ion-content {
+    --background: transparent;
+  }
+  
+  &::part(background) {
+    background: transparent;
+  }
+}
+
+.transparent {
+  --background: transparent !important;
+  background: transparent !important;
+}
+
+.magicDiv {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+}
+
+.login-buttons, .call-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.call-buttons {
+    margin-top: 10px;
+    
+    ion-button {
+        --padding-start: 20px;
+        --padding-end: 20px;
+        
+        ion-icon {
+            margin-right: 8px;
+        }
+    }
+}

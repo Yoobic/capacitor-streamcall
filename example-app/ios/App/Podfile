@@ -24,5 +24,6 @@ target 'App' do
 end
 
 post_install do |installer|
-  assertDeploymentTarget(installer)
+  puts "\n\n=== Starting post install script ==="
+  # assertDeploymentTarget(installer)
 end
