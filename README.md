@@ -18,6 +18,9 @@ npx cap sync
 * [`login(...)`](#login)
 * [`logout()`](#logout)
 * [`call(...)`](#call)
+* [`endCall()`](#endcall)
+* [`setMicrophoneEnabled(...)`](#setmicrophoneenabled)
+* [`setCameraEnabled(...)`](#setcameraenabled)
 * [`addListener('callStarted', ...)`](#addlistenercallstarted-)
 * [`addListener('callEnded', ...)`](#addlistenercallended-)
 * [`removeAllListeners()`](#removealllisteners)
@@ -87,6 +90,47 @@ call(options: CallOptions) => Promise<SuccessResponse>
 | Param         | Type                                                |
 | ------------- | --------------------------------------------------- |
 | **`options`** | <code><a href="#calloptions">CallOptions</a></code> |
+
+**Returns:** <code>Promise&lt;<a href="#successresponse">SuccessResponse</a>&gt;</code>
+
+--------------------
+
+
+### endCall()
+
+```typescript
+endCall() => Promise<SuccessResponse>
+```
+
+**Returns:** <code>Promise&lt;<a href="#successresponse">SuccessResponse</a>&gt;</code>
+
+--------------------
+
+
+### setMicrophoneEnabled(...)
+
+```typescript
+setMicrophoneEnabled(options: { enabled: boolean; }) => Promise<SuccessResponse>
+```
+
+| Param         | Type                               |
+| ------------- | ---------------------------------- |
+| **`options`** | <code>{ enabled: boolean; }</code> |
+
+**Returns:** <code>Promise&lt;<a href="#successresponse">SuccessResponse</a>&gt;</code>
+
+--------------------
+
+
+### setCameraEnabled(...)
+
+```typescript
+setCameraEnabled(options: { enabled: boolean; }) => Promise<SuccessResponse>
+```
+
+| Param         | Type                               |
+| ------------- | ---------------------------------- |
+| **`options`** | <code>{ enabled: boolean; }</code> |
 
 **Returns:** <code>Promise&lt;<a href="#successresponse">SuccessResponse</a>&gt;</code>
 

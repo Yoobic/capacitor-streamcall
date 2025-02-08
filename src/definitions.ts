@@ -25,6 +25,9 @@ export interface StreamCallPlugin {
   login(options: LoginOptions): Promise<SuccessResponse>;
   logout(): Promise<SuccessResponse>;
   call(options: CallOptions): Promise<SuccessResponse>;
+  endCall(): Promise<SuccessResponse>;
+  setMicrophoneEnabled(options: { enabled: boolean }): Promise<SuccessResponse>;
+  setCameraEnabled(options: { enabled: boolean }): Promise<SuccessResponse>;
   
   addListener(
     eventName: 'callStarted',

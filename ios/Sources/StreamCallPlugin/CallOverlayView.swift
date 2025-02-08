@@ -23,10 +23,7 @@ class CallOverlayViewModel: ObservableObject {
         
         if let call = call {
             participantsSubscription = call.state.$participants.sink { [weak self] participants in
-                if self?.participants.map({ $0.id }).sorted() != participants.map({ $0.id }).sorted() {
-                    print("Participants update \(participants.map { $0.name })")
-                }
-                
+                print("Participants update \(participants.map { $0.name })")
                 self?.participants = participants
             }
             self.callState = call.state

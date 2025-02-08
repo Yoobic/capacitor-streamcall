@@ -18,7 +18,10 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "initialize", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "login", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "logout", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "call", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "call", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "endCall", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setMicrophoneEnabled", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setCameraEnabled", returnType: CAPPluginReturnPromise)
     ]
     
     private enum State {
@@ -453,6 +456,96 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                 } catch {
                     log.error("Error making call: \(String(describing: error))")
                     call.reject("Failed to make call: \(error.localizedDescription)")
+                }
+            }
+        } catch {
+            call.reject("StreamVideo not initialized")
+        }
+    }
+    
+    @objc func endCall(_ call: CAPPluginCall) {
+        do {
+            try requireInitialized()
+            
+            Task {
+                do {
+                    if let activeCall = streamVideo.state.activeCall {
+                        try await activeCall.leave()
+                        call.resolve([
+                            "success": true
+                        ])
+                    } else {
+                        call.reject("No active call to end")
+                    }
+                } catch {
+                    log.error("Error ending call: \(String(describing: error))")
+                    call.reject("Failed to end call: \(error.localizedDescription)")
+                }
+            }
+        } catch {
+            call.reject("StreamVideo not initialized")
+        }
+    }
+    
+    @objc func setMicrophoneEnabled(_ call: CAPPluginCall) {
+        guard let enabled = call.getBool("enabled") else {
+            call.reject("Missing required parameter: enabled")
+            return
+        }
+        
+        do {
+            try requireInitialized()
+            
+            Task {
+                do {
+                    if let activeCall = streamVideo.state.activeCall {
+                        if enabled {
+                            try await activeCall.microphone.enable()
+                        } else {
+                            try await activeCall.microphone.disable()
+                        }
+                        call.resolve([
+                            "success": true
+                        ])
+                    } else {
+                        call.reject("No active call")
+                    }
+                } catch {
+                    log.error("Error setting microphone: \(String(describing: error))")
+                    call.reject("Failed to set microphone: \(error.localizedDescription)")
+                }
+            }
+        } catch {
+            call.reject("StreamVideo not initialized")
+        }
+    }
+    
+    @objc func setCameraEnabled(_ call: CAPPluginCall) {
+        guard let enabled = call.getBool("enabled") else {
+            call.reject("Missing required parameter: enabled")
+            return
+        }
+        
+        do {
+            try requireInitialized()
+            
+            Task {
+                do {
+                    if let activeCall = streamVideo.state.activeCall {
+                        if enabled {
+                            try await activeCall.camera.enable()
+                        } else {
+                            try await activeCall.camera.disable()
+                        }
+                        call.resolve([
+                            "success": true
+                        ])
+                    } else {
+                        call.reject("No active call")
+                    }
+                } catch {
+                    log.error("Error setting camera: \(String(describing: error))")
+                    call.reject("Failed to set camera: \(error.localizedDescription)")
                 }
             }
         } catch {

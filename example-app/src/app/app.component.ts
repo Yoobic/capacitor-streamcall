@@ -15,9 +15,8 @@ export class AppComponent {
   isMuted = false;
   isCameraOff = false;
 
-
-
   async endCall() {
+    await StreamCall.endCall();
     this.isInCall = false;
     this.cdr.detectChanges();
   }
@@ -57,11 +56,13 @@ export class AppComponent {
 
   async toggleMute() {
     this.isMuted = !this.isMuted;
+    await StreamCall.setMicrophoneEnabled({ enabled: !this.isMuted });
     this.cdr.detectChanges();
   }
 
   async toggleCamera() {
     this.isCameraOff = !this.isCameraOff;
+    await StreamCall.setCameraEnabled({ enabled: !this.isCameraOff });
     this.cdr.detectChanges();
   }
 

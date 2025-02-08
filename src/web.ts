@@ -3,6 +3,15 @@ import { WebPlugin } from '@capacitor/core';
 import type { CallOptions, StreamCallPlugin, SuccessResponse } from './definitions';
 
 export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
+  endCall(): Promise<SuccessResponse> {
+    throw new Error('Method not implemented.');
+  }
+  setMicrophoneEnabled(_options: { enabled: boolean; }): Promise<SuccessResponse> {
+    throw new Error('Method not implemented.');
+  }
+  setCameraEnabled(_options: { enabled: boolean; }): Promise<SuccessResponse> {
+    throw new Error('Method not implemented.');
+  }
   call(_options: CallOptions): Promise<SuccessResponse> {
     return Promise.reject('Unimplemented');
   }
