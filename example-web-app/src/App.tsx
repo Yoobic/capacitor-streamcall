@@ -8,11 +8,13 @@ import {
   StreamVideo,
   StreamVideoClient,
   useCallStateHooks,
+  useCalls,
+  RingingCall,
+  CallRingEvent,
 } from '@stream-io/video-react-sdk';
 
-import '@stream-io/video-react-sdk/dist/css/styles.css';
 import './style.css';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function App() {
   const apiKey = 'n8wv8vjmucdw';
@@ -20,11 +22,11 @@ export default function App() {
   const [isCallActive, setIsCallActive] = useState(false);
   const [client, setClient] = useState<StreamVideoClient | null>(null);
   const [call, setCall] = useState<Call | null>(null);
-  
-  async function joinCall() {
+
+  async function initializeClient() {
     if (!client) {
-      // Fetch user credentials from backend
-      const response = await fetch(`${API_URL}/user?user_id=Shmi_Skywalker`);
+      // Fetch user credentials from backend user2
+      const response = await fetch(`${API_URL}/user?user_id=user2`);
       const userData = await response.json();
       
       if (!userData) {
@@ -45,7 +47,45 @@ export default function App() {
       // Store client in state
       setClient(newClient);
     }
-  
+  }
+
+  // Initialize client when component mounts
+  useEffect(() => {
+    initializeClient();
+  }, []); // Empty dependency array means this runs once on mount
+
+  // Listen for incoming calls
+  useEffect(() => {
+    if (!client) return;
+
+    const handleCallRing = async (event: { type: "call.ring" } & CallRingEvent) => {
+      if (!call) {
+        const incomingCall = client.call('default', event.call.id);
+        await incomingCall.get()
+        setCall(incomingCall);
+      }
+    };
+
+    client.on('call.ring', handleCallRing);
+
+    return () => {
+      client.off('call.ring', handleCallRing);
+    };
+  }, [client, call]);
+
+  // Watch for call state changes
+  useEffect(() => {
+    if (!call) return;
+
+    if (call.state.callingState === CallingState.JOINED) {
+      setIsCallActive(true);
+    } else if (call.state.callingState === CallingState.OFFLINE) {
+      setCall(null);
+      setIsCallActive(false);
+    }
+  }, [call, call?.state.callingState]);
+
+  async function joinCall() {  
     if (!call && client) {
       // Create and store call in state
       const uuid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15); // Generate random UUID using Math.random()
@@ -55,7 +95,7 @@ export default function App() {
         data: {
           members: [
             { user_id: 'user1' },
-            { user_id: 'Shmi_Skywalker' },
+            { user_id: 'user2' },
           ]
         }
       });
@@ -65,19 +105,48 @@ export default function App() {
     }
   }
 
+
+  const RingingCallsComponent = () => {
+    const calls = useCalls();
+    return (
+      <>
+        <StreamTheme>
+          {calls.map((call) => (
+            <StreamCall call={call} key={call.cid}>
+              <RingingCall />
+            </StreamCall>
+          ))}
+        </StreamTheme>
+      </>
+    )
+  }
+
   return (
     <>
-      {isCallActive && client && call ? (
+      {client && (
         <StreamVideo client={client}>
-          <StreamCall call={call}>
-            <MyUILayout />
-          </StreamCall>
+          {isCallActive && call ? (
+            <StreamCall call={call}>
+              <MyUILayout />
+            </StreamCall>
+          ) : (
+            <> 
+              <RingingCallsComponent />
+              <button onClick={() => joinCall()}>Join Call</button>
+            </>
+          )}
         </StreamVideo>
-      ) : (
-        <button onClick={() => joinCall()}>Join Call</button>
       )}
     </>
   );
+
+  // return <>
+  //   {client && (
+  //     <StreamVideo client={client}>
+  //       <RingingCallsComponent />
+  //     </StreamVideo>
+  //   )}
+  // </>
 }
 
 export const MyUILayout = () => {
