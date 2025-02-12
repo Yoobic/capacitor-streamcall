@@ -9,8 +9,7 @@ android {
 
 apply from: "../capacitor-cordova-android-plugins/cordova.variables.gradle"
 dependencies {
-    implementation 'com.google.firebase:firebase-common:21.0.0'
-  implementation project(':stream-call')
+    implementation project(':stream-call')
     implementation project(':capacitor-app')
     implementation project(':capacitor-haptics')
     implementation project(':capacitor-keyboard')
