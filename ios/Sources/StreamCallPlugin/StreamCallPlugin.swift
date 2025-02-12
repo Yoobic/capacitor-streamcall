@@ -15,7 +15,6 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     public let jsName = "StreamCall"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "loginMagicToken", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "initialize", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "login", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "logout", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "call", returnType: CAPPluginReturnPromise),
@@ -29,7 +28,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         case initializing
         case initialized
     }
-    
+    private var apiKey: String?
     private var state: State = .notInitialized
     private static let tokenRefreshQueue = DispatchQueue(label: "stream.call.token.refresh")
     private static let tokenRefreshSemaphore = DispatchSemaphore(value: 1)
@@ -54,17 +53,43 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     @Injected(\.callKitAdapter) var callKitAdapter
     @Injected(\.callKitPushNotificationAdapter) var callKitPushNotificationAdapter
     
+    private var refreshTokenURL: String?
+    private var refreshTokenHeaders: [String: String]?
+    
     override public func load() {
-        // Check if we have a logged in user
+        // Check if we have a logged in user for handling incoming calls
         if let credentials = SecureUserRepository.shared.loadCurrentUser() {
             print("Loading user for StreamCallPlugin: \(credentials.user.name)")
-            // Initialize Stream Video client with stored credentials
+            DispatchQueue.global(qos: .userInitiated).async {
+                self.initializeStreamVideo()
+            }
         }
-        DispatchQueue.global(qos: .userInitiated).async {
-            self.initializeStreamVideo()
+    }
+    
+    private func cleanupStreamVideo() {
+        // Cancel subscriptions
+        tokenSubscription?.cancel()
+        tokenSubscription = nil
+        activeCallSubscription?.cancel()
+        activeCallSubscription = nil
+        lastVoIPToken = nil
+        
+        // Cleanup UI
+        Task { @MainActor in
+            self.overlayViewModel?.updateCall(nil)
+            self.overlayViewModel?.updateStreamVideo(nil)
+            self.overlayView?.removeFromSuperview()
+            self.overlayView = nil
+            self.hostingController = nil
+            self.overlayViewModel = nil
+            
+            // Reset webview
+            self.webView?.isOpaque = true
+            self.webView?.backgroundColor = .white
+            self.webView?.scrollView.backgroundColor = .white
         }
         
-        // self.webView?.evaluateJavaScript("console.log('abca');")
+        state = .notInitialized
     }
     
     private func requireInitialized() throws {
@@ -98,12 +123,22 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             throw NSError(domain: "StreamCallPlugin", code: -1, userInfo: [NSLocalizedDescriptionKey: "WebView not available"])
         }
         
+        guard let refreshURL = self.refreshTokenURL else {
+            print("Refresh URL not configured")
+            tokenWaitSemaphore = nil
+            throw NSError(domain: "StreamCallPlugin", code: -1, userInfo: [NSLocalizedDescriptionKey: "Refresh URL not configured"])
+        }
+        
+        let headersJSON = (self.refreshTokenHeaders ?? [:]).reduce(into: "") { result, pair in
+            result += "\n'\(pair.key)': '\(pair.value)',"
+        }
+        
         let script = """
             (function() {
                 console.log('Starting token refresh...');
-                fetch('https://magic-login-srv-35.localcan.dev/user?user_id=user1', {
+                fetch('\(refreshURL)', {
                     headers: {
-                        'magic-shit': 'yes'
+                        \(headersJSON)
                     }
                 })
                 .then(response => {
@@ -245,106 +280,19 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
     
-    @objc func initialize(_ call: CAPPluginCall) {
-        Task { @MainActor in
-            // Make webview transparent
-            self.webView?.isOpaque = false
-            self.webView?.backgroundColor = .clear
-            self.webView?.scrollView.backgroundColor = .clear
-            
-            // Check if we have a logged in user
-            self.initializeStreamVideo()
-            
-            if (self.state != .initialized) {
-                call.reject("The SDK is not initialized")
-                return
-            }
-
-            
-            // Create SwiftUI view with view model
-            let (hostingController, viewModel) = CallOverlayView.create(streamVideo: self.streamVideo)
-            hostingController.view.backgroundColor = .clear
-            
-            self.hostingController = hostingController
-            self.overlayViewModel = viewModel
-            self.overlayView = hostingController.view
-            
-            if let overlayView = self.overlayView {
-                // Add to view hierarchy below webview but keep it hidden
-                overlayView.isHidden = true
-                self.webView?.superview?.addSubview(overlayView)
-                self.webView?.superview?.bringSubviewToFront(self.webView!)
-                
-                // Setup constraints
-                overlayView.translatesAutoresizingMaskIntoConstraints = false
-                NSLayoutConstraint.activate([
-                    overlayView.topAnchor.constraint(equalTo: overlayView.superview!.topAnchor),
-                    overlayView.bottomAnchor.constraint(equalTo: overlayView.superview!.bottomAnchor),
-                    overlayView.leadingAnchor.constraint(equalTo: overlayView.superview!.leadingAnchor),
-                    overlayView.trailingAnchor.constraint(equalTo: overlayView.superview!.trailingAnchor)
-                ])
-            }
-            
-            call.resolve()
-        }
-    }
-    
-    private func initializeStreamVideo() {
-//        if (state == .initializing) {
-//            return
-//        }
-        state = .initializing
-        
-        // Try to get user credentials from repository
-        guard let savedCredentials = SecureUserRepository.shared.loadCurrentUser() else {
-            print("No saved credentials found, skipping initialization")
-            state = .notInitialized
-            return
-        }
-        print("Initializing with saved credentials for user: \(savedCredentials.user.name)")
-        
-        // Create a local reference to refreshToken to avoid capturing self
-        let refreshTokenFn = self.refreshToken
-        
-        self.streamVideo = StreamVideo(
-            apiKey: "n8wv8vjmucdw",
-            user: savedCredentials.user,
-            token: UserToken(stringLiteral: savedCredentials.tokenValue),
-            tokenProvider: { result in
-                print("attempt to refresh")
-                DispatchQueue.global().async {
-                    do {
-                        let newToken = try refreshTokenFn()
-                        print("Refresh successful")
-                        result(.success(newToken))
-                    } catch {
-                        print("Refresh fail")
-                        result(.failure(error))
-                    }
-                }
-            }
-        )
-        
-        state = .initialized
-        callKitAdapter.streamVideo = self.streamVideo
-        
-        // Setup subscriptions for new StreamVideo instance
-        setupActiveCallSubscription()
-        setupTokenSubscription()
-        
-        // Register for incoming calls
-        callKitAdapter.registerForIncomingCalls()
-    }
-    
     @objc func login(_ call: CAPPluginCall) {
         guard let token = call.getString("token"),
               let userId = call.getString("userId"),
-              let name = call.getString("name") else {
+              let name = call.getString("name"),
+              let apiKey = call.getString("apiKey") else {
             call.reject("Missing required parameters")
             return
         }
         
         let imageURL = call.getString("imageURL")
+        let refreshTokenConfig = call.getObject("refreshToken")
+        let refreshTokenURL = refreshTokenConfig?.getString("url")
+        let refreshTokenHeaders = refreshTokenConfig?.getObject("headers") as? [String: String]
         
         let user = User(
             id: userId,
@@ -356,9 +304,18 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         let credentials = UserCredentials(user: user, tokenValue: token)
         SecureUserRepository.shared.save(user: credentials)
         
+        // Store API key and refresh config for later use
+        self.apiKey = apiKey
+        self.refreshTokenURL = refreshTokenURL
+        self.refreshTokenHeaders = refreshTokenHeaders
+        
         // Initialize Stream Video with new credentials
-        // this setsup callkit
         initializeStreamVideo()
+        
+        if state != .initialized {
+            call.reject("Failed to initialize StreamVideo")
+            return
+        }
         
         // Update the CallOverlayView with new StreamVideo instance
         Task { @MainActor in
@@ -409,6 +366,51 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         guard let userId = call.getString("userId") else {
             call.reject("Missing required parameter: userId")
             return
+        }
+        
+        // Initialize if needed
+        if state == .notInitialized {
+            guard let credentials = SecureUserRepository.shared.loadCurrentUser() else {
+                call.reject("No user credentials found")
+                return
+            }
+            initializeStreamVideo()
+            if state != .initialized {
+                call.reject("Failed to initialize StreamVideo")
+                return
+            }
+        }
+        
+        // Setup UI components if needed
+        if overlayView == nil {
+            Task { @MainActor in
+                // Make webview transparent
+                self.webView?.isOpaque = false
+                self.webView?.backgroundColor = .clear
+                self.webView?.scrollView.backgroundColor = .clear
+                
+                // Create SwiftUI view with view model
+                let (hostingController, viewModel) = CallOverlayView.create(streamVideo: self.streamVideo)
+                hostingController.view.backgroundColor = .clear
+                
+                self.hostingController = hostingController
+                self.overlayViewModel = viewModel
+                self.overlayView = hostingController.view
+                
+                if let overlayView = self.overlayView {
+                    overlayView.isHidden = true
+                    self.webView?.superview?.addSubview(overlayView)
+                    self.webView?.superview?.bringSubviewToFront(self.webView!)
+                    
+                    overlayView.translatesAutoresizingMaskIntoConstraints = false
+                    NSLayoutConstraint.activate([
+                        overlayView.topAnchor.constraint(equalTo: overlayView.superview!.topAnchor),
+                        overlayView.bottomAnchor.constraint(equalTo: overlayView.superview!.bottomAnchor),
+                        overlayView.leadingAnchor.constraint(equalTo: overlayView.superview!.leadingAnchor),
+                        overlayView.trailingAnchor.constraint(equalTo: overlayView.superview!.trailingAnchor)
+                    ])
+                }
+            }
         }
         
         do {
@@ -471,6 +473,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                 do {
                     if let activeCall = streamVideo.state.activeCall {
                         try await activeCall.leave()
+                        cleanupStreamVideo()
                         call.resolve([
                             "success": true
                         ])
@@ -551,5 +554,50 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         } catch {
             call.reject("StreamVideo not initialized")
         }
+    }
+    
+    private func initializeStreamVideo() {
+        state = .initializing
+        
+        // Try to get user credentials from repository
+        guard let savedCredentials = SecureUserRepository.shared.loadCurrentUser(),
+              let apiKey = self.apiKey else {
+            print("No saved credentials or API key found, skipping initialization")
+            state = .notInitialized
+            return
+        }
+        print("Initializing with saved credentials for user: \(savedCredentials.user.name)")
+        
+        // Create a local reference to refreshToken to avoid capturing self
+        let refreshTokenFn = self.refreshToken
+        
+        self.streamVideo = StreamVideo(
+            apiKey: apiKey,
+            user: savedCredentials.user,
+            token: UserToken(stringLiteral: savedCredentials.tokenValue),
+            tokenProvider: { result in
+                print("attempt to refresh")
+                DispatchQueue.global().async {
+                    do {
+                        let newToken = try refreshTokenFn()
+                        print("Refresh successful")
+                        result(.success(newToken))
+                    } catch {
+                        print("Refresh fail")
+                        result(.failure(error))
+                    }
+                }
+            }
+        )
+        
+        state = .initialized
+        callKitAdapter.streamVideo = self.streamVideo
+        
+        // Setup subscriptions for new StreamVideo instance
+        setupActiveCallSubscription()
+        setupTokenSubscription()
+        
+        // Register for incoming calls
+        callKitAdapter.registerForIncomingCalls()
     }
 }

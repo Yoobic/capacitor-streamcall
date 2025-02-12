@@ -11,7 +11,8 @@ import { firstValueFrom } from 'rxjs';
 })
 export class Tab1Page {
   private readonly STYLE_ID = 'magic_transparent_background';
-  private readonly API_URL = 'https://magic-login-srv-35.localcan.dev';
+  private readonly API_URL = 'https://streamcall-02.localcan.dev';
+  private readonly API_KEY = 'n8wv8vjmucdw';
   transparent = false;
 
   constructor(private http: HttpClient) {}
@@ -28,12 +29,23 @@ export class Tab1Page {
       if (!response) {
         throw new Error('No response from server');
       }
+      // listen to the call event
+      StreamCall.addListener('callRinging', (data) => {
+        console.log('Call ringing', data);
+      });
+      StreamCall.addListener('callStarted', (data) => {
+        console.log('Call started', data);
+      });
+      StreamCall.addListener('callEnded', (data) => {
+        console.log('Call ended', data);
+      });
 
       await StreamCall.login({
         token: response.token,
         userId: response.userId,
         name: response.name,
-        imageURL: response.imageURL
+        imageURL: response.imageURL,
+        apiKey: this.API_KEY,
       });
 
       console.log('Login successful');
@@ -42,29 +54,16 @@ export class Tab1Page {
     }
   }
 
-  async callUser1() {
+  async callUser(userId: string) {
     try {
       await StreamCall.call({
-        userId: 'user1',
+        userId: userId,
         type: 'default',
         ring: true
       });
-      console.log('Calling User 1...');
+      console.log(`Calling ${userId}...`);
     } catch (error) {
-      console.error('Failed to call User 1:', error);
-    }
-  }
-
-  async callUser2() {
-    try {
-      await StreamCall.call({
-        userId: 'user2',
-        type: 'default',
-        ring: true
-      });
-      console.log('Calling User 2...');
-    } catch (error) {
-      console.error('Failed to call User 2:', error);
+      console.error(`Failed to call ${userId}:`, error);
     }
   }
 

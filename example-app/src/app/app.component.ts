@@ -11,6 +11,7 @@ import { StreamCall } from 'stream-call';
 export class AppComponent {
   constructor(private cdr: ChangeDetectorRef) {}
 
+  apiKey = 'n8wv8vjmucdw';
   isInCall = false;
   isMuted = false;
   isCameraOff = false;
@@ -39,9 +40,6 @@ export class AppComponent {
       }
     `;
     document.head.appendChild(styleElement);
-
-    // Initialize StreamCall
-    await StreamCall.initialize();
 
     // register event listeners
     StreamCall.addListener('callStarted', (event) => {

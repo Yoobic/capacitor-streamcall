@@ -17,17 +17,27 @@
     <div class="login-buttons">
       <ion-button (click)="login('user1')">Login as User 1</ion-button>
       <ion-button (click)="login('user2')">Login as User 2</ion-button>
+      <ion-button (click)="login('user3')">Login as User 3</ion-button>
+      <ion-button (click)="login('user4')">Login as User 4</ion-button>
       <ion-button (click)="logout()" color="danger">Logout</ion-button>
     </div>
 
     <div class="call-buttons">
-      <ion-button (click)="callUser1()" color="success">
+      <ion-button (click)="callUser('user1')" color="success">
         <ion-icon name="call"></ion-icon>
         Call User 1
       </ion-button>
-      <ion-button (click)="callUser2()" color="success">
+      <ion-button (click)="callUser('user2')" color="success">
         <ion-icon name="call"></ion-icon>
         Call User 2
+      </ion-button>
+      <ion-button (click)="callUser('user3')" color="success">
+        <ion-icon name="call"></ion-icon>
+        Call User 3
+      </ion-button>
+      <ion-button (click)="callUser('user4')" color="success">
+        <ion-icon name="call"></ion-icon>
+        Call User 4
       </ion-button>
     </div>
   </div> 

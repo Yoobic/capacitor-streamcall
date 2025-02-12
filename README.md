@@ -13,8 +13,6 @@ npx cap sync
 
 <docgen-index>
 
-* [`echo(...)`](#echo)
-* [`initialize()`](#initialize)
 * [`login(...)`](#login)
 * [`logout()`](#logout)
 * [`call(...)`](#call)
@@ -23,37 +21,15 @@ npx cap sync
 * [`setCameraEnabled(...)`](#setcameraenabled)
 * [`addListener('callStarted', ...)`](#addlistenercallstarted-)
 * [`addListener('callEnded', ...)`](#addlistenercallended-)
+* [`addListener('callRinging', ...)`](#addlistenercallringing-)
 * [`removeAllListeners()`](#removealllisteners)
 * [Interfaces](#interfaces)
+* [Type Aliases](#type-aliases)
 
 </docgen-index>
 
 <docgen-api>
 <!--Update the source file JSDoc comments and rerun docgen to update the docs below-->
-
-### echo(...)
-
-```typescript
-echo(options: { value: string; }) => Promise<{ value: string; }>
-```
-
-| Param         | Type                            |
-| ------------- | ------------------------------- |
-| **`options`** | <code>{ value: string; }</code> |
-
-**Returns:** <code>Promise&lt;{ value: string; }&gt;</code>
-
---------------------
-
-
-### initialize()
-
-```typescript
-initialize() => Promise<void>
-```
-
---------------------
-
 
 ### login(...)
 
@@ -156,13 +132,29 @@ addListener(eventName: 'callStarted', listenerFunc: (event: CallStartedEvent) =>
 ### addListener('callEnded', ...)
 
 ```typescript
-addListener(eventName: 'callEnded', listenerFunc: (event: {}) => void) => Promise<{ remove: () => Promise<void>; }>
+addListener(eventName: 'callEnded', listenerFunc: (event: CallEndedEvent) => void) => Promise<{ remove: () => Promise<void>; }>
 ```
 
-| Param              | Type                                |
-| ------------------ | ----------------------------------- |
-| **`eventName`**    | <code>'callEnded'</code>            |
-| **`listenerFunc`** | <code>(event: {}) =&gt; void</code> |
+| Param              | Type                                                                          |
+| ------------------ | ----------------------------------------------------------------------------- |
+| **`eventName`**    | <code>'callEnded'</code>                                                      |
+| **`listenerFunc`** | <code>(event: <a href="#callendedevent">CallEndedEvent</a>) =&gt; void</code> |
+
+**Returns:** <code>Promise&lt;{ remove: () =&gt; Promise&lt;void&gt;; }&gt;</code>
+
+--------------------
+
+
+### addListener('callRinging', ...)
+
+```typescript
+addListener(eventName: 'callRinging', listenerFunc: (event: CallRingingEvent) => void) => Promise<{ remove: () => Promise<void>; }>
+```
+
+| Param              | Type                                                                              |
+| ------------------ | --------------------------------------------------------------------------------- |
+| **`eventName`**    | <code>'callRinging'</code>                                                        |
+| **`listenerFunc`** | <code>(event: <a href="#callringingevent">CallRingingEvent</a>) =&gt; void</code> |
 
 **Returns:** <code>Promise&lt;{ remove: () =&gt; Promise&lt;void&gt;; }&gt;</code>
 
@@ -190,12 +182,14 @@ removeAllListeners() => Promise<void>
 
 #### LoginOptions
 
-| Prop           | Type                |
-| -------------- | ------------------- |
-| **`token`**    | <code>string</code> |
-| **`userId`**   | <code>string</code> |
-| **`name`**     | <code>string</code> |
-| **`imageURL`** | <code>string</code> |
+| Prop               | Type                                                                                        |
+| ------------------ | ------------------------------------------------------------------------------------------- |
+| **`token`**        | <code>string</code>                                                                         |
+| **`userId`**       | <code>string</code>                                                                         |
+| **`name`**         | <code>string</code>                                                                         |
+| **`imageURL`**     | <code>string</code>                                                                         |
+| **`apiKey`**       | <code>string</code>                                                                         |
+| **`refreshToken`** | <code>{ url: string; headers?: <a href="#record">Record</a>&lt;string, string&gt;; }</code> |
 
 
 #### CallOptions
@@ -212,5 +206,29 @@ removeAllListeners() => Promise<void>
 | Prop         | Type                |
 | ------------ | ------------------- |
 | **`callId`** | <code>string</code> |
+
+
+#### CallEndedEvent
+
+| Prop         | Type                |
+| ------------ | ------------------- |
+| **`callId`** | <code>string</code> |
+
+
+#### CallRingingEvent
+
+| Prop         | Type                |
+| ------------ | ------------------- |
+| **`callId`** | <code>string</code> |
+
+
+### Type Aliases
+
+
+#### Record
+
+Construct a type with a set of properties K of type T
+
+<code>{ [P in K]: T; }</code>
 
 </docgen-api>
