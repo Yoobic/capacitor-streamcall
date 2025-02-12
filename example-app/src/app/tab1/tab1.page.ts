@@ -45,7 +45,7 @@ export class Tab1Page {
   async callUser1() {
     try {
       await StreamCall.call({
-        userId: 'user1',
+        userId: 'user3',
         type: 'default',
         ring: true
       });
@@ -58,7 +58,7 @@ export class Tab1Page {
   async callUser2() {
     try {
       await StreamCall.call({
-        userId: 'user2',
+        userId: 'user4',
         type: 'default',
         ring: true
       });

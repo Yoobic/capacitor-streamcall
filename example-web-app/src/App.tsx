@@ -17,7 +17,7 @@ import './style.css';
 import { useEffect, useState } from 'react';
 
 export default function App() {
-  const apiKey = 'n8wv8vjmucdw'//'mmhfdzb5evj2' //'n8wv8vjmucdw';
+  const apiKey = 'n8wv8vjmucdw';
   const API_URL = 'https://magic-login-srv-35.localcan.dev';
   const [isCallActive, setIsCallActive] = useState(false);
   const [client, setClient] = useState<StreamVideoClient | null>(null);
@@ -26,7 +26,7 @@ export default function App() {
   async function initializeClient() {
     if (!client) {
       // Fetch user credentials from backend user2
-      const response = await fetch(`${API_URL}/user?user_id=user2`);
+      const response = await fetch(`${API_URL}/user?user_id=user4`);
       const userData = await response.json();
       
       if (!userData) {
@@ -43,15 +43,6 @@ export default function App() {
           image: userData.imageURL
         }
       });
-      // const newClient = new StreamVideoClient({
-      //   apiKey,
-      //   token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYW5kcm9pZC10dXRvcmlhbC0zIn0.g5h8coX8J1XUNHagPFoGBI0D7bN6P0w2Sd2rui89puE",
-      //   user: {
-      //     id: "android-tutorial-3",
-      //     name: "User 3", 
-      //     image: "https://getstream.io/chat/docs/sdk/avatars/jpg/Bernard%20Windler.jpg"
-      //   }
-      // });
   
       // Store client in state
       setClient(newClient);
@@ -64,56 +55,47 @@ export default function App() {
   }, []); // Empty dependency array means this runs once on mount
 
   // Listen for incoming calls
-  // useEffect(() => {
-  //   if (!client) return;
+  useEffect(() => {
+    if (!client) return;
 
-  //   const handleCallRing = async (event: { type: "call.ring" } & CallRingEvent) => {
-  //     if (!call) {
-  //       const incomingCall = client.call('default', event.call.id);
-  //       await incomingCall.get()
-  //       setCall(incomingCall);
-  //     }
-  //   };
+    const handleCallRing = async (event: { type: "call.ring" } & CallRingEvent) => {
+      if (!call) {
+        const incomingCall = client.call('default', event.call.id);
+        await incomingCall.get()
+        setCall(incomingCall);
+      }
+    };
 
-  //   client.on('call.ring', handleCallRing);
+    client.on('call.ring', handleCallRing);
 
-  //   return () => {
-  //     client.off('call.ring', handleCallRing);
-  //   };
-  // }, [client, call]);
+    return () => {
+      client.off('call.ring', handleCallRing);
+    };
+  }, [client, call]);
 
   // Watch for call state changes
-  // useEffect(() => {
-  //   if (!call) return;
+  useEffect(() => {
+    if (!call) return;
 
-  //   if (call.state.callingState === CallingState.JOINED) {
-  //     setIsCallActive(true);
-  //   } else if (call.state.callingState === CallingState.OFFLINE) {
-  //     setCall(null);
-  //     setIsCallActive(false);
-  //   }
-  // }, [call, call?.state.callingState]);
+    if (call.state.callingState === CallingState.JOINED) {
+      setIsCallActive(true);
+    } else if (call.state.callingState === CallingState.OFFLINE) {
+      setCall(null);
+      setIsCallActive(false);
+    }
+  }, [call, call?.state.callingState]);
 
   async function joinCall() {  
     if (!call && client) {
       // Create and store call in state
       const uuid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15); // Generate random UUID using Math.random()
       const newCall = client.call('default', uuid);
-
       await newCall.getOrCreate({
         ring: true,
         data: {
-          settings_override: {
-            ring: {
-              auto_cancel_timeout_ms: 30000,
-              incoming_call_timeout_ms: 30000
-            }
-          },
           members: [
-            // { user_id: 'android-tutorial-3' },
-            // { user_id: 'android-tutorial-1' },
-            { user_id: 'user2' },
             { user_id: 'user1' },
+            { user_id: 'user2' },
           ]
         }
       });

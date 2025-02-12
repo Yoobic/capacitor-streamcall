@@ -49,47 +49,57 @@ public class StreamCallPlugin : Plugin() {
         setupViews()
         super.load()
 
-        // Check the launch intent
-        val activity = activity
-        val intent = activity?.intent
+        // Handle initial intent if present
+        activity?.intent?.let { handleOnNewIntent(it) }
+    }
 
-        if (intent != null) {
-            val action = intent.action
-            val data = intent.data
-            val extras = intent.extras
+    override fun handleOnNewIntent(intent: android.content.Intent) {
+        super.handleOnNewIntent(intent)
+        
+        val action = intent.action
+        val data = intent.data
+        val extras = intent.extras
 
-            if (action === "io.getstream.video.android.action.INCOMING_CALL") {
-                activity.runOnUiThread {
-                    val cid = intent.streamCallId(NotificationHandler.INTENT_EXTRA_CALL_CID)
-                    if (cid != null) {
-                        val call = streamVideoClient?.call(id = cid.id, type = cid.type)
-                        // Launch a coroutine to handle the suspend function
-                        kotlinx.coroutines.GlobalScope.launch {
-                            call?.get()
-                            activity.runOnUiThread {
-                                incomingCallView?.setContent {
-                                    IncomingCallView(
-                                        streamVideo = streamVideoClient,
-                                        call = call,
-                                        onDeclineCall = { declinedCall ->
-                                            declineCall(declinedCall)
-                                        },
-                                        onAcceptCall = { acceptedCall ->
-                                            acceptCall(acceptedCall)
-                                        }
-                                    )
-                                }
-                                incomingCallView?.isVisible = true
+        if (action === "io.getstream.video.android.action.INCOMING_CALL") {
+            activity?.runOnUiThread {
+                val cid = intent.streamCallId(NotificationHandler.INTENT_EXTRA_CALL_CID)
+                if (cid != null) {
+                    val call = streamVideoClient?.call(id = cid.id, type = cid.type)
+                    // Launch a coroutine to handle the suspend function
+                    kotlinx.coroutines.GlobalScope.launch {
+                        call?.get()
+                        activity?.runOnUiThread {
+                            incomingCallView?.setContent {
+                                IncomingCallView(
+                                    streamVideo = streamVideoClient,
+                                    call = call,
+                                    onDeclineCall = { declinedCall ->
+                                        declineCall(declinedCall)
+                                    },
+                                    onAcceptCall = { acceptedCall ->
+                                        acceptCall(acceptedCall)
+                                    }
+                                )
                             }
+                            incomingCallView?.isVisible = true
                         }
                     }
                 }
             }
-            // Log the intent information
-            android.util.Log.d("StreamCallPlugin", "Launch Intent - Action: $action")
-            android.util.Log.d("StreamCallPlugin", "Launch Intent - Data: $data")
-            android.util.Log.d("StreamCallPlugin", "Launch Intent - Extras: $extras")
+        } else if (action === "io.getstream.video.android.action.ACCEPT_CALL") {
+            val cid = intent.streamCallId(NotificationHandler.INTENT_EXTRA_CALL_CID)
+            if (cid != null) {
+                val call = streamVideoClient?.call(id = cid.id, type = cid.type)
+                kotlinx.coroutines.GlobalScope.launch {
+                    call?.get()
+                    call?.let { acceptCall(it) }
+                }
+            }
         }
+        // Log the intent information
+        android.util.Log.d("StreamCallPlugin", "New Intent - Action: $action")
+        android.util.Log.d("StreamCallPlugin", "New Intent - Data: $data")
+        android.util.Log.d("StreamCallPlugin", "New Intent - Extras: $extras")
     }
 
     private fun declineCall(call: Call) {
@@ -313,6 +323,7 @@ public class StreamCallPlugin : Plugin() {
 
     private fun acceptCall(call: Call) {
         kotlinx.coroutines.GlobalScope.launch {
+            android.util.Log.i("StreamCallPlugin", "Attempting to accept call")
             try {
                 // Hide incoming call view first
                 activity?.runOnUiThread {
@@ -428,6 +439,9 @@ public class StreamCallPlugin : Plugin() {
                     
                     activity?.runOnUiThread {
                         overlayView?.isVisible = false
+                        overlayView?.setContent {
+                            CallOverlayView(this@StreamCallPlugin.context, null, null)
+                        }
                     }
                     
                     // Notify that call has ended
@@ -443,6 +457,75 @@ public class StreamCallPlugin : Plugin() {
             }
         } catch (e: Exception) {
             call.reject("StreamVideo not initialized")
+        }
+    }
+
+    @PluginMethod
+    fun call(call: PluginCall) {
+        val userId = call.getString("userId")
+        if (userId == null) {
+            call.reject("Missing required parameter: userId")
+            return
+        }
+
+        try {
+            if (state != State.INITIALIZED) {
+                call.reject("StreamVideo not initialized")
+                return
+            }
+
+            val callType = call.getString("type") ?: "default"
+            val shouldRing = call.getBoolean("ring") ?: true
+            val callId = java.util.UUID.randomUUID().toString()
+
+            android.util.Log.d("StreamCallPlugin", "Creating call:")
+            android.util.Log.d("StreamCallPlugin", "- Call ID: $callId")
+            android.util.Log.d("StreamCallPlugin", "- Call Type: $callType")
+            android.util.Log.d("StreamCallPlugin", "- User ID: $userId")
+            android.util.Log.d("StreamCallPlugin", "- Should Ring: $shouldRing")
+
+            // Create and join call in a coroutine
+            kotlinx.coroutines.GlobalScope.launch {
+                try {
+                    // Create the call object
+                    val streamCall = streamVideoClient?.call(type = callType, id = callId)
+
+                    android.util.Log.d("StreamCallPlugin", "Creating call with member...")
+                    // Create the call with the member
+                    streamCall?.create(
+                        memberIds = listOf(userId),
+                        custom = emptyMap(),
+                        ring = shouldRing
+                    )
+
+                    android.util.Log.d("StreamCallPlugin", "Joining call...")
+                    // Join the call, we do it in the view
+                    // streamCall?.join()
+                    android.util.Log.d("StreamCallPlugin", "Successfully joined call")
+
+                    // Update the overlay view on the main thread
+                    activity?.runOnUiThread {
+                        overlayView?.setContent {
+                            CallOverlayView(
+                                context = context,
+                                streamVideo = streamVideoClient,
+                                call = streamCall
+                            )
+                        }
+                        overlayView?.isVisible = true
+                    }
+
+                    // Resolve the call with success
+                    call.resolve(JSObject().apply {
+                        put("success", true)
+                    })
+                } catch (e: Exception) {
+                    android.util.Log.e("StreamCallPlugin", "Error making call: ${e.message}")
+                    call.reject("Failed to make call: ${e.message}")
+                }
+            }
+        } catch (e: Exception) {
+            call.reject("Failed to make call: ${e.message}")
         }
     }
 }
