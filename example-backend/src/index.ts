@@ -27,7 +27,7 @@ if (!process.env.STREAM_API_KEY || !process.env.STREAM_API_SECRET) {
 
 const apiKey = process.env.STREAM_API_KEY;
 const apiSecret = process.env.STREAM_API_SECRET;
-const vailidity = 30; // One year in seconds
+const vailidity = 60 * 60 * 6; // Six hours in seconds
 const client = new StreamClient(apiKey, apiSecret);
 
 app.get('/', (c) => {

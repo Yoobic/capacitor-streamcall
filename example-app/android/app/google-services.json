@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "164495141701",
+    "project_id": "magic-calling",
+    "storage_bucket": "magic-calling.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:164495141701:android:b23c1a948af12bffdf6c2c",
+        "android_client_info": {
+          "package_name": "io.ionic.starter.magicStreamVideo.capgo.call"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBDxWoUXEOiok2-QmuIx1GKslob2SHmpMY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

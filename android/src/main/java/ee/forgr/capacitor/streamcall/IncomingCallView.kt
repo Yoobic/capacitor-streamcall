@@ -1,0 +1,118 @@
+package ee.forgr.capacitor.streamcall
+
+import android.util.Log
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
+import io.getstream.video.android.core.Call
+import io.getstream.video.android.core.RingingState
+import io.getstream.video.android.core.StreamVideo
+import io.getstream.video.android.compose.theme.VideoTheme
+import io.getstream.video.android.compose.ui.components.background.CallBackground
+import io.getstream.video.android.compose.ui.components.call.CallAppBar
+import io.getstream.video.android.compose.ui.components.call.ringing.incomingcall.IncomingCallControls
+import io.getstream.video.android.compose.ui.components.call.ringing.incomingcall.IncomingCallDetails
+import io.getstream.video.android.core.call.state.AcceptCall
+import io.getstream.video.android.core.call.state.CallAction
+import io.getstream.video.android.core.call.state.DeclineCall
+import io.getstream.video.android.core.model.RejectReason
+
+@Composable
+fun IncomingCallView(
+    streamVideo: StreamVideo?,
+    call: Call? = null,
+    onDeclineCall: ((Call) -> Unit)? = null,
+    onAcceptCall: ((Call) -> Unit)? = null
+) {
+    val ringingState = call?.state?.ringingState?.collectAsState(initial = RingingState.Idle)
+
+    if (ringingState != null) {
+        Log.d("IncomingCallView", "Ringing state changed to: ${ringingState.value}")
+    }
+
+    val backgroundColor = when {
+        streamVideo == null -> Color.Cyan
+        call == null -> Color.Red
+        else -> Color.Green
+    }
+
+    if (call !== null) {
+        val participants by call.state.members.collectAsState()
+        val isCameraEnabled by call.camera.isEnabled.collectAsState()
+        val isVideoType = true
+
+        val statusBarPadding = WindowInsets.statusBars.asPaddingValues()
+        val navigationBarPadding = WindowInsets.navigationBars.asPaddingValues()
+        val safeDrawingPadding = WindowInsets.safeDrawing.asPaddingValues()
+        val layoutDirection = LocalLayoutDirection.current
+
+        VideoTheme {
+            CallBackground(
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(
+                            top = statusBarPadding.calculateTopPadding(),
+                            bottom = navigationBarPadding.calculateBottomPadding()
+                        ),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    IncomingCallDetails(
+                        modifier = Modifier
+                            .padding(
+                                top = VideoTheme.dimens.spacingXl,
+                                start = safeDrawingPadding.calculateStartPadding(layoutDirection),
+                                end = safeDrawingPadding.calculateEndPadding(layoutDirection)
+                            ),
+                        isVideoType = isVideoType,
+                        participants = participants
+                    )
+
+                    IncomingCallControls(
+                        modifier = Modifier
+                            .padding(
+                                bottom = VideoTheme.dimens.spacingL,
+                                start = safeDrawingPadding.calculateStartPadding(layoutDirection),
+                                end = safeDrawingPadding.calculateEndPadding(layoutDirection)
+                            ),
+                        isVideoCall = isVideoType,
+                        isCameraEnabled = isCameraEnabled,
+                        onCallAction = { action ->
+                            when (action) {
+                                DeclineCall -> onDeclineCall?.invoke(call)
+                                AcceptCall -> onAcceptCall?.invoke(call)
+                                else -> { /* ignore other actions */ }
+                            }
+                        }
+                    )
+                }
+            }
+        }
+    } else {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(backgroundColor)
+        )
+    }
+}
