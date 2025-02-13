@@ -291,8 +291,8 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         
         let imageURL = call.getString("imageURL")
         let refreshTokenConfig = call.getObject("refreshToken")
-        let refreshTokenURL = refreshTokenConfig?.getString("url")
-        let refreshTokenHeaders = refreshTokenConfig?.getObject("headers") as? [String: String]
+        let refreshTokenURL = refreshTokenConfig?["url"] as? String
+        let refreshTokenHeaders = refreshTokenConfig?["headers"] as? [String: String]
         
         let user = User(
             id: userId,

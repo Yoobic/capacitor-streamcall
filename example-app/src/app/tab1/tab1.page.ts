@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { StreamCall } from 'stream-call';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { ToastController } from '@ionic/angular';
 
 @Component({
   selector: 'app-tab1',
@@ -15,7 +16,10 @@ export class Tab1Page {
   private readonly API_KEY = 'n8wv8vjmucdw';
   transparent = false;
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private toastController: ToastController
+  ) {}
 
   async login(userId: string) {
     try {
@@ -54,9 +58,10 @@ export class Tab1Page {
         },
       });
 
-      console.log('Login successful');
+      await this.presentToast('Login successful', 'success');
     } catch (error) {
       console.error('Login failed:', error);
+      await this.presentToast('Login failed', 'danger');
     }
   }
 
@@ -67,18 +72,20 @@ export class Tab1Page {
         type: 'default',
         ring: true
       });
-      console.log(`Calling ${userId}...`);
+      await this.presentToast(`Calling ${userId}...`, 'success');
     } catch (error) {
       console.error(`Failed to call ${userId}:`, error);
+      await this.presentToast(`Failed to call ${userId}`, 'danger');
     }
   }
 
   async logout() {
     try {
       await StreamCall.logout();
-      console.log('Logout successful');
+      await this.presentToast('Logout successful', 'success');
     } catch (error) {
       console.error('Logout failed:', error);
+      await this.presentToast('Logout failed', 'danger');
     }
   }
 
@@ -88,5 +95,15 @@ export class Tab1Page {
       document.head.removeChild(styleElement);
     }
     this.transparent = false;
+  }
+
+  private async presentToast(message: string, color: 'success' | 'danger') {
+    const toast = await this.toastController.create({
+      message,
+      duration: 2000,
+      color,
+      position: 'bottom'
+    });
+    await toast.present();
   }
 }
