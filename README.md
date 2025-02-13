@@ -23,6 +23,8 @@ npx cap sync
 * [`addListener('callEnded', ...)`](#addlistenercallended-)
 * [`addListener('callRinging', ...)`](#addlistenercallringing-)
 * [`removeAllListeners()`](#removealllisteners)
+* [`acceptCall()`](#acceptcall)
+* [`rejectCall()`](#rejectcall)
 * [Interfaces](#interfaces)
 * [Type Aliases](#type-aliases)
 
@@ -166,6 +168,28 @@ addListener(eventName: 'callRinging', listenerFunc: (event: CallRingingEvent) =>
 ```typescript
 removeAllListeners() => Promise<void>
 ```
+
+--------------------
+
+
+### acceptCall()
+
+```typescript
+acceptCall() => Promise<SuccessResponse>
+```
+
+**Returns:** <code>Promise&lt;<a href="#successresponse">SuccessResponse</a>&gt;</code>
+
+--------------------
+
+
+### rejectCall()
+
+```typescript
+rejectCall() => Promise<SuccessResponse>
+```
+
+**Returns:** <code>Promise&lt;<a href="#successresponse">SuccessResponse</a>&gt;</code>
 
 --------------------
 

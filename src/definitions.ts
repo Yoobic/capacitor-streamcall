@@ -56,4 +56,7 @@ export interface StreamCallPlugin {
   ): Promise<{ remove: () => Promise<void> }>;
   
   removeAllListeners(): Promise<void>;
+
+  acceptCall(): Promise<SuccessResponse>;
+  rejectCall(): Promise<SuccessResponse>;
 }

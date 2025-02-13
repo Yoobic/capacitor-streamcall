@@ -1,16 +1,18 @@
 import { WebPlugin } from '@capacitor/core';
-import type { Call } from "@stream-io/video-client";
+import type { Call, CallResponse } from "@stream-io/video-client";
 import { StreamVideoClient } from "@stream-io/video-client";
 
-import type { CallOptions, StreamCallPlugin, SuccessResponse, LoginOptions } from './definitions';
+import type { CallOptions, StreamCallPlugin, SuccessResponse, LoginOptions} from './definitions';
 
 export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
   private client?: StreamVideoClient;
   private currentCall?: Call;
   private callStateSubscription?: { unsubscribe: () => void };
+  private incomingCall?: CallResponse;
 
   private setupCallStateListener() {
     this.client?.on('call.ring', (event) => {
+      this.incomingCall = event.call;
       this.notifyListeners('callRinging', { callId: event.call.id });
     });
     this.client?.on('call.accepted', (event) => {
@@ -100,6 +102,31 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
     } else {
       await this.currentCall.camera.disable();
     }
+    
+    return { success: true };
+  }
+
+  async acceptCall(): Promise<SuccessResponse> {
+    if (!this.incomingCall || !this.client) {
+      throw new Error('No incoming call to accept');
+    }
+    
+    const call: Call = this.client.call(this.incomingCall.type, this.incomingCall.id);
+    await call.accept();
+    this.currentCall = call;
+    this.incomingCall = undefined;
+    
+    return { success: true };
+  }
+
+  async rejectCall(): Promise<SuccessResponse> {
+    if (!this.incomingCall || !this.client) {
+      throw new Error('No incoming call to reject');
+    }
+    
+    const call: Call = this.client.call(this.incomingCall.type, this.incomingCall.id);
+    await call.reject();
+    this.incomingCall = undefined;
     
     return { success: true };
   }
