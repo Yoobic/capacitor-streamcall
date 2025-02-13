@@ -3,6 +3,11 @@ export interface LoginOptions {
   userId: string;
   name: string;
   imageURL?: string;
+  apiKey: string;
+  refreshToken?: {
+    url: string;
+    headers?: Record<string, string>;
+  };
 }
 
 export interface CallOptions {
@@ -19,9 +24,15 @@ export interface CallStartedEvent {
   callId: string;
 }
 
+export interface CallEndedEvent {
+  callId: string;
+}
+
+export interface CallRingingEvent {
+  callId: string;
+}
+
 export interface StreamCallPlugin {
-  echo(options: { value: string }): Promise<{ value: string }>;
-  initialize(): Promise<void>;
   login(options: LoginOptions): Promise<SuccessResponse>;
   logout(): Promise<SuccessResponse>;
   call(options: CallOptions): Promise<SuccessResponse>;
@@ -36,8 +47,16 @@ export interface StreamCallPlugin {
   
   addListener(
     eventName: 'callEnded',
-    listenerFunc: (event: {}) => void,
+    listenerFunc: (event: CallEndedEvent) => void,
+  ): Promise<{ remove: () => Promise<void> }>;
+
+  addListener(
+    eventName: 'callRinging',
+    listenerFunc: (event: CallRingingEvent) => void,
   ): Promise<{ remove: () => Promise<void> }>;
   
   removeAllListeners(): Promise<void>;
+
+  acceptCall(): Promise<SuccessResponse>;
+  rejectCall(): Promise<SuccessResponse>;
 }
