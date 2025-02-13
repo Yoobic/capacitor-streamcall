@@ -281,52 +281,6 @@ public class StreamCallPlugin : Plugin() {
         }
     }
 
-    @PluginMethod
-    fun initialize(call: PluginCall) {
-        call.resolve()
-        return
-//        try {
-//            initializeStreamVideo()
-//
-//            if (state != State.INITIALIZED) {
-//                call.reject("The SDK is not initialized")
-//                return
-//            }
-//
-//            getBridge().executeOnMainThread {
-//                // Get the main activity
-//                val activity = activity as ComponentActivity
-//                val webViewParent = getBridge().webView.parent as ViewGroup
-//
-//                // Create ComposeView
-//                composeView = ComposeView(activity)
-//
-//                // Set content
-//                composeView!!.setContent {
-//                    CallOverlayView(context, streamVideoClient)
-//                }
-//
-//                // Create layout params
-//                val params = FrameLayout.LayoutParams(
-//                    ViewGroup.LayoutParams.MATCH_PARENT,
-//                    ViewGroup.LayoutParams.MATCH_PARENT
-//                )
-//
-//                // Add ComposeView below WebView
-//                webViewParent.addView(composeView, 0, params)
-//
-//                // Make WebView background transparent
-//                getBridge().webView.setBackgroundColor(Color.TRANSPARENT)
-//
-//                val ret = JSObject()
-//                ret.put("success", true)
-//                call.resolve(ret)
-//            }
-//        } catch (e: Exception) {
-//            call.reject("Failed to initialize", e)
-//        }
-    }
-
     private fun acceptCall(call: Call) {
         kotlinx.coroutines.GlobalScope.launch {
             android.util.Log.i("StreamCallPlugin", "Attempting to accept call")
