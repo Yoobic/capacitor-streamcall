@@ -15,11 +15,28 @@ export class Tab1Page {
   private readonly API_URL = 'https://streamcall-02.localcan.dev';
   private readonly API_KEY = 'n8wv8vjmucdw';
   transparent = false;
+  currentUser: {
+    userId: string;
+    name: string;
+    imageURL: string;
+  } | null = null;
 
   constructor(
     private http: HttpClient,
     private toastController: ToastController
-  ) {}
+  ) {
+    void this.loadStoredUser();
+  }
+
+  private async loadStoredUser() {
+    const storedUser = localStorage.getItem('currentUser');
+    if (storedUser) {
+      this.currentUser = JSON.parse(storedUser);
+      if (this.currentUser) {
+        await this.login(this.currentUser.userId);
+      }
+    }
+  }
 
   async login(userId: string) {
     try {
@@ -58,6 +75,12 @@ export class Tab1Page {
         },
       });
 
+      this.currentUser = {
+        userId: response.userId,
+        name: response.name,
+        imageURL: response.imageURL,
+      };
+      localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
       await this.presentToast('Login successful', 'success');
     } catch (error) {
       console.error('Login failed:', error);
@@ -82,6 +105,8 @@ export class Tab1Page {
   async logout() {
     try {
       await StreamCall.logout();
+      this.currentUser = null;
+      localStorage.removeItem('currentUser');
       await this.presentToast('Logout successful', 'success');
     } catch (error) {
       console.error('Logout failed:', error);
