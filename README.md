@@ -1,5 +1,6 @@
 # stream-call
 
+WIP: We are actively working on this plugin. not yet ready for production. not Released on npm yet.
 Uses the https://getstream.io/ SDK to implement calling in Capacitor
 
 ## Install
@@ -253,6 +254,8 @@ rejectCall() => Promise<SuccessResponse>
 
 Construct a type with a set of properties K of type T
 
-<code>{ [P in K]: T; }</code>
+<code>{
+ [P in K]: T;
+ }</code>
 
 </docgen-api>
