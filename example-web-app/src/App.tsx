@@ -11,10 +11,12 @@ import {
   useCalls,
   RingingCall,
   CallRingEvent,
+  useCall,
 } from '@stream-io/video-react-sdk';
 
 import './style.css';
 import { useEffect, useState } from 'react';
+import { CustomRingingCall } from './CustomRingingCall';
 
 export default function App() {
   const apiKey = 'n8wv8vjmucdw';
@@ -94,8 +96,8 @@ export default function App() {
         ring: true,
         data: {
           members: [
-            { user_id: 'user1' },
-            { user_id: 'user2' },
+            { user_id: 'user3' },
+            { user_id: 'user4' },
           ]
         }
       });
@@ -121,11 +123,44 @@ export default function App() {
     )
   }
 
+  const MyMagicLayoutV2 = () => {
+    const { useCallCallingState } = useCallStateHooks();
+    const callingState = useCallCallingState();
+
+    
+    if (callingState === CallingState.JOINED) {
+      return <MyUILayout />;
+    } else if (
+      [CallingState.RINGING, CallingState.JOINING].includes(callingState)
+    ) {
+      return <CustomRingingCall />;
+    }
+  
+    return null;
+  }
+
+  const MyMagicLayout = () => {
+    const calls = useCalls();
+    return (
+      <>
+        {calls.map((call) => (
+          <StreamCall call={call} key={call.cid}>
+            <MyMagicLayoutV2 />
+          </StreamCall>
+        ))}
+        <button onClick={() => joinCall()}>Join Call</button>
+      </>
+    )
+  }
+
   return (
     <>
       {client && (
         <StreamVideo client={client}>
-          {isCallActive && call ? (
+          <StreamTheme>
+            <MyMagicLayout />
+          </StreamTheme>
+          {/* {isCallActive && call ? (
             <StreamCall call={call}>
               <MyUILayout />
             </StreamCall>
@@ -134,7 +169,8 @@ export default function App() {
               <RingingCallsComponent />
               <button onClick={() => joinCall()}>Join Call</button>
             </>
-          )}
+          )} */}
+          
         </StreamVideo>
       )}
     </>

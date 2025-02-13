@@ -6,7 +6,6 @@ import android.content.Context
 import android.graphics.Color
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import androidx.activity.ComponentActivity
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.view.isVisible
 import com.getcapacitor.JSObject
@@ -78,6 +77,9 @@ public class StreamCallPlugin : Plugin() {
                                     },
                                     onAcceptCall = { acceptedCall ->
                                         acceptCall(acceptedCall)
+                                    },
+                                    onHideIncomingCall = {
+                                        hideIncomingCall()
                                     }
                                 )
                             }
@@ -109,13 +111,17 @@ public class StreamCallPlugin : Plugin() {
             // Notify that call has ended
             notifyListeners("callEnded", JSObject())
             
-            activity?.runOnUiThread {
-                incomingCallView?.isVisible = false
-                // Check if device is locked using KeyguardManager
-                val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-                if (keyguardManager.isKeyguardLocked) {
-                    activity.moveTaskToBack(true)
-                }
+            hideIncomingCall()
+        }
+    }
+
+    internal fun hideIncomingCall() {
+        activity?.runOnUiThread {
+            incomingCallView?.isVisible = false
+            // Check if device is locked using KeyguardManager
+            val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+            if (keyguardManager.isKeyguardLocked) {
+                activity.moveTaskToBack(true)
             }
         }
     }

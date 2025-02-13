@@ -2,46 +2,54 @@ package ee.forgr.capacitor.streamcall
 
 import android.util.Log
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
+import io.getstream.video.android.compose.theme.VideoTheme
+import io.getstream.video.android.compose.ui.components.background.CallBackground
+import io.getstream.video.android.compose.ui.components.call.ringing.incomingcall.IncomingCallControls
+import io.getstream.video.android.compose.ui.components.call.ringing.incomingcall.IncomingCallDetails
 import io.getstream.video.android.core.Call
 import io.getstream.video.android.core.RingingState
 import io.getstream.video.android.core.StreamVideo
-import io.getstream.video.android.compose.theme.VideoTheme
-import io.getstream.video.android.compose.ui.components.background.CallBackground
-import io.getstream.video.android.compose.ui.components.call.CallAppBar
-import io.getstream.video.android.compose.ui.components.call.ringing.incomingcall.IncomingCallControls
-import io.getstream.video.android.compose.ui.components.call.ringing.incomingcall.IncomingCallDetails
 import io.getstream.video.android.core.call.state.AcceptCall
-import io.getstream.video.android.core.call.state.CallAction
 import io.getstream.video.android.core.call.state.DeclineCall
-import io.getstream.video.android.core.model.RejectReason
 
 @Composable
 fun IncomingCallView(
     streamVideo: StreamVideo?,
     call: Call? = null,
     onDeclineCall: ((Call) -> Unit)? = null,
-    onAcceptCall: ((Call) -> Unit)? = null
+    onAcceptCall: ((Call) -> Unit)? = null,
+    onHideIncomingCall: (() -> Unit)? = null
 ) {
     val ringingState = call?.state?.ringingState?.collectAsState(initial = RingingState.Idle)
+    val context = LocalContext.current
+
+    LaunchedEffect(ringingState?.value) {
+        if (ringingState?.value == RingingState.TimeoutNoAnswer || ringingState?.value == RingingState.RejectedByAll) {
+            Log.d("IncomingCallView", "Call timed out, hiding incoming call view")
+            onHideIncomingCall?.invoke()
+        }
+    }
 
     if (ringingState != null) {
         Log.d("IncomingCallView", "Ringing state changed to: ${ringingState.value}")
@@ -85,7 +93,7 @@ fun IncomingCallView(
                                 end = safeDrawingPadding.calculateEndPadding(layoutDirection)
                             ),
                         isVideoType = isVideoType,
-                        participants = participants
+                        participants = participants.filter { it.user.id != streamVideo?.userId }
                     )
 
                     IncomingCallControls(
