@@ -10,42 +10,15 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
   private callStateSubscription?: { unsubscribe: () => void };
 
   private setupCallStateListener() {
-    // Cleanup previous subscription if any
-    // this.callStateSubscription?.unsubscribe();
-    
     this.client?.on('call.ring', (event) => {
       this.notifyListeners('callRinging', { callId: event.call.id });
     });
-    // this.callStateSubscription = call.state.callingState$.subscribe((state) => {
-    //   switch (state) {
-    //     case CallingState.JOINED:
-    //       this.notifyListeners('callStarted', { callId: call.id });
-    //       break;
-    //     case CallingState.RINGING:
-    //       this.notifyListeners('callRinging', { callId: call.id });
-    //       break;
-    //     case CallingState.LEFT:
-    //     case CallingState.IDLE:
-    //       this.notifyListeners('callEnded', { callId: call.id });
-    //       this.currentCall = undefined;
-    //       break;
-    //     case CallingState.RECONNECTING_FAILED:
-    //     case CallingState.OFFLINE:
-    //       this.notifyListeners('callEnded', { callId: call.id });
-    //       this.currentCall = undefined;
-    //       break;
-    //     case CallingState.JOINING:
-    //     case CallingState.RECONNECTING:
-    //     case CallingState.MIGRATING:
-    //       // These are intermediate states, we don't need to notify
-    //       break;
-    //     case CallingState.UNKNOWN:
-    //       console.warn('Unknown call state');
-    //       break;
-    //     default:
-    //       console.warn('Not handling call state: ', state);
-    //   }
-    // });
+    this.client?.on('call.accepted', (event) => {
+      this.notifyListeners('callStarted', { callId: event.call.id });
+    });
+    this.client?.on('call.ended', (event) => {
+      this.notifyListeners('callEnded', { callId: event.call.id });
+    });
   }
 
   async login(options: LoginOptions): Promise<SuccessResponse> {

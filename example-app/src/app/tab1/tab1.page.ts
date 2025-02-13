@@ -46,6 +46,12 @@ export class Tab1Page {
         name: response.name,
         imageURL: response.imageURL,
         apiKey: this.API_KEY,
+        refreshToken: {
+          url: `${this.API_URL}/user?user_id=${userId}`,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
       });
 
       console.log('Login successful');
