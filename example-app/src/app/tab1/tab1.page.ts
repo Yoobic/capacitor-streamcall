@@ -27,6 +27,21 @@ export class Tab1Page {
     private toastController: ToastController
   ) {
     void this.loadStoredUser();
+    StreamCall.removeAllListeners();
+    // listen to the call event
+    StreamCall.addListener('callRinging', async (data) => {
+      console.log('Call ringing', data);
+      this.incomingCallId = data.callId;
+      await this.presentIncomingCallToast();
+    });
+    StreamCall.addListener('callStarted', (data) => {
+      console.log('Call started', data);
+      this.incomingCallId = null;
+    });
+    StreamCall.addListener('callEnded', (data) => {
+      console.log('Call ended', data);
+      this.incomingCallId = null;
+    });
   }
 
   private async loadStoredUser() {
@@ -51,20 +66,6 @@ export class Tab1Page {
       if (!response) {
         throw new Error('No response from server');
       }
-      // listen to the call event
-      StreamCall.addListener('callRinging', async (data) => {
-        console.log('Call ringing', data);
-        this.incomingCallId = data.callId;
-        await this.presentIncomingCallToast();
-      });
-      StreamCall.addListener('callStarted', (data) => {
-        console.log('Call started', data);
-        this.incomingCallId = null;
-      });
-      StreamCall.addListener('callEnded', (data) => {
-        console.log('Call ended', data);
-        this.incomingCallId = null;
-      });
 
       await StreamCall.login({
         token: response.token,

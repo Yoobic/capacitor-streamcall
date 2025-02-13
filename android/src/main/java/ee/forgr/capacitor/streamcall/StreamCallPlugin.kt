@@ -26,11 +26,13 @@ import io.getstream.video.android.core.model.RejectReason
 import io.getstream.video.android.core.notifications.NotificationHandler
 import io.getstream.video.android.model.streamCallId
 import kotlinx.coroutines.launch
+import org.openapitools.client.models.VideoEvent
+import org.openapitools.client.models.CallEndedEvent
+import org.openapitools.client.models.CallSessionEndedEvent
+import org.openapitools.client.models.CallRejectedEvent
 
 @CapacitorPlugin(name = "StreamCall")
 public class StreamCallPlugin : Plugin() {
-    private val implementation = StreamCall()
-    private var composeView: ComposeView? = null
     private var streamVideoClient: StreamVideo? = null
     private var state: State = State.NOT_INITIALIZED
     private var overlayView: ComposeView? = null
@@ -109,7 +111,10 @@ public class StreamCallPlugin : Plugin() {
             call.reject(RejectReason.Decline)
             
             // Notify that call has ended
-            notifyListeners("callEnded", JSObject())
+            val data = JSObject().apply {
+                put("callId", call.id)
+            }
+            notifyListeners("callEnded", data)
             
             hideIncomingCall()
         }
@@ -248,8 +253,6 @@ public class StreamCallPlugin : Plugin() {
                 StreamVideo.removeClient()
             }
 
-
-
             // unsafe cast, add better handling
             val application = contextToUse.applicationContext as Application
 
@@ -271,8 +274,53 @@ public class StreamCallPlugin : Plugin() {
                 token = savedCredentials.tokenValue,
                 notificationConfig = notificationConfig,
                 loggingLevel = LoggingLevel(priority = Priority.VERBOSE),
-
             ).build()
+
+            // Subscribe to call events
+            streamVideoClient?.let { client ->
+                client.subscribe { event: VideoEvent ->
+                    when (event) {
+                        is CallEndedEvent -> {
+                            activity?.runOnUiThread {
+                                overlayView?.isVisible = false
+                                overlayView?.setContent {
+                                    CallOverlayView(contextToUse, null, null)
+                                }
+                                incomingCallView?.isVisible = false
+                            }
+                            val data = JSObject().apply {
+                                put("callId", event.call.cid)
+                            }
+                            notifyListeners("callEnded", data)
+                        }
+                        is CallSessionEndedEvent -> {
+                            activity?.runOnUiThread {
+                                overlayView?.isVisible = false
+                                overlayView?.setContent {
+                                    CallOverlayView(contextToUse, null, null)
+                                }
+                            }
+                            val data = JSObject().apply {
+                                put("callId", event.call.cid)
+                            }
+                            notifyListeners("callEnded", data)
+                        }
+                        is CallRejectedEvent -> {
+                            activity?.runOnUiThread {
+                                overlayView?.isVisible = false
+                                overlayView?.setContent {
+                                    CallOverlayView(contextToUse, null, null)
+                                }
+                                incomingCallView?.isVisible = false
+                            }
+                            val data = JSObject().apply {
+                                put("callId", event.call.cid)
+                            }
+                            notifyListeners("callEnded", data)
+                        }
+                    }
+                }
+            }
 
             state = State.INITIALIZED
         } catch (e: Exception) {
@@ -405,7 +453,10 @@ public class StreamCallPlugin : Plugin() {
                     }
                     
                     // Notify that call has ended
-                    notifyListeners("callEnded", JSObject())
+                    val data = JSObject().apply {
+                        put("callId", activeCall.value?.id)
+                    }
+                    notifyListeners("callEnded", data)
                     
                     call.resolve(JSObject().apply {
                         put("success", true)
