@@ -249,9 +249,17 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     }
     
     private func setupActiveCallSubscription() {
+        Task {
+            for await event in streamVideo.subscribe() {
+                print("Event", event)
+                notifyListeners("callEvent", data: [
+                    "callId": streamVideo.state.activeCall?.callId ?? "",
+                    "state": event.type
+                ])
+            }
+        }
         // Cancel existing subscription if any
         activeCallSubscription?.cancel()
-        
         // Create new subscription
         activeCallSubscription = streamVideo.state.$activeCall.sink { [weak self] newState in
             guard let self = self else { return }
