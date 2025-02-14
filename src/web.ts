@@ -1,5 +1,5 @@
 import { WebPlugin } from '@capacitor/core';
-import type { Call, CallResponse, StreamVideoParticipant } from "@stream-io/video-client";
+import type { AllClientEvents, Call, CallResponse, StreamVideoParticipant } from "@stream-io/video-client";
 import { CallingState, StreamVideoClient } from "@stream-io/video-client";
 
 import type { CallOptions, StreamCallPlugin, SuccessResponse, LoginOptions} from './definitions';
@@ -16,32 +16,35 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
   private participantJoinedListener?: (event: { participant?: { sessionId: string } }) => void;
   private participantLeftListener?: (event: { participant?: { sessionId: string } }) => void;
 
-  private setupCallStateListener() {
-    this.client?.on('call.ring', (event) => {
-      console.log('Call ringing', event, this.currentCall);
-      this.incomingCall = event.call;
-      if (!this.currentCall) {
-        console.log('Creating new call', event.call.id);
-        this.currentCall = this.client?.call(event.call.type, event.call.id);
-        this.notifyListeners('callEvent', { callId: event.call.id, state: CallingState.RINGING });
-      }
-      if (this.currentCall) {
-        console.log('Call found', this.currentCall.id);
-        this.currentCall?.state.callingState$.subscribe((s) => {
-          console.log('Call state', s);
-          if (s === CallingState.JOINED) {
-            this.setupParticipantListener();
-          } else if (s === CallingState.LEFT || s === CallingState.RECONNECTING_FAILED) {
-            this.cleanupCall();
-          }
-          if (this.outgoingCall && s === CallingState.RINGING) {
-            this.outgoingCall = undefined;
-          } else {
-            this.notifyListeners('callEvent', { callId: this.currentCall?.id, state: s });
-          }
-        })
-      }
-    });
+  private setupCallRingListener() {
+    this.client?.off('call.ring', this.ringCallback);
+    this.client?.on('call.ring', this.ringCallback);
+  }
+
+  private ringCallback = (event: AllClientEvents['call.ring']) => {
+    console.log('Call ringing', event, this.currentCall);
+    this.incomingCall = event.call;
+    if (!this.currentCall) {
+      console.log('Creating new call', event.call.id);
+      this.currentCall = this.client?.call(event.call.type, event.call.id);
+      this.notifyListeners('callEvent', { callId: event.call.id, state: CallingState.RINGING });
+    }
+    if (this.currentCall) {
+      console.log('Call found', this.currentCall.id);
+      this.callStateSubscription = this.currentCall?.state.callingState$.subscribe((s) => {
+        console.log('Call state', s);
+        if (s === CallingState.JOINED) {
+          this.setupParticipantListener();
+        } else if (s === CallingState.LEFT || s === CallingState.RECONNECTING_FAILED) {
+          this.cleanupCall();
+        }
+        if (this.outgoingCall && s === CallingState.RINGING) {
+          this.outgoingCall = undefined;
+        } else {
+          this.notifyListeners('callEvent', { callId: this.currentCall?.id, state: s });
+        }
+      })
+    }
   }
 
   private setupParticipantListener() {
@@ -162,6 +165,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
         this.currentCall.off('participantLeft', this.participantLeftListener);
         this.participantLeftListener = undefined;
       }
+      this.callStateSubscription?.unsubscribe();
     }
 
     if (this.magicDivId) {
@@ -233,7 +237,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
     });
 
     this.magicDivId = options.magicDivId;
-    this.setupCallStateListener();
+    this.setupCallRingListener();
 
     return { success: true };
   }
