@@ -265,13 +265,13 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         // Notify that a call has started
                         self.notifyListeners("callEvent", data: [
                             "callId": newState?.cId ?? "",
-                            "state": state.callingState.rawValue
+                            "state": state
                         ])
                     } else {
                         // If newState is nil, it means the call has ended
                         self.notifyListeners("callEvent", data: [
                             "callId": newState?.cId ?? "",
-                            "state": state.callingState.rawValue
+                            "state": "left"
                         ])
                     }
                     
