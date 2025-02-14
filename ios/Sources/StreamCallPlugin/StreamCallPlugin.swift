@@ -263,12 +263,16 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         print("- Remote participants: \(String(describing: state.remoteParticipants))")
                         
                         // Notify that a call has started
-                        self.notifyListeners("callStarted", data: [
-                            "callId": newState?.cId ?? ""
+                        self.notifyListeners("callEvent", data: [
+                            "callId": newState?.cId ?? "",
+                            "state": state.callingState.rawValue
                         ])
                     } else {
                         // If newState is nil, it means the call has ended
-                        self.notifyListeners("callEnded", data: [:])
+                        self.notifyListeners("callEvent", data: [
+                            "callId": newState?.cId ?? "",
+                            "state": state.callingState.rawValue
+                        ])
                     }
                     
                     self.overlayViewModel?.updateCall(newState)

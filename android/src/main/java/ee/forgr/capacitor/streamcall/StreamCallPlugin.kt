@@ -113,8 +113,9 @@ public class StreamCallPlugin : Plugin() {
             // Notify that call has ended
             val data = JSObject().apply {
                 put("callId", call.id)
+                put("state", "rejected")
             }
-            notifyListeners("callEnded", data)
+            notifyListeners("callEvent", data)
             
             hideIncomingCall()
         }
@@ -290,8 +291,9 @@ public class StreamCallPlugin : Plugin() {
                             }
                             val data = JSObject().apply {
                                 put("callId", event.call.cid)
+                                put("state", "left")
                             }
-                            notifyListeners("callEnded", data)
+                            notifyListeners("callEvent", data)
                         }
                         is CallSessionEndedEvent -> {
                             activity?.runOnUiThread {
@@ -302,8 +304,9 @@ public class StreamCallPlugin : Plugin() {
                             }
                             val data = JSObject().apply {
                                 put("callId", event.call.cid)
+                                put("state", "left")
                             }
-                            notifyListeners("callEnded", data)
+                            notifyListeners("callEvent", data)
                         }
                         is CallRejectedEvent -> {
                             activity?.runOnUiThread {
@@ -315,8 +318,9 @@ public class StreamCallPlugin : Plugin() {
                             }
                             val data = JSObject().apply {
                                 put("callId", event.call.cid)
+                                put("state", "rejected")
                             }
-                            notifyListeners("callEnded", data)
+                            notifyListeners("callEvent", data)
                         }
                     }
                 }
@@ -344,8 +348,9 @@ public class StreamCallPlugin : Plugin() {
                 // Notify that call has started
                 val data = JSObject().apply {
                     put("callId", call.id)
+                    put("state", "joined")
                 }
-                notifyListeners("callStarted", data)
+                notifyListeners("callEvent", data)
 
                 // Show overlay view with the active call
                 activity?.runOnUiThread {
@@ -455,8 +460,9 @@ public class StreamCallPlugin : Plugin() {
                     // Notify that call has ended
                     val data = JSObject().apply {
                         put("callId", activeCall.value?.id)
+                        put("state", "left")
                     }
-                    notifyListeners("callEnded", data)
+                    notifyListeners("callEvent", data)
                     
                     call.resolve(JSObject().apply {
                         put("success", true)

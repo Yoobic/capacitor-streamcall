@@ -4,6 +4,7 @@ export interface LoginOptions {
   name: string;
   imageURL?: string;
   apiKey: string;
+  magicDivId?: string;
   refreshToken?: {
     url: string;
     headers?: Record<string, string>;
@@ -20,16 +21,9 @@ export interface SuccessResponse {
   success: boolean;
 }
 
-export interface CallStartedEvent {
+export interface CallEvent {
   callId: string;
-}
-
-export interface CallEndedEvent {
-  callId: string;
-}
-
-export interface CallRingingEvent {
-  callId: string;
+  state: string;
 }
 
 export interface StreamCallPlugin {
@@ -41,18 +35,8 @@ export interface StreamCallPlugin {
   setCameraEnabled(options: { enabled: boolean }): Promise<SuccessResponse>;
   
   addListener(
-    eventName: 'callStarted',
-    listenerFunc: (event: CallStartedEvent) => void,
-  ): Promise<{ remove: () => Promise<void> }>;
-  
-  addListener(
-    eventName: 'callEnded',
-    listenerFunc: (event: CallEndedEvent) => void,
-  ): Promise<{ remove: () => Promise<void> }>;
-
-  addListener(
-    eventName: 'callRinging',
-    listenerFunc: (event: CallRingingEvent) => void,
+    eventName: 'callEvent',
+    listenerFunc: (event: CallEvent) => void,
   ): Promise<{ remove: () => Promise<void> }>;
   
   removeAllListeners(): Promise<void>;

@@ -20,9 +20,7 @@ npx cap sync
 * [`endCall()`](#endcall)
 * [`setMicrophoneEnabled(...)`](#setmicrophoneenabled)
 * [`setCameraEnabled(...)`](#setcameraenabled)
-* [`addListener('callStarted', ...)`](#addlistenercallstarted-)
-* [`addListener('callEnded', ...)`](#addlistenercallended-)
-* [`addListener('callRinging', ...)`](#addlistenercallringing-)
+* [`addListener('callEvent', ...)`](#addlistenercallevent-)
 * [`removeAllListeners()`](#removealllisteners)
 * [`acceptCall()`](#acceptcall)
 * [`rejectCall()`](#rejectcall)
@@ -116,48 +114,16 @@ setCameraEnabled(options: { enabled: boolean; }) => Promise<SuccessResponse>
 --------------------
 
 
-### addListener('callStarted', ...)
+### addListener('callEvent', ...)
 
 ```typescript
-addListener(eventName: 'callStarted', listenerFunc: (event: CallStartedEvent) => void) => Promise<{ remove: () => Promise<void>; }>
+addListener(eventName: 'callEvent', listenerFunc: (event: CallEvent) => void) => Promise<{ remove: () => Promise<void>; }>
 ```
 
-| Param              | Type                                                                              |
-| ------------------ | --------------------------------------------------------------------------------- |
-| **`eventName`**    | <code>'callStarted'</code>                                                        |
-| **`listenerFunc`** | <code>(event: <a href="#callstartedevent">CallStartedEvent</a>) =&gt; void</code> |
-
-**Returns:** <code>Promise&lt;{ remove: () =&gt; Promise&lt;void&gt;; }&gt;</code>
-
---------------------
-
-
-### addListener('callEnded', ...)
-
-```typescript
-addListener(eventName: 'callEnded', listenerFunc: (event: CallEndedEvent) => void) => Promise<{ remove: () => Promise<void>; }>
-```
-
-| Param              | Type                                                                          |
-| ------------------ | ----------------------------------------------------------------------------- |
-| **`eventName`**    | <code>'callEnded'</code>                                                      |
-| **`listenerFunc`** | <code>(event: <a href="#callendedevent">CallEndedEvent</a>) =&gt; void</code> |
-
-**Returns:** <code>Promise&lt;{ remove: () =&gt; Promise&lt;void&gt;; }&gt;</code>
-
---------------------
-
-
-### addListener('callRinging', ...)
-
-```typescript
-addListener(eventName: 'callRinging', listenerFunc: (event: CallRingingEvent) => void) => Promise<{ remove: () => Promise<void>; }>
-```
-
-| Param              | Type                                                                              |
-| ------------------ | --------------------------------------------------------------------------------- |
-| **`eventName`**    | <code>'callRinging'</code>                                                        |
-| **`listenerFunc`** | <code>(event: <a href="#callringingevent">CallRingingEvent</a>) =&gt; void</code> |
+| Param              | Type                                                                |
+| ------------------ | ------------------------------------------------------------------- |
+| **`eventName`**    | <code>'callEvent'</code>                                            |
+| **`listenerFunc`** | <code>(event: <a href="#callevent">CallEvent</a>) =&gt; void</code> |
 
 **Returns:** <code>Promise&lt;{ remove: () =&gt; Promise&lt;void&gt;; }&gt;</code>
 
@@ -214,6 +180,7 @@ rejectCall() => Promise<SuccessResponse>
 | **`name`**         | <code>string</code>                                                                         |
 | **`imageURL`**     | <code>string</code>                                                                         |
 | **`apiKey`**       | <code>string</code>                                                                         |
+| **`magicDivId`**   | <code>string</code>                                                                         |
 | **`refreshToken`** | <code>{ url: string; headers?: <a href="#record">Record</a>&lt;string, string&gt;; }</code> |
 
 
@@ -226,25 +193,12 @@ rejectCall() => Promise<SuccessResponse>
 | **`ring`**   | <code>boolean</code> |
 
 
-#### CallStartedEvent
+#### CallEvent
 
 | Prop         | Type                |
 | ------------ | ------------------- |
 | **`callId`** | <code>string</code> |
-
-
-#### CallEndedEvent
-
-| Prop         | Type                |
-| ------------ | ------------------- |
-| **`callId`** | <code>string</code> |
-
-
-#### CallRingingEvent
-
-| Prop         | Type                |
-| ------------ | ------------------- |
-| **`callId`** | <code>string</code> |
+| **`state`**  | <code>string</code> |
 
 
 ### Type Aliases
@@ -254,8 +208,6 @@ rejectCall() => Promise<SuccessResponse>
 
 Construct a type with a set of properties K of type T
 
-<code>{
- [P in K]: T;
- }</code>
+<code>{ [P in K]: T; }</code>
 
 </docgen-api>

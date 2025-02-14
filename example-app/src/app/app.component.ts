@@ -118,21 +118,24 @@ export class AppComponent {
     document.head.appendChild(styleElement);
 
     // register event listeners
-    StreamCall.addListener('callStarted', (event) => {
-      this.isInCall = true;
-      this.cdr.detectChanges();
-    });
-    StreamCall.addListener('callEnded', (event) => {
-      this.isInCall = false;
-      this.cdr.detectChanges();
-    });
-    
-    if (!Capacitor.isNativePlatform()) {
-      StreamCall.addListener('callRinging', async (data) => {
-        console.log('Call ringing', data);
-        this.incomingCallId = data.callId;
+    StreamCall.addListener('callEvent', async(event) => {
+      if (event.state === 'joined') {
+        this.isInCall = true;
+        console.log('Call started', event);
+        this.cdr.detectChanges();
+      } else if (event.state === 'left') {
+        this.isInCall = false;
+        console.log('Call ended', event);
+        this.cdr.detectChanges();
+      } else if (event.state === 'rejected') {
+        this.isInCall = false;
+        console.log('Call rejected', event);
+        this.cdr.detectChanges();
+      } else if (event.state === 'ringing' && !Capacitor.isNativePlatform()) {
+        this.incomingCallId = event.callId;
         await this.presentIncomingCallToast();
-      });
-    }
+        this.cdr.detectChanges();
+      }
+    });
   }
 }
