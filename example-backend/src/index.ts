@@ -1,8 +1,8 @@
 import { serve } from '@hono/node-server'
-import { Hono } from 'hono'
-import { cors } from 'hono/cors'
 import { StreamClient, type UserRequest } from "@stream-io/node-sdk";
 import dotenv from 'dotenv';
+import { Hono } from 'hono'
+import { cors } from 'hono/cors'
 
 // Load environment variables from .env file
 dotenv.config();
@@ -31,6 +31,8 @@ const vailidity = 60 * 60 * 6; // Six hours in seconds
 const client = new StreamClient(apiKey, apiSecret);
 
 app.get('/', (c) => {
+  console.log('apiKey', apiKey);
+  console.log('apiSecret', apiSecret);
   return c.text(`${apiKey} ${apiSecret}`)
 })
 
@@ -51,10 +53,11 @@ app.get('/user', async (c) => {
       name: userName,
       image: imageURL,
     };
-    
+    console.log('upsertUsers', newUser);
     await client.upsertUsers([newUser]);
     const token = client.generateUserToken({ user_id: userId, validity_in_seconds: vailidity });
 
+    console.log('token', token);
     return c.json({ 
       token,
       userId,
