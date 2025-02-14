@@ -265,7 +265,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         // Notify that a call has started
                         self.notifyListeners("callEvent", data: [
                             "callId": newState?.cId ?? "",
-                            "state": state
+                            "state": "joined"
                         ])
                     } else {
                         // If newState is nil, it means the call has ended
