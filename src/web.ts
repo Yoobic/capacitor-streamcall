@@ -13,6 +13,8 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
   private magicDivId?: string;
   private videoBindings: Map<string, () => void> = new Map();
   private audioBindings: Map<string, () => void> = new Map();
+  private participantJoinedListener?: (event: { participant?: { sessionId: string } }) => void;
+  private participantLeftListener?: (event: { participant?: { sessionId: string } }) => void;
 
   private setupCallStateListener() {
     this.client?.on('call.ring', (event) => {
@@ -46,15 +48,64 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
     // Subscribe to participant changes
     this.incomingCall = undefined;
     if (!this.currentCall) return;
-    this.currentCall?.on('participantJoined', (event) => {
+
+    this.participantJoinedListener = (event) => {
       if (this.magicDivId && event.participant) {
         const magicDiv = document.getElementById(this.magicDivId);
         if (magicDiv && this.currentCall) {
-          this.setupParticipantVideo(this.currentCall, event.participant, magicDiv);
-          this.setupParticipantAudio(this.currentCall, event.participant, magicDiv);
+          this.setupParticipantVideo(this.currentCall, event.participant as StreamVideoParticipant, magicDiv);
+          this.setupParticipantAudio(this.currentCall, event.participant as StreamVideoParticipant, magicDiv);
         }
       }
-    });
+    };
+
+    this.participantLeftListener = (event) => {
+      if (this.magicDivId && event.participant) {
+        const videoId = `video-${event.participant.sessionId}`;
+        const audioId = `audio-${event.participant.sessionId}`;
+        
+        // Remove video element
+        const videoEl = document.getElementById(videoId) as HTMLVideoElement;
+        if (videoEl) {
+          const unbindVideo = this.videoBindings.get(videoId);
+          if (unbindVideo) {
+            unbindVideo();
+            this.videoBindings.delete(videoId);
+          }
+          const tracks = videoEl.srcObject as MediaStream;
+          if (tracks) {
+            tracks.getTracks().forEach(track => {
+              track.stop();
+              track.enabled = false;
+            });
+            videoEl.srcObject = null;
+          }
+          videoEl.remove();
+        }
+
+        // Remove audio element
+        const audioEl = document.getElementById(audioId) as HTMLAudioElement;
+        if (audioEl) {
+          const unbindAudio = this.audioBindings.get(audioId);
+          if (unbindAudio) {
+            unbindAudio();
+            this.audioBindings.delete(audioId);
+          }
+          const tracks = audioEl.srcObject as MediaStream;
+          if (tracks) {
+            tracks.getTracks().forEach(track => {
+              track.stop();
+              track.enabled = false;
+            });
+            audioEl.srcObject = null;
+          }
+          audioEl.remove();
+        }
+      }
+    };
+
+    this.currentCall.on('participantJoined', this.participantJoinedListener);
+    this.currentCall.on('participantLeft', this.participantLeftListener);
 
     // Setup initial participants
     const participants = this.currentCall.state.participants;
@@ -101,16 +152,75 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
   }
 
   private cleanupCall() {
+    // First cleanup the call listeners
+    if (this.currentCall) {
+      if (this.participantJoinedListener) {
+        this.currentCall.off('participantJoined', this.participantJoinedListener);
+        this.participantJoinedListener = undefined;
+      }
+      if (this.participantLeftListener) {
+        this.currentCall.off('participantLeft', this.participantLeftListener);
+        this.participantLeftListener = undefined;
+      }
+    }
+
     if (this.magicDivId) {
       const magicDiv = document.getElementById(this.magicDivId);
       if (magicDiv) {
-        magicDiv.innerHTML = '';
+        // Remove all video elements
+        const videoElements = magicDiv.querySelectorAll('video');
+        videoElements.forEach(video => {
+          const id = video.id;
+          const unbind = this.videoBindings.get(id);
+          if (unbind) {
+            unbind();
+            this.videoBindings.delete(id);
+          }
+          // Stop all tracks
+          const tracks = (video as HTMLVideoElement).srcObject as MediaStream;
+          if (tracks) {
+            tracks.getTracks().forEach(track => {
+              track.stop();
+              track.enabled = false;
+            });
+            video.srcObject = null;
+          }
+          video.remove();
+        });
+
+        // Remove all audio elements
+        const audioElements = magicDiv.querySelectorAll('audio');
+        audioElements.forEach(audio => {
+          const id = audio.id;
+          const unbind = this.audioBindings.get(id);
+          if (unbind) {
+            unbind();
+            this.audioBindings.delete(id);
+          }
+          // Stop all tracks
+          const tracks = (audio as HTMLAudioElement).srcObject as MediaStream;
+          if (tracks) {
+            tracks.getTracks().forEach(track => {
+              track.stop();
+              track.enabled = false;
+            });
+            audio.srcObject = null;
+          }
+          audio.remove();
+        });
+
+        // Clear the container
+        while (magicDiv.firstChild) {
+          magicDiv.removeChild(magicDiv.firstChild);
+        }
       }
     }
-    this.videoBindings.forEach((unbind) => unbind());
+
+    // Clear all bindings
     this.videoBindings.clear();
-    this.audioBindings.forEach((unbind) => unbind());
     this.audioBindings.clear();
+    
+    // Clear call references
     this.currentCall = undefined;
     this.incomingCall = undefined;
   }
@@ -170,6 +280,8 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
     
     await this.currentCall.leave();
     this.currentCall = undefined;
+    this.cleanupCall();
+
     
     return { success: true };
   }
