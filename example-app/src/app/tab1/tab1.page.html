@@ -7,7 +7,7 @@
       <ion-avatar>
         <img [src]="currentUser.imageURL" [alt]="currentUser.name">
       </ion-avatar>
-      <ion-label class="ion-padding-horizontal">{{ currentUser.name }}</ion-label>
+      <ion-label class="ion-padding-horizontal">{{ currentUser.name }} {{ currentUser.userId }}</ion-label>
     </ion-buttons>
   </ion-toolbar>
 </ion-header>
@@ -20,11 +20,6 @@
   </ion-header>
 
   <div class="magicDiv">
-    <div *ngIf="currentUser" class="ion-text-center ion-padding">
-      <h2>Logged in as: {{ currentUser.name }}</h2>
-      <p>User ID: {{ currentUser.userId }}</p>
-    </div>
-
     <div class="login-buttons">
       <ng-container *ngIf="!currentUser">
         <ion-button (click)="login('user1')">Login as User 1</ion-button>
