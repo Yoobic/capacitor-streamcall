@@ -12,7 +12,7 @@ import { ToastController } from '@ionic/angular';
 })
 export class Tab1Page {
   private readonly STYLE_ID = 'magic_transparent_background';
-  private readonly API_URL = 'https://streamcall-02.localcan.dev';
+  private readonly API_URL = 'https://magic-login-srvv2-21.localcan.dev';
   private readonly API_KEY = 'n8wv8vjmucdw';
   transparent = false;
   currentUser: {

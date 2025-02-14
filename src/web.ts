@@ -265,7 +265,11 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
     }
     
     const call = this.client.call(options.type || 'default', crypto.randomUUID());
-    await call.getOrCreate({ data: { members: [{ user_id: options.userId }] } });
+    const members = [{ user_id: options.userId }];
+    if (this.client.streamClient.userID && options.userId !== this.client.streamClient.userID) {
+      members.push({ user_id: this.client.streamClient.userID });
+    }
+    await call.getOrCreate({ data: { members } });
     this.currentCall = call;
     if (options.ring) {
       this.outgoingCall =  call.cid;
