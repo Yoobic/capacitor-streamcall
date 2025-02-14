@@ -227,13 +227,17 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             guard let self = self else { return }
             Task {
                 do {
+                    print("Setting up token subscription")
                     try self.requireInitialized()
                     if let lastVoIPToken = self.lastVoIPToken, !lastVoIPToken.isEmpty {
+                        print("Deleting device: \(lastVoIPToken)")
                         try await self.streamVideo.deleteDevice(id: lastVoIPToken)
                     }
                     if !updatedDeviceToken.isEmpty {
+                        print("Setting voip device: \(updatedDeviceToken)")
                         try await self.streamVideo.setVoipDevice(id: updatedDeviceToken)
                         // Save the token to our secure storage
+                        print("Saving voip token: \(updatedDeviceToken)")
                         SecureUserRepository.shared.save(voipPushToken: updatedDeviceToken)
                     }
                     self.lastVoIPToken = updatedDeviceToken
@@ -596,6 +600,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         
         state = .initialized
         callKitAdapter.streamVideo = self.streamVideo
+        callKitAdapter.availabilityPolicy = .always
         
         // Setup subscriptions for new StreamVideo instance
         setupActiveCallSubscription()
