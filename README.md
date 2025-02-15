@@ -10,6 +10,32 @@ npm install stream-call
 npx cap sync
 ```
 
+## Setting up Android StreamVideo apikey
+1. Add your apikey to the Android project:
+```
+your_app/android/app/src/main/res/values/strings.xml
+```
+
+2. Add your apikey to the Android project:
+```xml
+<string name="CAPACITOR_STREAM_VIDEO_APIKEY">your_api_key</string>
+```
+
+## Setting up iOS StreamVideo apikey
+1. Add your apikey to the iOS project:
+```
+your_app/ios/App/App/Info.plist
+```
+
+Add the following to the Info.plist file:
+```xml
+<dict>
+  <key>CAPACITOR_STREAM_VIDEO_APIKEY</key>
+  <string>n8wv8vjmucdw</string>
+  <!-- other keys -->
+</dict>
+```
+
 ## Native Localization
 
 ### iOS
@@ -283,6 +309,8 @@ rejectCall() => Promise<SuccessResponse>
 
 Construct a type with a set of properties K of type T
 
-<code>{ [P in K]: T; }</code>
+<code>{
+ [P in K]: T;
+ }</code>
 
 </docgen-api>

@@ -54,6 +54,14 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     private var webviewDelegate: WebviewNavigationDelegate?
     
     override public func load() {
+        // Read API key from Info.plist
+        if let apiKey = Bundle.main.object(forInfoDictionaryKey: "CAPACITOR_STREAM_VIDEO_APIKEY") as? String {
+            self.apiKey = apiKey
+        }
+        if (self.apiKey == nil) {
+            fatalError("Cannot get apikey")
+        }
+        
         // Check if we have a logged in user for handling incoming calls
         if let credentials = SecureUserRepository.shared.loadCurrentUser() {
             print("Loading user for StreamCallPlugin: \(credentials.user.name)")
@@ -61,6 +69,8 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                 self.initializeStreamVideo()
             }
         }
+
+        
         
         // Create and set the navigation delegate
         self.webviewDelegate = WebviewNavigationDelegate(
@@ -361,7 +371,6 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         SecureUserRepository.shared.save(user: credentials)
         
         // Store API key and refresh config for later use
-        self.apiKey = apiKey
         self.refreshTokenURL = refreshTokenURL
         self.refreshTokenHeaders = refreshTokenHeaders
         

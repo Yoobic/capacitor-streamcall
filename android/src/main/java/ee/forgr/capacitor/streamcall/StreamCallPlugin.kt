@@ -306,7 +306,7 @@ public class StreamCallPlugin : Plugin() {
             // Initialize StreamVideo client
             streamVideoClient = StreamVideoBuilder(
                 context = contextToUse,
-                apiKey = "n8wv8vjmucdw",
+                apiKey = contextToUse.getString(R.string.CAPACITOR_STREAM_VIDEO_APIKEY),
                 geo = GEO.GlobalEdgeNetwork,
                 user = savedCredentials.user,
                 token = savedCredentials.tokenValue,
