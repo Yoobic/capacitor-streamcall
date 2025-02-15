@@ -100,110 +100,166 @@ fun CallOverlayView(
     streamVideo: StreamVideo?,
     call: Call?
 ) {
-    if (streamVideo == null || call == null) {
+    if (streamVideo == null) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Red)
         )
-    } else {
-        // Handle permissions in composable context
-        LaunchCallPermissions(
-            call = call,
-            onAllPermissionsGranted = {
-                // Launch join call effect when permissions are granted
-                val result = call.join(create = true)
-                result.onError {
-                    Toast.makeText(context, it.message, Toast.LENGTH_LONG).show()
-                }
-            }
+        return
+    }
+
+    // Collect the active call state
+    //val activeCall by internalInstance.state.activeCall.collectAsState()
+    // val call = activeCall
+    if (call == null) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.LightGray)
         )
+        return
+    }
 
-        // Apply VideoTheme
-        VideoTheme {
-            // Define required properties.
-            val remoteParticipants by call.state.participants.collectAsState()
-            val connection by call.state.connection.collectAsState()
-            var parentSize: IntSize by remember { mutableStateOf(IntSize(0, 0)) }
+    // Handle permissions in the Composable context
+    LaunchCallPermissions(
+        call = call,
+        onAllPermissionsGranted = {
+            try {
+                // Check session using reflection before joining
+                val callClass = call.javaClass
+                val sessionField = callClass.getDeclaredField("session")
+                sessionField.isAccessible = true
+                val sessionValue = sessionField.get(call)
+                
+                if (sessionValue != null) {
+                    android.util.Log.d("CallOverlayView", "Session already exists, skipping join")
+                } else {
+                    android.util.Log.d("CallOverlayView", "No existing session, attempting to join call")
+                    val result = call.join(create = true)
+                    result.onError {
+                        android.util.Log.d("CallOverlayView", "Error joining call")
+                        Toast.makeText(context, it.message, Toast.LENGTH_LONG).show()
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("CallOverlayView", "Error checking session or joining call", e)
+                Toast.makeText(context, "Failed to join call: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    )
 
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(VideoTheme.colors.baseSenary)
-                    .padding(WindowInsets.safeDrawing.asPaddingValues())
-                    .onSizeChanged { parentSize = it }
-            ) {
-                val videoRenderer: @Composable (
-                    modifier: Modifier,
-                    call: Call,
-                    participant: ParticipantState,
-                    style: VideoRendererStyle,
-                ) -> Unit = { videoModifier, videoCall, videoParticipant, videoStyle ->
+    // Apply VideoTheme
+    VideoTheme {
+        // Define required properties.
+        val allParticipants by call.state.participants.collectAsState()
+        val remoteParticipants = allParticipants.filter { !it.isLocal }
+        val remoteParticipantsCount by call.state.participantCounts.collectAsState()
+        val connection by call.state.connection.collectAsState()
+        val sessionId by call.state.session.collectAsState()
+        var parentSize: IntSize by remember { mutableStateOf(IntSize(0, 0)) }
+
+        // Add logging for debugging
+        LaunchedEffect(allParticipants, remoteParticipants, remoteParticipantsCount, connection, sessionId) {
+            android.util.Log.d("CallOverlayView", "Detailed State Update:")
+            android.util.Log.d("CallOverlayView", "- Call ID: ${call.id}")
+            android.util.Log.d("CallOverlayView", "- Session ID: ${sessionId?.id}")
+            android.util.Log.d("CallOverlayView", "- All Participants: $allParticipants")
+            android.util.Log.d("CallOverlayView", "- Remote Participants: $remoteParticipants")
+            android.util.Log.d("CallOverlayView", "- Remote Participant Count: $remoteParticipantsCount")
+            android.util.Log.d("CallOverlayView", "- Connection State: $connection")
+            
+            // Log each participant's details
+            allParticipants.forEach { participant ->
+                android.util.Log.d("CallOverlayView", "Participant Details:")
+                android.util.Log.d("CallOverlayView", "- ID: ${participant.userId}")
+                android.util.Log.d("CallOverlayView", "- Is Local: ${participant.isLocal}")
+                android.util.Log.d("CallOverlayView", "- Has Video: ${participant.videoEnabled}")
+                android.util.Log.d("CallOverlayView", "- Has Audio: ${participant.audioEnabled}")
+            }
+        }
+
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .fillMaxSize()
+                .background(VideoTheme.colors.baseSenary)
+                .padding(WindowInsets.safeDrawing.asPaddingValues())
+                .onSizeChanged { parentSize = it }
+        ) {
+            val videoRenderer: @Composable (
+                modifier: Modifier,
+                call: Call,
+                participant: ParticipantState,
+                style: VideoRendererStyle,
+            ) -> Unit = { videoModifier, videoCall, videoParticipant, videoStyle ->
+                ParticipantVideo(
+                    modifier = videoModifier,
+                    call = videoCall,
+                    participant = videoParticipant,
+                    style = videoStyle,
+                    scalingType = VideoScalingType.SCALE_ASPECT_FIT,
+                    actionsContent = { _, _, _ -> }
+                )
+            }
+            val videoRendererNoAction: @Composable (ParticipantState) -> Unit =
+                { participant ->
                     ParticipantVideo(
-                        modifier = videoModifier,
-                        call = videoCall,
-                        participant = videoParticipant,
-                        style = videoStyle,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(VideoTheme.shapes.dialog),
+                        call = call,
+                        participant = participant,
+                        style = RegularVideoRendererStyle(),
                         scalingType = VideoScalingType.SCALE_ASPECT_FIT,
                         actionsContent = { _, _, _ -> }
                     )
                 }
-                val videoRendererNoAction: @Composable (ParticipantState) -> Unit =
-                    { participant ->
-                        ParticipantVideo(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(VideoTheme.shapes.dialog),
-                            call = call,
-                            participant = participant,
-                            style = RegularVideoRendererStyle(),
-                            scalingType = VideoScalingType.SCALE_ASPECT_FIT,
-                            actionsContent = { _, _, _ -> }
-                        )
-                    }
-                val floatingVideoRender: @Composable BoxScope.(
-                    call: Call,
-                    parentSize: IntSize
-                ) -> Unit = { call, parentSize ->
-                    val participants by call.state.participants.collectAsState()
-                    val me = participants.first { it.isLocal }
+            val floatingVideoRender: @Composable BoxScope.(
+                call: Call,
+                parentSize: IntSize
+            ) -> Unit = { call, parentSize ->
+                val participants by call.state.participants.collectAsState()
+                val me = participants.firstOrNull { it.isLocal }
+                me?.let { localParticipant ->
                     FloatingParticipantVideo(
                         call = call,
                         videoRenderer = videoRendererNoAction,
                         participant = if (LocalInspectionMode.current) {
                             participants.first()
                         } else {
-                            me
+                            localParticipant
                         },
                         style = RegularVideoRendererStyle(),
                         parentBounds = parentSize,
                     )
                 }
+            }
 
-                if (remoteParticipants.isNotEmpty()) {
-                    ParticipantsLayout(
-                        modifier = Modifier.fillMaxSize(),
-                        call = call,
-                        videoRenderer = videoRenderer,
-                        floatingVideoRenderer = floatingVideoRender
+            if (remoteParticipants.isNotEmpty()) {
+                android.util.Log.d("CallOverlayView", "Showing ParticipantsLayout with ${remoteParticipants.size} remote participants")
+                ParticipantsLayout(
+                    modifier = Modifier.fillMaxSize(),
+                    call = call,
+                    videoRenderer = videoRenderer,
+                    floatingVideoRenderer = floatingVideoRender
+                )
+            } else {
+                if (connection != RealtimeConnection.Connected) {
+                    android.util.Log.d("CallOverlayView", "Showing waiting message - not connected")
+                    Text(
+                        text = "waiting for a remote participant...",
+                        fontSize = 30.sp,
+                        color = VideoTheme.colors.basePrimary
                     )
                 } else {
-                    if (connection != RealtimeConnection.Connected) {
-                        Text(
-                            text = "waiting for a remote participant...",
-                            fontSize = 30.sp,
-                            color = VideoTheme.colors.basePrimary
-                        )
-                    } else {
-                        Text(
-                            modifier = Modifier.padding(30.dp),
-                            text = "Join call ${call.id} in your browser to see the video here",
-                            fontSize = 30.sp,
-                            color = VideoTheme.colors.basePrimary,
-                            textAlign = TextAlign.Center
-                        )
-                    }
+                    Text(
+                        modifier = Modifier.padding(30.dp),
+                        text = "Join call ${call.id} in your browser to see the video here",
+                        fontSize = 30.sp,
+                        color = VideoTheme.colors.basePrimary,
+                        textAlign = TextAlign.Center
+                    )
                 }
             }
         }

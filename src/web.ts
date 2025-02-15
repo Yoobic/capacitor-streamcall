@@ -333,6 +333,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
     const call = this.client.call(this.incomingCall.type, this.incomingCall.id);
     this.currentCall = call;
     console.log('Joining call', call);
+    await call.accept();
     await call.join();
     console.log('Joined call', call);
     this.notifyListeners('callEvent', { callId: call.id, state: CallingState.JOINED });

@@ -91,7 +91,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         // Add to view hierarchy below webview but keep it hidden
                         overlayView.isHidden = false
                         webView.superview?.addSubview(overlayView)
-                        webView.superview?.bringSubviewToFront(webView)
+                        webView.superview?.bringSubviewToFront(self.webView!)
                         
                         // Setup constraints
                         overlayView.translatesAutoresizingMaskIntoConstraints = false
