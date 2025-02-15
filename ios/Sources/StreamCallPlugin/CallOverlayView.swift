@@ -53,22 +53,19 @@ struct CallOverlayView: View {
     
     var body: some View {
         VStack {
-            if let streamVideo = viewModel.streamVideo {
-                if let call = viewModel.call, let callState = viewModel.callState {
-                    ZStack {
-                        ParticipantsView(
-                            call: call,
-                            participants: viewModel.participants,
-                            onChangeTrackVisibility: changeTrackVisibility(_:isVisible:)
-                        )
-                    }
-                } else {
-                    Text("Waiting for call...")
+            if let call = viewModel.call {
+                ZStack {
+                    ParticipantsView(
+                        call: call,
+                        participants: viewModel.participants,
+                        onChangeTrackVisibility: changeTrackVisibility(_:isVisible:)
+                    )
                 }
             } else {
-                Text("Please login to start a call")
+                Color.white
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity) // Make sure the view takes up all available space
     }
     
     private func changeTrackVisibility(_ participant: CallParticipant?, isVisible: Bool) {

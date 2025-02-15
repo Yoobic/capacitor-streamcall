@@ -4,6 +4,7 @@ import StreamVideo
 import StreamVideoSwiftUI
 import SwiftUI
 import Combine
+import WebKit
 
 /**
  * Please read the Capacitor iOS Plugin Development Guide
@@ -42,19 +43,15 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     private var activeCallSubscription: AnyCancellable?
     private var lastVoIPToken: String?
     
-    @Injected(\.streamVideo) var streamVideo {
-        willSet {
-            // Clean up existing subscriptions when streamVideo changes
-            tokenSubscription?.cancel()
-            activeCallSubscription?.cancel()
-        }
-    }
+    private var streamVideo: StreamVideo?
     
     @Injected(\.callKitAdapter) var callKitAdapter
     @Injected(\.callKitPushNotificationAdapter) var callKitPushNotificationAdapter
     
     private var refreshTokenURL: String?
     private var refreshTokenHeaders: [String: String]?
+    
+    private var webviewDelegate: WebviewNavigationDelegate?
     
     override public func load() {
         // Check if we have a logged in user for handling incoming calls
@@ -64,33 +61,79 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                 self.initializeStreamVideo()
             }
         }
+        
+        // Create and set the navigation delegate
+        self.webviewDelegate = WebviewNavigationDelegate(
+            wrappedDelegate: self.webView?.navigationDelegate,
+            onSetupOverlay: { [weak self] in
+                guard let self = self else { return }
+                print("Attempting to setup call view")
+                
+                
+                // Configure webview for transparency
+                if let webView = self.webView {
+                    // Make webview transparent
+                    // true means that the webview isn't transparent, but well, by default the custom view is hidden
+                    webView.isOpaque = true
+                    webView.backgroundColor = .clear
+                    webView.scrollView.backgroundColor = .clear
+                    
+                    
+                    // Create SwiftUI view with view model
+                    let (hostingController, viewModel) = CallOverlayView.create(streamVideo: self.streamVideo)
+                    hostingController.view.backgroundColor = .clear
+                    
+                    self.hostingController = hostingController
+                    self.overlayViewModel = viewModel
+                    self.overlayView = hostingController.view
+                    
+                    if let overlayView = self.overlayView {
+                        // Add to view hierarchy below webview but keep it hidden
+                        overlayView.isHidden = false
+                        webView.superview?.addSubview(overlayView)
+                        webView.superview?.bringSubviewToFront(webView)
+                        
+                        // Setup constraints
+                        overlayView.translatesAutoresizingMaskIntoConstraints = false
+                        NSLayoutConstraint.activate([
+                            overlayView.topAnchor.constraint(equalTo: overlayView.superview!.topAnchor),
+                            overlayView.bottomAnchor.constraint(equalTo: overlayView.superview!.bottomAnchor),
+                            overlayView.leadingAnchor.constraint(equalTo: overlayView.superview!.leadingAnchor),
+                            overlayView.trailingAnchor.constraint(equalTo: overlayView.superview!.trailingAnchor)
+                        ])
+                    }
+                }
+            }
+        )
+        
+        self.webView?.navigationDelegate = self.webviewDelegate
     }
     
-    private func cleanupStreamVideo() {
-        // Cancel subscriptions
-        tokenSubscription?.cancel()
-        tokenSubscription = nil
-        activeCallSubscription?.cancel()
-        activeCallSubscription = nil
-        lastVoIPToken = nil
-        
-        // Cleanup UI
-        Task { @MainActor in
-            self.overlayViewModel?.updateCall(nil)
-            self.overlayViewModel?.updateStreamVideo(nil)
-            self.overlayView?.removeFromSuperview()
-            self.overlayView = nil
-            self.hostingController = nil
-            self.overlayViewModel = nil
-            
-            // Reset webview
-            self.webView?.isOpaque = true
-            self.webView?.backgroundColor = .white
-            self.webView?.scrollView.backgroundColor = .white
-        }
-        
-        state = .notInitialized
-    }
+//    private func cleanupStreamVideo() {
+//        // Cancel subscriptions
+//        tokenSubscription?.cancel()
+//        tokenSubscription = nil
+//        activeCallSubscription?.cancel()
+//        activeCallSubscription = nil
+//        lastVoIPToken = nil
+//        
+//        // Cleanup UI
+//        Task { @MainActor in
+//            self.overlayViewModel?.updateCall(nil)
+//            self.overlayViewModel?.updateStreamVideo(nil)
+//            self.overlayView?.removeFromSuperview()
+//            self.overlayView = nil
+//            self.hostingController = nil
+//            self.overlayViewModel = nil
+//            
+//            // Reset webview
+//            self.webView?.isOpaque = true
+//            self.webView?.backgroundColor = .white
+//            self.webView?.scrollView.backgroundColor = .white
+//        }
+//        
+//        state = .notInitialized
+//    }
     
     private func requireInitialized() throws {
         guard state == .initialized else {
@@ -160,23 +203,11 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         
         if Thread.isMainThread {
             print("Executing script on main thread")
-            webView.evaluateJavaScript(script) { result, error in
-                if let error = error {
-                    print("JavaScript evaluation error: \(error)")
-                } else {
-                    print("JavaScript executed successfully: \(String(describing: result))")
-                }
-            }
+            webView.evaluateJavaScript(script, completionHandler: nil)
         } else {
             print("Executing script from background thread")
             DispatchQueue.main.sync {
-                webView.evaluateJavaScript(script) { result, error in
-                    if let error = error {
-                        print("JavaScript evaluation error: \(error)")
-                    } else {
-                        print("JavaScript executed successfully: \(String(describing: result))")
-                    }
-                }
+                webView.evaluateJavaScript(script, completionHandler: nil)
             }
         }
         
@@ -231,11 +262,11 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     try self.requireInitialized()
                     if let lastVoIPToken = self.lastVoIPToken, !lastVoIPToken.isEmpty {
                         print("Deleting device: \(lastVoIPToken)")
-                        try await self.streamVideo.deleteDevice(id: lastVoIPToken)
+                        try await self.streamVideo?.deleteDevice(id: lastVoIPToken)
                     }
                     if !updatedDeviceToken.isEmpty {
                         print("Setting voip device: \(updatedDeviceToken)")
-                        try await self.streamVideo.setVoipDevice(id: updatedDeviceToken)
+                        try await self.streamVideo?.setVoipDevice(id: updatedDeviceToken)
                         // Save the token to our secure storage
                         print("Saving voip token: \(updatedDeviceToken)")
                         SecureUserRepository.shared.save(voipPushToken: updatedDeviceToken)
@@ -249,19 +280,21 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     }
     
     private func setupActiveCallSubscription() {
-        Task {
-            for await event in streamVideo.subscribe() {
-                print("Event", event)
-                notifyListeners("callEvent", data: [
-                    "callId": streamVideo.state.activeCall?.callId ?? "",
-                    "state": event.type
-                ])
+        if let streamVideo = streamVideo {
+            Task {
+                for await event in streamVideo.subscribe() {
+                    print("Event", event)
+                    notifyListeners("callEvent", data: [
+                        "callId": streamVideo.state.activeCall?.callId ?? "",
+                        "state": event.type
+                    ])
+                }
             }
         }
         // Cancel existing subscription if any
         activeCallSubscription?.cancel()
         // Create new subscription
-        activeCallSubscription = streamVideo.state.$activeCall.sink { [weak self] newState in
+        activeCallSubscription = streamVideo?.state.$activeCall.sink { [weak self] newState in
             guard let self = self else { return }
             Task { @MainActor in
                 do {
@@ -274,21 +307,28 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         print("- All participants: \(String(describing: state.participants))")
                         print("- Remote participants: \(String(describing: state.remoteParticipants))")
                         
+                        // Update overlay and make visible when there's an active call
+                        self.overlayViewModel?.updateCall(newState)
+                        self.overlayView?.isHidden = false
+                        self.webView?.isOpaque = false
+                        
                         // Notify that a call has started
                         self.notifyListeners("callEvent", data: [
                             "callId": newState?.cId ?? "",
                             "state": "joined"
                         ])
                     } else {
-                        // If newState is nil, it means the call has ended
+                        // If newState is nil, hide overlay and clear call
+                        self.overlayViewModel?.updateCall(nil)
+                        self.overlayView?.isHidden = true
+                        self.webView?.isOpaque = true
+                        
+                        // Notify that call has ended
                         self.notifyListeners("callEvent", data: [
                             "callId": newState?.cId ?? "",
                             "state": "left"
                         ])
                     }
-                    
-                    self.overlayViewModel?.updateCall(newState)
-                    self.overlayView?.isHidden = newState == nil
                 } catch {
                     log.error("Error handling call state update: \(String(describing: error))")
                 }
@@ -351,13 +391,12 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         if let lastVoIPToken = lastVoIPToken {
             Task {
                 do {
-                    try await streamVideo.deleteDevice(id: lastVoIPToken)
+                    try await streamVideo?.deleteDevice(id: lastVoIPToken)
                 } catch {
                     log.error("Error deleting device during logout: \(String(describing: error))")
                 }
             }
         }
-
         
         // Cancel subscriptions
         tokenSubscription?.cancel()
@@ -370,7 +409,10 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         
         // Update the CallOverlayView with nil StreamVideo instance
         Task { @MainActor in
+            self.overlayViewModel?.updateCall(nil)
             self.overlayViewModel?.updateStreamVideo(nil)
+            self.overlayView?.isHidden = true
+            self.webView?.isOpaque = true
         }
         
         call.resolve([
@@ -397,38 +439,6 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             }
         }
         
-        // Setup UI components if needed
-        if overlayView == nil {
-            Task { @MainActor in
-                // Make webview transparent
-                self.webView?.isOpaque = false
-                self.webView?.backgroundColor = .clear
-                self.webView?.scrollView.backgroundColor = .clear
-                
-                // Create SwiftUI view with view model
-                let (hostingController, viewModel) = CallOverlayView.create(streamVideo: self.streamVideo)
-                hostingController.view.backgroundColor = .clear
-                
-                self.hostingController = hostingController
-                self.overlayViewModel = viewModel
-                self.overlayView = hostingController.view
-                
-                if let overlayView = self.overlayView {
-                    overlayView.isHidden = true
-                    self.webView?.superview?.addSubview(overlayView)
-                    self.webView?.superview?.bringSubviewToFront(self.webView!)
-                    
-                    overlayView.translatesAutoresizingMaskIntoConstraints = false
-                    NSLayoutConstraint.activate([
-                        overlayView.topAnchor.constraint(equalTo: overlayView.superview!.topAnchor),
-                        overlayView.bottomAnchor.constraint(equalTo: overlayView.superview!.bottomAnchor),
-                        overlayView.leadingAnchor.constraint(equalTo: overlayView.superview!.leadingAnchor),
-                        overlayView.trailingAnchor.constraint(equalTo: overlayView.superview!.trailingAnchor)
-                    ])
-                }
-            }
-        }
-        
         do {
             try requireInitialized()
             
@@ -447,11 +457,11 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     print("- Should Ring: \(shouldRing)")
                     
                     // Create the call object
-                    let streamCall = streamVideo.call(callType: callType, callId: callId)
+                    let streamCall = streamVideo?.call(callType: callType, callId: callId)
                     
                     // Start the call with the member
                     print("Creating call with member...")
-                    try await streamCall.create(
+                    try await streamCall?.create(
                         memberIds: [userId],
                         custom: [:],
                         ring: shouldRing
@@ -459,13 +469,14 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     
                     // Join the call
                     print("Joining call...")
-                    try await streamCall.join(create: false)
+                    try await streamCall?.join(create: false)
                     print("Successfully joined call")
                     
                     // Update the CallOverlayView with the active call
                     await MainActor.run {
                         self.overlayViewModel?.updateCall(streamCall)
                         self.overlayView?.isHidden = false
+                        self.webView?.isOpaque = false
                     }
                     
                     call.resolve([
@@ -487,9 +498,16 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             
             Task {
                 do {
-                    if let activeCall = streamVideo.state.activeCall {
+                    if let activeCall = streamVideo?.state.activeCall {
                         try await activeCall.leave()
-                        cleanupStreamVideo()
+                        
+                        // Update view state instead of cleaning up
+                        await MainActor.run {
+                            self.overlayViewModel?.updateCall(nil)
+                            self.overlayView?.isHidden = true
+                            self.webView?.isOpaque = true
+                        }
+                        
                         call.resolve([
                             "success": true
                         ])
@@ -517,7 +535,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             
             Task {
                 do {
-                    if let activeCall = streamVideo.state.activeCall {
+                    if let activeCall = streamVideo?.state.activeCall {
                         if enabled {
                             try await activeCall.microphone.enable()
                         } else {
@@ -550,7 +568,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             
             Task {
                 do {
-                    if let activeCall = streamVideo.state.activeCall {
+                    if let activeCall = streamVideo?.state.activeCall {
                         if enabled {
                             try await activeCall.camera.enable()
                         } else {
