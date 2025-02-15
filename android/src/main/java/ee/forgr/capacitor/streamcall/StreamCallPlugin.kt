@@ -29,6 +29,7 @@ import io.getstream.video.android.model.streamCallId
 import kotlinx.coroutines.launch
 import org.openapitools.client.models.VideoEvent
 import org.openapitools.client.models.CallEndedEvent
+import org.openapitools.client.models.CallMissedEvent
 import org.openapitools.client.models.CallSessionEndedEvent
 import org.openapitools.client.models.CallRejectedEvent
 
@@ -39,6 +40,7 @@ public class StreamCallPlugin : Plugin() {
     private var overlayView: ComposeView? = null
     private var incomingCallView: ComposeView? = null
     private var barrierView: View? = null
+    private var ringtonePlayer: RingtonePlayer? = null
 
     private enum class State {
         NOT_INITIALIZED,
@@ -46,8 +48,13 @@ public class StreamCallPlugin : Plugin() {
         INITIALIZED
     }
 
+    override fun handleOnPause() {
+        this.ringtonePlayer.let { it?.stopRinging() }
+    }
+
     override fun load() {
         // general init
+        ringtonePlayer = RingtonePlayer(this.activity.application)
         initializeStreamVideo()
         setupViews()
         super.load()
@@ -68,6 +75,8 @@ public class StreamCallPlugin : Plugin() {
                 val cid = intent.streamCallId(NotificationHandler.INTENT_EXTRA_CALL_CID)
                 if (cid != null) {
                     val call = streamVideoClient?.call(id = cid.id, type = cid.type)
+                    // Start playing ringtone
+                    ringtonePlayer?.startRinging()
                     // let's set a barrier. This will prevent the user from interacting with the webview while the calling screen is loading
                     // Launch a coroutine to handle the suspend function
                     showBarrier()
@@ -99,7 +108,7 @@ public class StreamCallPlugin : Plugin() {
         } else if (action === "io.getstream.video.android.action.ACCEPT_CALL") {
             // it's a strategic placed initializeStreamVideo. I want to register the even listeners
             // (which are not initialized during the first load in initialization by the application class)
-            initializeStreamVideo()
+            // initializeStreamVideo()
             val cid = intent.streamCallId(NotificationHandler.INTENT_EXTRA_CALL_CID)
             if (cid != null) {
                 val call = streamVideoClient?.call(id = cid.id, type = cid.type)
@@ -119,6 +128,9 @@ public class StreamCallPlugin : Plugin() {
         kotlinx.coroutines.GlobalScope.launch {
             call.reject(RejectReason.Decline)
             
+            // Stop ringtone
+            ringtonePlayer?.stopRinging()
+            
             // Notify that call has ended
             val data = JSObject().apply {
                 put("callId", call.id)
@@ -133,6 +145,8 @@ public class StreamCallPlugin : Plugin() {
     private fun hideIncomingCall() {
         activity?.runOnUiThread {
             incomingCallView?.isVisible = false
+            // Stop ringtone if it's still playing
+            ringtonePlayer?.stopRinging()
             // Check if device is locked using KeyguardManager
             val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
             if (keyguardManager.isKeyguardLocked) {
@@ -311,6 +325,7 @@ public class StreamCallPlugin : Plugin() {
                 user = savedCredentials.user,
                 token = savedCredentials.tokenValue,
                 notificationConfig = notificationConfig,
+
                 // loggingLevel = LoggingLevel(priority = Priority.VERBOSE),
             ).build()
 
@@ -372,12 +387,27 @@ public class StreamCallPlugin : Plugin() {
                                     )
                                 }
                                 overlayView?.isVisible = false
+
+                                val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+                                if (keyguardManager.isKeyguardLocked) {
+                                    android.util.Log.d("StreamCallPlugin", "Stop ringing and move to background")
+                                    this.ringtonePlayer?.stopRinging()
+                                    activity.moveTaskToBack(true)
+                                }
                             }
                             val data = JSObject().apply {
                                 put("callId", event.call.cid)
                                 put("state", "rejected")
                             }
                             notifyListeners("callEvent", data)
+                        }
+                        is CallMissedEvent -> {
+                            val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+                            if (keyguardManager.isKeyguardLocked) {
+                                android.util.Log.d("StreamCallPlugin", "Stop ringing and move to background")
+                                this.ringtonePlayer?.stopRinging()
+                                activity.moveTaskToBack(true)
+                            }
                         }
                     }
                     val data = JSObject().apply {
@@ -428,6 +458,9 @@ public class StreamCallPlugin : Plugin() {
         kotlinx.coroutines.GlobalScope.launch {
             android.util.Log.i("StreamCallPlugin", "Attempting to accept call ${call.id}")
             try {
+                // Stop ringtone
+                ringtonePlayer?.stopRinging()
+                
                 // Hide incoming call view first
                 activity?.runOnUiThread {
                     android.util.Log.d("StreamCallPlugin", "Hiding incoming call view for call ${call.id}")
@@ -436,7 +469,6 @@ public class StreamCallPlugin : Plugin() {
 
                 // Accept the call
                 call.accept()
-                // this@StreamCallPlugin.streamVideoClient?.state?.setActiveCall(call);
 
                 // Notify that call has started
                 val data = JSObject().apply {
@@ -568,6 +600,11 @@ public class StreamCallPlugin : Plugin() {
                     call.resolve(JSObject().apply {
                         put("success", true)
                     })
+
+                    val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+                    if (keyguardManager.isKeyguardLocked) {
+                        activity.moveTaskToBack(true)
+                    }
                 } catch (e: Exception) {
                     android.util.Log.e("StreamCallPlugin", "Error ending call: ${e.message}")
                     call.reject("Failed to end call: ${e.message}")

@@ -45,6 +45,7 @@ fun IncomingCallView(
     val context = LocalContext.current
 
     LaunchedEffect(ringingState?.value) {
+        Log.d("IncomingCallView", "Changing ringingState to $ringingState?.value")
         if (ringingState?.value == RingingState.TimeoutNoAnswer || ringingState?.value == RingingState.RejectedByAll) {
             Log.d("IncomingCallView", "Call timed out, hiding incoming call view")
             onHideIncomingCall?.invoke()
