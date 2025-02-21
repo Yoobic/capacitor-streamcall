@@ -21,7 +21,8 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "call", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "endCall", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setMicrophoneEnabled", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "setCameraEnabled", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "setCameraEnabled", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "acceptCall", returnType: CAPPluginReturnPromise)
     ]
     
     private enum State {
@@ -103,13 +104,16 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         webView.superview?.addSubview(overlayView)
                         webView.superview?.bringSubviewToFront(self.webView!)
                         
-                        // Setup constraints
+                        // Setup constraints to stay within safe areas
                         overlayView.translatesAutoresizingMaskIntoConstraints = false
+                        
+                        // Use the superview's safe area layout guide to ensure content stays within safe bounds
+                        let safeGuide = overlayView.superview!.safeAreaLayoutGuide
                         NSLayoutConstraint.activate([
-                            overlayView.topAnchor.constraint(equalTo: overlayView.superview!.topAnchor),
-                            overlayView.bottomAnchor.constraint(equalTo: overlayView.superview!.bottomAnchor),
-                            overlayView.leadingAnchor.constraint(equalTo: overlayView.superview!.leadingAnchor),
-                            overlayView.trailingAnchor.constraint(equalTo: overlayView.superview!.trailingAnchor)
+                            overlayView.topAnchor.constraint(equalTo: safeGuide.topAnchor),
+                            overlayView.bottomAnchor.constraint(equalTo: safeGuide.bottomAnchor),
+                            overlayView.leadingAnchor.constraint(equalTo: safeGuide.leadingAnchor),
+                            overlayView.trailingAnchor.constraint(equalTo: safeGuide.trailingAnchor)
                         ])
                     }
                 }
@@ -294,6 +298,13 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             Task {
                 for await event in streamVideo.subscribe() {
                     print("Event", event)
+                    if let ringingEvent = event.rawValue as? CallRingEvent {
+                        notifyListeners("callEvent", data: [
+                            "callId": ringingEvent.callCid,
+                            "state": "ringing"
+                        ])
+                        return
+                    }
                     notifyListeners("callEvent", data: [
                         "callId": streamVideo.state.activeCall?.callId ?? "",
                         "state": event.type
@@ -592,6 +603,46 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                 } catch {
                     log.error("Error setting camera: \(String(describing: error))")
                     call.reject("Failed to set camera: \(error.localizedDescription)")
+                }
+            }
+        } catch {
+            call.reject("StreamVideo not initialized")
+        }
+    }
+    
+    @objc func acceptCall(_ call: CAPPluginCall) {
+        do {
+            try requireInitialized()
+            
+            Task {
+                do {
+                    
+                    // Get the call object for the given ID
+                    let streamCall = streamVideo?.state.ringingCall
+                    if (streamCall == nil) {
+                        call.reject("Failed to accept call as there is no ringing call")
+                        return
+                    }
+                    
+                    // Join the call
+                    print("Accepting and joining call \(streamCall!.cId)...")
+                    try await streamCall?.accept()
+                    try await streamCall?.join(create: false)
+                    print("Successfully joined call")
+                    
+                    // Update the CallOverlayView with the active call
+                    await MainActor.run {
+                        self.overlayViewModel?.updateCall(streamCall)
+                        self.overlayView?.isHidden = false
+                        self.webView?.isOpaque = false
+                    }
+                    
+                    call.resolve([
+                        "success": true
+                    ])
+                } catch {
+                    log.error("Error accepting call: \(String(describing: error))")
+                    call.reject("Failed to accept call: \(error.localizedDescription)")
                 }
             }
         } catch {

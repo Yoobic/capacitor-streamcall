@@ -48,5 +48,16 @@
         Call User 4
       </ion-button>
     </div>
+
+    <div class="join-call" *ngIf="currentUser">
+      <ion-item>
+        <ion-label position="floating">Call ID</ion-label>
+        <ion-input [(ngModel)]="callId" type="text" placeholder="Enter call ID"></ion-input>
+      </ion-item>
+      <ion-button (click)="joinCall()" color="primary" expand="block">
+        <ion-icon name="enter-outline"></ion-icon>
+        Join Call
+      </ion-button>
+    </div>
   </div> 
 </ion-content>

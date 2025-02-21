@@ -53,12 +53,13 @@ struct CallOverlayView: View {
     
     var body: some View {
         VStack {
-            if let call = viewModel.call {
+            if let call = viewModel.call, let localParticipant = viewModel.participants.first { $0.userId == viewModel.streamVideo?.user.id } {
                 ZStack {
                     ParticipantsView(
                         call: call,
-                        participants: viewModel.participants,
-                        onChangeTrackVisibility: changeTrackVisibility(_:isVisible:)
+                        participants: viewModel.participants.sorted(by: { $0.name < $1.name }),
+                        onChangeTrackVisibility: changeTrackVisibility(_:isVisible:),
+                        localParticipant: localParticipant
                     )
                 }
             } else {
@@ -82,6 +83,11 @@ extension CallOverlayView {
         let viewModel = CallOverlayViewModel(streamVideo: streamVideo)
         let view = CallOverlayView(viewModel: viewModel)
         let hostingController = UIHostingController(rootView: view)
+        hostingController.view.backgroundColor = .clear
+        
+        // Make sure we respect safe areas
+        hostingController.view.insetsLayoutMarginsFromSafeArea = true
+        
         return (hostingController, viewModel)
     }
 }

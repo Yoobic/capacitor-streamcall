@@ -629,6 +629,12 @@ public class StreamCallPlugin : Plugin() {
                 return
             }
 
+            val selfUserId = streamVideoClient?.userId
+            if (selfUserId == null) {
+                call.reject("No self-user id found. Are you not logged in?")
+                return
+            }
+
             val callType = call.getString("type") ?: "default"
             val shouldRing = call.getBoolean("ring") ?: true
             val callId = java.util.UUID.randomUUID().toString()
@@ -648,7 +654,7 @@ public class StreamCallPlugin : Plugin() {
                     android.util.Log.d("StreamCallPlugin", "Creating call with member...")
                     // Create the call with the member
                     streamCall?.create(
-                        memberIds = listOf(userId),
+                        memberIds = listOf(userId, selfUserId),
                         custom = emptyMap(),
                         ring = shouldRing
                     )
