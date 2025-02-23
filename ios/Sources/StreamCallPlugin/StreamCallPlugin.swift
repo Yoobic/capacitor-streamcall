@@ -43,6 +43,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     private var tokenSubscription: AnyCancellable?
     private var activeCallSubscription: AnyCancellable?
     private var lastVoIPToken: String?
+    private var touchInterceptView: TouchInterceptView?
     
     private var streamVideo: StreamVideo?
     
@@ -80,43 +81,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                 guard let self = self else { return }
                 print("Attempting to setup call view")
                 
-                
-                // Configure webview for transparency
-                if let webView = self.webView {
-                    // Make webview transparent
-                    // true means that the webview isn't transparent, but well, by default the custom view is hidden
-                    webView.isOpaque = true
-                    webView.backgroundColor = .clear
-                    webView.scrollView.backgroundColor = .clear
-                    
-                    
-                    // Create SwiftUI view with view model
-                    let (hostingController, viewModel) = CallOverlayView.create(streamVideo: self.streamVideo)
-                    hostingController.view.backgroundColor = .clear
-                    
-                    self.hostingController = hostingController
-                    self.overlayViewModel = viewModel
-                    self.overlayView = hostingController.view
-                    
-                    if let overlayView = self.overlayView {
-                        // Add to view hierarchy below webview but keep it hidden
-                        overlayView.isHidden = false
-                        webView.superview?.addSubview(overlayView)
-                        webView.superview?.bringSubviewToFront(self.webView!)
-                        
-                        // Setup constraints to stay within safe areas
-                        overlayView.translatesAutoresizingMaskIntoConstraints = false
-                        
-                        // Use the superview's safe area layout guide to ensure content stays within safe bounds
-                        let safeGuide = overlayView.superview!.safeAreaLayoutGuide
-                        NSLayoutConstraint.activate([
-                            overlayView.topAnchor.constraint(equalTo: safeGuide.topAnchor),
-                            overlayView.bottomAnchor.constraint(equalTo: safeGuide.bottomAnchor),
-                            overlayView.leadingAnchor.constraint(equalTo: safeGuide.leadingAnchor),
-                            overlayView.trailingAnchor.constraint(equalTo: safeGuide.trailingAnchor)
-                        ])
-                    }
-                }
+                self.setupViews()
             }
         )
         
@@ -694,5 +659,66 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         
         // Register for incoming calls
         callKitAdapter.registerForIncomingCalls()
+    }
+    
+    private func setupViews() {
+        guard let webView = self.webView,
+              let parent = webView.superview else { return }
+        
+        // Create TouchInterceptView
+        let touchInterceptView = TouchInterceptView(frame: parent.bounds)
+        touchInterceptView.translatesAutoresizingMaskIntoConstraints = false
+        self.touchInterceptView = touchInterceptView
+        
+        // Remove webView from its parent
+        webView.removeFromSuperview()
+        
+        // Add TouchInterceptView to the parent
+        parent.addSubview(touchInterceptView)
+        
+        // Setup TouchInterceptView constraints
+        NSLayoutConstraint.activate([
+            touchInterceptView.topAnchor.constraint(equalTo: parent.topAnchor),
+            touchInterceptView.bottomAnchor.constraint(equalTo: parent.bottomAnchor),
+            touchInterceptView.leadingAnchor.constraint(equalTo: parent.leadingAnchor),
+            touchInterceptView.trailingAnchor.constraint(equalTo: parent.trailingAnchor)
+        ])
+        
+        // Configure webview for transparency
+        webView.isOpaque = true
+        webView.backgroundColor = .clear
+        webView.scrollView.backgroundColor = .clear
+        webView.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Create SwiftUI view with view model
+        let (hostingController, viewModel) = CallOverlayView.create(streamVideo: self.streamVideo)
+        hostingController.view.backgroundColor = .clear
+        hostingController.view.translatesAutoresizingMaskIntoConstraints = false
+        
+        self.hostingController = hostingController
+        self.overlayViewModel = viewModel
+        self.overlayView = hostingController.view
+        
+        if let overlayView = self.overlayView {
+            // Setup the views in TouchInterceptView
+            touchInterceptView.setupWithWebView(webView, overlayView: overlayView)
+            
+            // Setup constraints for webView
+            NSLayoutConstraint.activate([
+                webView.topAnchor.constraint(equalTo: touchInterceptView.topAnchor),
+                webView.bottomAnchor.constraint(equalTo: touchInterceptView.bottomAnchor),
+                webView.leadingAnchor.constraint(equalTo: touchInterceptView.leadingAnchor),
+                webView.trailingAnchor.constraint(equalTo: touchInterceptView.trailingAnchor)
+            ])
+            
+            // Setup constraints for overlayView
+            let safeGuide = touchInterceptView.safeAreaLayoutGuide
+            NSLayoutConstraint.activate([
+                overlayView.topAnchor.constraint(equalTo: safeGuide.topAnchor),
+                overlayView.bottomAnchor.constraint(equalTo: safeGuide.bottomAnchor),
+                overlayView.leadingAnchor.constraint(equalTo: safeGuide.leadingAnchor),
+                overlayView.trailingAnchor.constraint(equalTo: safeGuide.trailingAnchor)
+            ])
+        }
     }
 }

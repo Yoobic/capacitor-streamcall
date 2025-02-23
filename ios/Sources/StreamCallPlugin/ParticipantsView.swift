@@ -9,12 +9,58 @@ import SwiftUI
 import StreamVideo
 import StreamVideoSwiftUI
 
+// Data structure to hold a label and a frame.
+struct ViewFramePreferenceData: Equatable {
+    let label: String
+    let frame: CGRect
+}
+
+// PreferenceKey to collect frames.
+struct ViewFramePreferenceKey: PreferenceKey {
+    static var defaultValue: [ViewFramePreferenceData] = []
+    
+    static func reduce(value: inout [ViewFramePreferenceData], nextValue: () -> [ViewFramePreferenceData]) {
+        value.append(contentsOf: nextValue())
+    }
+}
+
+// An extension to attach a label and record the view's frame.
+extension View {
+    func labelFrame(_ label: String) -> some View {
+        self.background(
+            GeometryReader { geo in
+                Color.clear
+                    .preference(key: ViewFramePreferenceKey.self,
+                                value: [ViewFramePreferenceData(label: label,
+                                                                frame: geo.frame(in: .global))])
+                    .onAppear {
+                        print("ParticipantsView - Collecting frame for label: \(label)")
+                        print("Frame: \(geo.frame(in: .global))")
+                    }
+            }
+        )
+    }
+}
+
 struct ParticipantsView: View {
 
     var call: Call
     var participants: [CallParticipant]
     var onChangeTrackVisibility: (CallParticipant?, Bool) -> Void
     var localParticipant: CallParticipant
+    @State private var labeledFrames: [ViewFramePreferenceData] = []
+    
+    private func findTouchInterceptView() -> TouchInterceptView? {
+        // Find the TouchInterceptView by traversing up the view hierarchy
+        var currentView = UIApplication.shared.windows.first?.rootViewController?.view
+        while let view = currentView {
+            if let touchInterceptView = view as? TouchInterceptView {
+                return touchInterceptView
+            }
+            currentView = view.superview
+        }
+        return nil
+    }
 
     var body: some View {
         GeometryReader { proxy in
@@ -63,6 +109,7 @@ struct ParticipantsView: View {
                                     )
                                     .frame(width: availableFrame.width, height: availableFrame.height * 0.8)
                                     .cornerRadius(12)
+                                    .labelFrame("abc")
                                 },
                                 proxy: proxy
                             ) {
@@ -73,6 +120,20 @@ struct ParticipantsView: View {
                                 }
                             }
                         }
+                    }
+                }
+                .onPreferenceChange(ViewFramePreferenceKey.self) { frames in
+                    print("ParticipantsView - Received frame updates:")
+                    print("Number of frames: \(frames.count)")
+                    frames.forEach { frame in
+                        print("Label: \(frame.label), Frame: \(frame.frame)")
+                    }
+                    self.labeledFrames = frames
+                    if let touchInterceptView = findTouchInterceptView() {
+                        print("ParticipantsView - Found TouchInterceptView, updating frames")
+                        touchInterceptView.updateLabeledFrames(frames)
+                    } else {
+                        print("ParticipantsView - Failed to find TouchInterceptView!")
                     }
                 }
             } else {

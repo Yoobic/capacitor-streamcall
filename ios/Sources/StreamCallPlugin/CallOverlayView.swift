@@ -66,7 +66,7 @@ struct CallOverlayView: View {
                 Color.white
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity) // Make sure the view takes up all available space
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
     
     private func changeTrackVisibility(_ participant: CallParticipant?, isVisible: Bool) {
