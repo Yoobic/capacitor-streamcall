@@ -1,5 +1,6 @@
 package ee.forgr.capacitor.streamcall
 
+import TouchInterceptWrapper
 import android.app.Application
 import android.app.KeyguardManager
 import android.content.Context
@@ -14,24 +15,23 @@ import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
+import io.getstream.android.push.firebase.FirebasePushDeviceGenerator
+import io.getstream.video.android.core.Call
 import io.getstream.video.android.core.GEO
 import io.getstream.video.android.core.StreamVideo
 import io.getstream.video.android.core.StreamVideoBuilder
-import io.getstream.video.android.core.notifications.NotificationConfig
-import io.getstream.video.android.model.User
-import io.getstream.android.push.firebase.FirebasePushDeviceGenerator
-import io.getstream.log.Priority
-import io.getstream.video.android.core.Call
-import io.getstream.video.android.core.logging.LoggingLevel
 import io.getstream.video.android.core.model.RejectReason
+import io.getstream.video.android.core.notifications.NotificationConfig
 import io.getstream.video.android.core.notifications.NotificationHandler
+import io.getstream.video.android.model.User
 import io.getstream.video.android.model.streamCallId
 import kotlinx.coroutines.launch
-import org.openapitools.client.models.VideoEvent
 import org.openapitools.client.models.CallEndedEvent
 import org.openapitools.client.models.CallMissedEvent
-import org.openapitools.client.models.CallSessionEndedEvent
 import org.openapitools.client.models.CallRejectedEvent
+import org.openapitools.client.models.CallSessionEndedEvent
+import org.openapitools.client.models.VideoEvent
+
 
 @CapacitorPlugin(name = "StreamCall")
 public class StreamCallPlugin : Plugin() {
@@ -174,17 +174,6 @@ public class StreamCallPlugin : Plugin() {
         // Make WebView transparent
         bridge?.webView?.setBackgroundColor(Color.TRANSPARENT)
 
-        // Create barrier view
-        barrierView = View(context).apply {
-            isVisible = false
-            layoutParams = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
-            setBackgroundColor(Color.parseColor("#1a242c"))
-        }
-        parent.addView(barrierView, parent.indexOfChild(bridge?.webView) + 1) // Add above WebView
-
         // Create and add overlay view below WebView
         overlayView = ComposeView(context).apply {
             isVisible = false
@@ -201,6 +190,23 @@ public class StreamCallPlugin : Plugin() {
             }
         }
         parent.addView(overlayView, 0)  // Add at index 0 to ensure it's below WebView
+
+        val originalContainer: ViewGroup = getBridge().webView
+
+        val wrapper = TouchInterceptWrapper(parent)
+        (parent.parent as ViewGroup).removeView(originalContainer)
+        (parent.parent as ViewGroup).addView(wrapper, 0)
+
+        // Create barrier view
+        barrierView = View(context).apply {
+            isVisible = false
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            setBackgroundColor(Color.parseColor("#1a242c"))
+        }
+        parent.addView(barrierView, parent.indexOfChild(bridge?.webView) + 1) // Add above WebView
 
         // Create and add incoming call view
         incomingCallView = ComposeView(context).apply {
