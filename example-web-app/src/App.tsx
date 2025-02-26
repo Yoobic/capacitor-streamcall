@@ -25,37 +25,41 @@ export default function App() {
   const [callId, setCallId] = useState('');
   const [client, setClient] = useState<StreamVideoClient | null>(null);
   const [call, setCall] = useState<Call | null>(null);
+  const [userCounter, setUserCounter] = useState(7);
 
   async function initializeClient() {
-    if (!client) {
-      // Fetch user credentials from backend user2
-      const response = await fetch(`${API_URL}/user?user_id=user4`);
-      const userData = await response.json();
-      
-      if (!userData) {
-        throw new Error('No response from server');
-      }
-  
-      // Create a new client instance with the fetched credentials
-      const newClient = new StreamVideoClient({ 
-        apiKey, 
-        token: userData.token,
-        user: {
-          id: userData.userId,
-          name: userData.name,
-          image: userData.imageURL
-        }
-      });
-  
-      // Store client in state
-      setClient(newClient);
+    // Fetch user credentials from backend with dynamic user ID
+    const response = await fetch(`${API_URL}/user?user_id=user${userCounter}`);
+    const userData = await response.json();
+    
+    if (!userData) {
+      throw new Error('No response from server');
     }
+
+    // Create a new client instance with the fetched credentials
+    const newClient = new StreamVideoClient({ 
+      apiKey, 
+      token: userData.token,
+      user: {
+        id: userData.userId,
+        name: userData.name,
+        image: userData.imageURL
+      }
+    });
+
+    // If there's an existing client, disconnect it after creating the new one
+    if (client) {
+      await client.disconnectUser();
+    }
+
+    // Store client in state
+    setClient(newClient);
   }
 
-  // Initialize client when component mounts
+  // Initialize client when component mounts or counter changes
   useEffect(() => {
     initializeClient();
-  }, []); // Empty dependency array means this runs once on mount
+  }, [userCounter]); // Add userCounter to dependencies
 
   // Listen for incoming calls
   useEffect(() => {
@@ -171,6 +175,13 @@ export default function App() {
           >
             Join Call
           </button>
+          <button 
+            onClick={() => setUserCounter(prev => prev + 1)}
+            style={{ padding: '8px 16px', borderRadius: '4px', backgroundColor: '#28a745', color: 'white', border: 'none', cursor: 'pointer' }}
+          >
+            Switch to User {userCounter + 1}
+          </button>
+          <span style={{ marginLeft: '10px' }}>Current User: user{userCounter}</span>
         </div>
       </>
     )

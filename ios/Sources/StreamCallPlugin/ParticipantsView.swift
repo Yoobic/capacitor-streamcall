@@ -67,26 +67,74 @@ struct ParticipantsView: View {
             if !participants.isEmpty {
                 ZStack {
                     if participants.count >= 5 && participants.count <= 6 {
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 3), spacing: 0) {
-                            ForEach(participants.prefix(participants.count)) { participant in
-                                makeCallParticipantView(participant, frame: proxy.frame(in: .global))
-                                    .frame(width: proxy.size.width / 3, height: proxy.size.height / 2)
+                        let nonLocalParticipants = participants.filter { $0.userId != localParticipant.userId }
+                        let hStackSpacing: CGFloat = 8
+                        let vStackSpacing: CGFloat = 8
+                        let columnWidth = (proxy.size.width - hStackSpacing) / 2  // Account for spacing between columns
+                        
+                        HStack(spacing: hStackSpacing) {
+                            VStack(spacing: vStackSpacing) {
+                                ForEach(nonLocalParticipants.prefix(3)) { participant in
+                                    let frame = CGRect(
+                                        x: proxy.frame(in: .global).origin.x,
+                                        y: proxy.frame(in: .global).origin.y,
+                                        width: columnWidth,
+                                        height: (proxy.size.height - (vStackSpacing * 2)) / 3  // Account for 2 spaces between 3 rows
+                                    )
+                                    makeCallParticipantView(participant, frame: frame)
+                                        .frame(width: frame.width, height: frame.height)
+                                }
                             }
-                            if participants.count == 5 {
-                                Color.clear
-                                    .frame(width: proxy.size.width / 3, height: proxy.size.height / 2)
+                            .frame(width: columnWidth, height: proxy.size.height)
+                            
+                            VStack(spacing: vStackSpacing) {
+                                ForEach(nonLocalParticipants.dropFirst(3)) { participant in
+                                    let frame = CGRect(
+                                        x: proxy.frame(in: .global).origin.x + columnWidth + hStackSpacing,
+                                        y: proxy.frame(in: .global).origin.y,
+                                        width: columnWidth,
+                                        height: (proxy.size.height - (vStackSpacing * 2)) / 3  // Account for 2 spaces between 3 rows
+                                    )
+                                    makeCallParticipantView(participant, frame: frame)
+                                        .frame(width: frame.width, height: frame.height)
+                                }
+                                let localFrame = CGRect(
+                                    x: proxy.frame(in: .global).origin.x + columnWidth + hStackSpacing,
+                                    y: proxy.frame(in: .global).origin.y,
+                                    width: columnWidth,
+                                    height: (proxy.size.height - (vStackSpacing * 2)) / 3  // Account for 2 spaces between 3 rows
+                                )
+                                makeCallParticipantView(localParticipant, frame: localFrame)
+                                    .frame(width: localFrame.width, height: localFrame.height)
                             }
+                            .frame(width: columnWidth, height: proxy.size.height)
                         }
+                        .frame(width: proxy.size.width, height: proxy.size.height)
+                        .padding(4)
                     } else {
                         ScrollView {
                             LazyVStack {
                                 if participants.count == 1, let participant = participants.first {
-                                    makeCallParticipantView(participant, frame: proxy.frame(in: .global))
-                                        .frame(width: proxy.size.width, height: proxy.size.height)
+                                  let frame = CGRect(
+                                        x: proxy.frame(in: .global).origin.x,
+                                        y: proxy.frame(in: .global).origin.y,
+                                        width: proxy.size.width,
+                                        height: proxy.size.height
+                                    )
+                                    
+                                    makeCallParticipantView(participant, frame: frame)
+                                        .frame(width: frame.width, height: frame.height)
                                 } else {
                                     ForEach(participants.filter { $0.userId != localParticipant.userId }) { participant in
-                                        makeCallParticipantView(participant, frame: proxy.frame(in: .global))
-                                            .frame(width: proxy.size.width, height: participants.count == 4 ? proxy.size.height / 3 : (participants.count == 2 ? proxy.size.height : proxy.size.height / 2))
+                                        let frame = CGRect(
+                                            x: proxy.frame(in: .global).origin.x,
+                                            y: proxy.frame(in: .global).origin.y,
+                                            width: proxy.size.width,
+                                            height: participants.count == 4 ? proxy.size.height / 3 : (participants.count == 2 ? proxy.size.height : proxy.size.height / 2)
+                                        )
+                                        
+                                        makeCallParticipantView(participant, frame: frame)
+                                            .frame(width: frame.width, height: frame.height)
                                     }
                                 }
                             }
@@ -145,14 +193,14 @@ struct ParticipantsView: View {
 
     @ViewBuilder
     private func makeCallParticipantView(_ participant: CallParticipant, frame: CGRect) -> some View {
-        VideoCallParticipantView(
+        CustomVideoCallParticipantView(
             participant: participant,
             availableFrame: frame,
             contentMode: .scaleAspectFit,
             customData: [:],
             call: call
         )
-        .onAppear { onChangeTrackVisibility(participant, true) }
-        .onDisappear{ onChangeTrackVisibility(participant, false) }
+//        .onAppear { onChangeTrackVisibility(participant, true) }
+//        .onDisappear{ onChangeTrackVisibility(participant, false) }
     }
 }
