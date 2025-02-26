@@ -16,13 +16,18 @@ import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import io.getstream.android.push.firebase.FirebasePushDeviceGenerator
+import io.getstream.log.Priority
 import io.getstream.video.android.core.Call
 import io.getstream.video.android.core.GEO
 import io.getstream.video.android.core.StreamVideo
 import io.getstream.video.android.core.StreamVideoBuilder
+import io.getstream.video.android.core.logging.LoggingLevel
 import io.getstream.video.android.core.model.RejectReason
 import io.getstream.video.android.core.notifications.NotificationConfig
 import io.getstream.video.android.core.notifications.NotificationHandler
+import io.getstream.video.android.core.sounds.defaultResourcesRingingConfig
+import io.getstream.video.android.core.sounds.emptyRingingConfig
+import io.getstream.video.android.core.sounds.toSounds
 import io.getstream.video.android.model.User
 import io.getstream.video.android.model.streamCallId
 import kotlinx.coroutines.launch
@@ -320,7 +325,28 @@ public class StreamCallPlugin : Plugin() {
                     context = contextToUse
                 )),
                 requestPermissionOnAppLaunch = { true },
-                notificationHandler = CustomNotificationHandler(application)
+                notificationHandler = CustomNotificationHandler(
+                    application = application,
+                    endCall = { callId ->
+                        val activeCall = streamVideoClient?.call(callId.type, callId.id)
+
+                        kotlinx.coroutines.GlobalScope.launch {
+                            try {
+                                android.util.Log.i(
+                                    "StreamCallPlugin",
+                                    "Attempt to endCallRaw, activeCall == null: ${activeCall == null}",
+                                )
+                                activeCall?.let { endCallRaw(it) }
+                            } catch (e: Exception) {
+                                android.util.Log.e(
+                                    "StreamCallPlugin",
+                                    "Error ending after missed call notif action",
+                                    e
+                                )
+                            }
+                        }
+                    }
+                )
             )
 
             // Initialize StreamVideo client
@@ -331,7 +357,7 @@ public class StreamCallPlugin : Plugin() {
                 user = savedCredentials.user,
                 token = savedCredentials.tokenValue,
                 notificationConfig = notificationConfig,
-
+                sounds = emptyRingingConfig().toSounds()
                 // loggingLevel = LoggingLevel(priority = Priority.VERBOSE),
             ).build()
 
@@ -568,6 +594,37 @@ public class StreamCallPlugin : Plugin() {
         }
     }
 
+    suspend fun endCallRaw(call: Call) {
+        val callId = call.id
+        android.util.Log.d("StreamCallPlugin", "Attempting to end call $callId")
+        call.leave()
+        call.reject(reason = RejectReason.Cancel)
+        
+        activity?.runOnUiThread {
+            android.util.Log.d("StreamCallPlugin", "Setting overlay invisible after ending call $callId")
+            overlayView?.setContent {
+                CallOverlayView(
+                    context = context,
+                    streamVideo = streamVideoClient,
+                    call = null
+                )
+            }
+            overlayView?.isVisible = false
+        }
+        
+        // Notify that call has ended
+        val data = JSObject().apply {
+            put("callId", callId)
+            put("state", "left")
+        }
+        notifyListeners("callEvent", data)
+
+        val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        if (keyguardManager.isKeyguardLocked) {
+            activity.moveTaskToBack(true)
+        }
+    }
+
     @PluginMethod
     fun endCall(call: PluginCall) {
         try {
@@ -580,37 +637,10 @@ public class StreamCallPlugin : Plugin() {
 
             kotlinx.coroutines.GlobalScope.launch {
                 try {
-                    val callId = activeCall.value?.id
-                    android.util.Log.d("StreamCallPlugin", "Attempting to end call $callId")
-                    activeCall.value?.leave()
-                    
-                    activity?.runOnUiThread {
-                        android.util.Log.d("StreamCallPlugin", "Setting overlay invisible after ending call $callId")
-                        overlayView?.setContent {
-                            CallOverlayView(
-                                context = context,
-                                streamVideo = streamVideoClient,
-                                call = null
-                            )
-                        }
-                        overlayView?.isVisible = false
-                    }
-                    
-                    // Notify that call has ended
-                    val data = JSObject().apply {
-                        put("callId", callId)
-                        put("state", "left")
-                    }
-                    notifyListeners("callEvent", data)
-                    
+                    activeCall.value?.let { endCallRaw(it) }
                     call.resolve(JSObject().apply {
                         put("success", true)
                     })
-
-                    val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-                    if (keyguardManager.isKeyguardLocked) {
-                        activity.moveTaskToBack(true)
-                    }
                 } catch (e: Exception) {
                     android.util.Log.e("StreamCallPlugin", "Error ending call: ${e.message}")
                     call.reject("Failed to end call: ${e.message}")
