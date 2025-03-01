@@ -125,7 +125,7 @@ public struct CustomCallView<Factory: ViewFactory>: View {
                 participant: firstParticipant,
                 id: firstParticipant.id,
                 availableFrame: bounds,
-                contentMode: .scaleAspectFill,
+                contentMode: .scaleAspectFit,
                 customData: [:],
                 call: viewModel.call
             )
@@ -147,7 +147,7 @@ public struct CustomCallView<Factory: ViewFactory>: View {
     @ViewBuilder
     private func localVideoView(bounds: CGRect) -> some View {
         if let localParticipant = viewModel.localParticipant {
-            LocalVideoView(
+            CustomLocalVideoView(
                 viewFactory: viewFactory,
                 participant: localParticipant,
                 callSettings: bindableSettings.settings,
@@ -169,6 +169,19 @@ public struct CustomCallView<Factory: ViewFactory>: View {
             viewModel: viewModel,
             availableFrame: bounds,
             onChangeTrackVisibility: viewModel.changeTrackVisibility(for:isVisible:)
+        )
+    }
+    
+    public func makeVideoParticipantsView(
+        viewModel: CallViewModel,
+        availableFrame: CGRect,
+        onChangeTrackVisibility: @escaping @MainActor(CallParticipant, Bool) -> Void
+    ) -> some View {
+        VideoParticipantsView(
+            viewFactory: self.viewFactory,
+            viewModel: viewModel,
+            availableFrame: availableFrame,
+            onChangeTrackVisibility: onChangeTrackVisibility
         )
     }
 
@@ -200,5 +213,45 @@ struct CustomLocalParticipantViewModifier: ViewModifier {
                 }
                 .padding(8)
             )
+    }
+}
+
+public struct CustomLocalVideoView<Factory: ViewFactory>: View {
+
+    @Injected(\.streamVideo) var streamVideo
+
+    private let callSettings: CallSettings
+    private var viewFactory: Factory
+    private var participant: CallParticipant
+    private var idSuffix: String
+    private var call: Call?
+    private var availableFrame: CGRect
+
+    public init(
+        viewFactory: Factory = DefaultViewFactory.shared,
+        participant: CallParticipant,
+        idSuffix: String = "local",
+        callSettings: CallSettings,
+        call: Call?,
+        availableFrame: CGRect
+    ) {
+        self.viewFactory = viewFactory
+        self.participant = participant
+        self.idSuffix = idSuffix
+        self.callSettings = callSettings
+        self.call = call
+        self.availableFrame = availableFrame
+    }
+
+    public var body: some View {
+        viewFactory.makeVideoParticipantView(
+            participant: participant,
+            id: "\(streamVideo.user.id)-\(idSuffix)",
+            availableFrame: availableFrame,
+            contentMode: .scaleAspectFit,
+            customData: ["videoOn": .bool(callSettings.videoOn)],
+            call: call
+        )
+        .adjustVideoFrame(to: availableFrame.width, ratio: availableFrame.width / availableFrame.height)
     }
 }

@@ -50,19 +50,43 @@ class CallOverlayViewModel: ObservableObject {
     }
 }
 
+class CallOverlayViewFactory: ViewFactory {
+    // ... existing ViewFactory methods ...
+    public func makeVideoParticipantView(
+        participant: CallParticipant,
+        id: String,
+        availableFrame: CGRect,
+        contentMode: UIView.ContentMode,
+        customData: [String: RawJSON],
+        call: Call?
+    ) -> some View {
+        VideoCallParticipantView(
+            viewFactory: self,
+            participant: participant,
+            id: id,
+            availableFrame: availableFrame,
+            contentMode: .scaleAspectFit,
+            customData: customData,
+            call: call
+        )
+    }
+}
+
 struct CallOverlayView: View {
     @ObservedObject var viewModel: CallOverlayViewModel
     @State private var safeAreaInsets: EdgeInsets = .init()
+    private let viewFactory: CallOverlayViewFactory
     
     init(viewModel: CallOverlayViewModel) {
         self.viewModel = viewModel
+        self.viewFactory = CallOverlayViewFactory()
     }
     
     var body: some View {
         VStack(spacing: 0) {
             if let viewModelStandard = viewModel.viewModel {
                 ZStack {
-                    CustomCallView(viewFactory: DefaultViewFactory.shared, viewModel: viewModelStandard)
+                    CustomCallView(viewFactory: viewFactory, viewModel: viewModelStandard)
                 }
                 .padding(.top, safeAreaInsets.top)
                 .padding(.bottom, safeAreaInsets.bottom)

@@ -16,7 +16,8 @@ import io.getstream.video.android.model.StreamCallId
 
 class CustomNotificationHandler(
     val application: Application,
-    private val endCall: (callId: StreamCallId) -> Unit = {}
+    private val endCall: (callId: StreamCallId) -> Unit = {},
+    private val incomingCall: () -> Unit = {}
 ) : DefaultNotificationHandler(application, hideRingingNotificationInForeground = false) {
     companion object {
         private const val PREFS_NAME = "StreamCallPrefs"
@@ -37,15 +38,31 @@ class CustomNotificationHandler(
             .putLong(KEY_NOTIFICATION_TIME, currentTime)
             .apply()
 
-        // if the app is in foreground then don't interrupt the user with a high priority
-        // notification (popup). The application will display an incoming ringing call
-        // screen instead - but this needs to be handled by the application.
-        // The default behaviour is that all notification are high priority
-        val showAsHighPriority = true //!hideRingingNotificationInForeground || !isInForeground()
-        val channelId = "incoming_calls_custom" // also hardcoded
+        val showAsHighPriority = true
+        val channelId = "incoming_calls_custom"
 
         customCreateIncomingCallChannel(channelId, showAsHighPriority)
 
+        return buildNotification(
+            fullScreenPendingIntent,
+            acceptCallPendingIntent,
+            rejectCallPendingIntent,
+            callerName,
+            shouldHaveContentIntent,
+            channelId,
+            true // Include sound
+        )
+    }
+
+    fun buildNotification(
+        fullScreenPendingIntent: PendingIntent,
+        acceptCallPendingIntent: PendingIntent,
+        rejectCallPendingIntent: PendingIntent,
+        callerName: String?,
+        shouldHaveContentIntent: Boolean,
+        channelId: String,
+        includeSound: Boolean
+    ): Notification {
         return getNotification {
             priority = NotificationCompat.PRIORITY_HIGH
             setContentTitle(callerName)
@@ -53,7 +70,11 @@ class CustomNotificationHandler(
             setChannelId(channelId)
             setOngoing(true)
             setCategory(NotificationCompat.CATEGORY_CALL)
-            setDefaults(NotificationCompat.DEFAULT_ALL)  // This enables sound, vibration, and lights
+            if (includeSound) {
+                setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE))
+            }
+            setVibrate(longArrayOf(0, 1000, 500, 1000))
+            setLights(0xFF0000FF.toInt(), 1000, 1000)
             setFullScreenIntent(fullScreenPendingIntent, true)
             if (shouldHaveContentIntent) {
                 setContentIntent(fullScreenPendingIntent)
@@ -100,12 +121,8 @@ class CustomNotificationHandler(
                     this.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
                     this.setShowBadge(true)
                     
-                    // Add sound settings
-                    setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE), 
-                        AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
-                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                            .build())
+                    // Set the channel to be silent since we handle sound via RingtonePlayer
+                    setSound(null, null)
                     enableVibration(true)
                     enableLights(true)
                 }

@@ -19,17 +19,104 @@ class TouchInterceptView: UIView {
         self.webView = webView
         self.overlayView = overlayView
         
-        // Add overlay first (bottom)
+        // Add both views as subviews
         addSubview(overlayView)
-        // Add webview second (top)
         addSubview(webView)
-        
-        // Make sure webview stays on top
-        bringSubviewToFront(webView)
         
         // Ensure both views can receive touches
         webView.isUserInteractionEnabled = true
         overlayView.isUserInteractionEnabled = true
+    }
+    
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let webView = webView,
+              let overlayView = overlayView else {
+            super.touchesBegan(touches, with: event)
+            return
+        }
+        
+        // Convert touch locations and check labeled frames
+        if let touch = touches.first {
+            let point = touch.location(in: self)
+            let globalPoint = convert(point, to: nil)
+            
+            // If touch is in a labeled frame, only send to overlay
+            if labeledFrames.contains(where: { $0.frame.contains(globalPoint) }) {
+                overlayView.touchesBegan(touches, with: event)
+            } else {
+                // Otherwise broadcast to both views
+                webView.touchesBegan(touches, with: event)
+                overlayView.touchesBegan(touches, with: event)
+            }
+        }
+        
+        super.touchesBegan(touches, with: event)
+    }
+    
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let webView = webView,
+              let overlayView = overlayView else {
+            super.touchesMoved(touches, with: event)
+            return
+        }
+        
+        if let touch = touches.first {
+            let point = touch.location(in: self)
+            let globalPoint = convert(point, to: nil)
+            
+            if labeledFrames.contains(where: { $0.frame.contains(globalPoint) }) {
+                overlayView.touchesMoved(touches, with: event)
+            } else {
+                webView.touchesMoved(touches, with: event)
+                overlayView.touchesMoved(touches, with: event)
+            }
+        }
+        
+        super.touchesMoved(touches, with: event)
+    }
+    
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let webView = webView,
+              let overlayView = overlayView else {
+            super.touchesEnded(touches, with: event)
+            return
+        }
+        
+        if let touch = touches.first {
+            let point = touch.location(in: self)
+            let globalPoint = convert(point, to: nil)
+            
+            if labeledFrames.contains(where: { $0.frame.contains(globalPoint) }) {
+                overlayView.touchesEnded(touches, with: event)
+            } else {
+                webView.touchesEnded(touches, with: event)
+                overlayView.touchesEnded(touches, with: event)
+            }
+        }
+        
+        super.touchesEnded(touches, with: event)
+    }
+    
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let webView = webView,
+              let overlayView = overlayView else {
+            super.touchesCancelled(touches, with: event)
+            return
+        }
+        
+        if let touch = touches.first {
+            let point = touch.location(in: self)
+            let globalPoint = convert(point, to: nil)
+            
+            if labeledFrames.contains(where: { $0.frame.contains(globalPoint) }) {
+                overlayView.touchesCancelled(touches, with: event)
+            } else {
+                webView.touchesCancelled(touches, with: event)
+                overlayView.touchesCancelled(touches, with: event)
+            }
+        }
+        
+        super.touchesCancelled(touches, with: event)
     }
     
     override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {

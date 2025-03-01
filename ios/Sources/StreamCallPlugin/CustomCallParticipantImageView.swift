@@ -58,3 +58,4 @@ struct CustomCallParticipantImageView<Factory: ViewFactory>: View {
         .clipShape(Rectangle())
     }
 } 
+
