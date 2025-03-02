@@ -5,10 +5,7 @@ import android.app.Activity
 import android.app.Application
 import android.app.KeyguardManager
 import android.content.Context
-import android.content.pm.PackageManager
 import android.graphics.Color
-import android.media.RingtoneManager
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -28,16 +25,14 @@ import io.getstream.android.push.firebase.FirebasePushDeviceGenerator
 import io.getstream.android.push.permissions.ActivityLifecycleCallbacks
 import io.getstream.video.android.core.Call
 import io.getstream.video.android.core.GEO
+import io.getstream.video.android.core.RingingState
 import io.getstream.video.android.core.StreamVideo
 import io.getstream.video.android.core.StreamVideoBuilder
 import io.getstream.video.android.core.model.RejectReason
 import io.getstream.video.android.core.notifications.NotificationConfig
 import io.getstream.video.android.core.notifications.NotificationHandler
-// import io.getstream.video.android.core.notifications.internal.service.CallService
-import io.getstream.video.android.core.sounds.RingingConfig
 import io.getstream.video.android.core.sounds.emptyRingingConfig
 import io.getstream.video.android.core.sounds.toSounds
-import io.getstream.video.android.core.sounds.uriRingingConfig
 import io.getstream.video.android.model.StreamCallId
 import io.getstream.video.android.model.User
 import io.getstream.video.android.model.streamCallId
@@ -70,22 +65,67 @@ public class StreamCallPlugin : Plugin() {
         INITIALIZED
     }
 
-    public fun incomingRingingConfig(incomingCallSoundUri: Uri): RingingConfig = object : RingingConfig {
-        override val incomingCallSoundUri: Uri? = incomingCallSoundUri
-        override val outgoingCallSoundUri: Uri? = null
-    }
-
     private fun runOnMainThread(action: () -> Unit) {
         mainHandler.post { action() }
     }
 
     override fun handleOnPause() {
-        this.ringtonePlayer.let { it?.stopRinging() }
+        this.ringtonePlayer.let { it?.pauseRinging() }
+        super.handleOnPause()
+    }
+
+    override fun handleOnResume() {
+        this.ringtonePlayer.let { it?.resumeRinging() }
+        super.handleOnResume()
     }
 
     override fun load() {
         // general init
-        ringtonePlayer = RingtonePlayer(this.activity.application)
+        ringtonePlayer = RingtonePlayer(
+            this.activity.application,
+            cancelIncomingCallService = {
+                var streamVideoClient = this.streamVideoClient
+                if (streamVideoClient == null) {
+                    android.util.Log.d("StreamCallPlugin", "StreamVideo SDK client is null, no incoming call notification can be constructed")
+                    return@RingtonePlayer
+                }
+
+                try {
+                    val callServiceClass = Class.forName("io.getstream.video.android.core.notifications.internal.service.CallService")
+                    val companionClass = callServiceClass.declaredClasses.first { it.simpleName == "Companion" }
+                    // Instead of getting INSTANCE, we'll get the companion object through the enclosing class
+                    val companionField = callServiceClass.getDeclaredField("Companion")
+                    companionField.isAccessible = true
+                    val companionInstance = companionField.get(null)
+                    
+                    val removeIncomingCallMethod = companionClass.getDeclaredMethod(
+                        "removeIncomingCall",
+                        Context::class.java,
+                        Class.forName("io.getstream.video.android.model.StreamCallId"),
+                        Class.forName("io.getstream.video.android.core.notifications.internal.service.CallServiceConfig")
+                    )
+                    removeIncomingCallMethod.isAccessible = true
+
+                    // Get the default config using reflection
+                    val defaultConfigClass = Class.forName("io.getstream.video.android.core.notifications.internal.service.DefaultCallConfigurations")
+                    val defaultField = defaultConfigClass.getDeclaredField("INSTANCE")
+                    val defaultInstance = defaultField.get(null)
+                    val defaultMethod = defaultConfigClass.getDeclaredMethod("getDefault")
+                    val defaultConfig = defaultMethod.invoke(defaultInstance)
+
+                    val app = this.activity.application
+                    val cId = streamVideoClient?.state?.ringingCall?.value?.cid?.let { StreamCallId.fromCallCid(it) }
+                    if (app == null || cId == null || defaultConfig == null) {
+                        android.util.Log.e("StreamCallPlugin", "Some required parameters are null - app: ${app == null}, cId: ${cId == null}, defaultConfig: ${defaultConfig == null}")
+                    }
+
+                    // Call the method
+                    removeIncomingCallMethod.invoke(companionInstance, app, cId, defaultConfig)
+                } catch (e : Throwable) {
+                    android.util.Log.e("StreamCallPlugin", "Reflecting streamNotificationManager and the config DID NOT work", e);
+                }
+            }
+        )
         initializeStreamVideo()
         setupViews()
         super.load()
@@ -367,6 +407,47 @@ public class StreamCallPlugin : Plugin() {
 
             // unsafe cast, add better handling
             val application = contextToUse.applicationContext as Application
+            android.util.Log.d("StreamCallPlugin", "No existing StreamVideo singleton client, creating new one")
+            val notificationHandler = CustomNotificationHandler(
+                application = application,
+                endCall = { callId ->
+                    val activeCall = streamVideoClient?.call(callId.type, callId.id)
+
+                    kotlinx.coroutines.GlobalScope.launch {
+                        try {
+                            android.util.Log.i(
+                                "StreamCallPlugin",
+                                "Attempt to endCallRaw, activeCall == null: ${activeCall == null}",
+                            )
+                            activeCall?.let { endCallRaw(it) }
+                        } catch (e: Exception) {
+                            android.util.Log.e(
+                                "StreamCallPlugin",
+                                "Error ending after missed call notif action",
+                                e
+                            )
+                        }
+                    }
+                },
+                incomingCall = {
+                    if (this.savedContext != null && initializationTime != 0L) {
+                        val contextCreatedAt = initializationTime
+                        val now = System.currentTimeMillis()
+                        val isWithinOneSecond = (now - contextCreatedAt) <= 1000L
+
+                        android.util.Log.i(
+                            "StreamCallPlugin",
+                            "Time between context creation and activity created (incoming call notif): ${now - contextCreatedAt}"
+                        )
+                        if (isWithinOneSecond && !bootedToHandleCall) {
+                            android.util.Log.i(
+                                "StreamCallPlugin",
+                                "Notification incomingCall received less than 1 second after the creation of streamVideoSDK. Booted FOR SURE in order to handle the notification"
+                            )
+                        }
+                    }
+                }
+            )
 
             val notificationConfig = NotificationConfig(
                 pushDeviceGenerators = listOf(FirebasePushDeviceGenerator(
@@ -374,44 +455,10 @@ public class StreamCallPlugin : Plugin() {
                     context = contextToUse
                 )),
                 requestPermissionOnAppLaunch = { true },
-                notificationHandler = CustomNotificationHandler(
-                    application = application,
-                    endCall = { callId ->
-                        val activeCall = streamVideoClient?.call(callId.type, callId.id)
-
-                        kotlinx.coroutines.GlobalScope.launch {
-                            try {
-                                android.util.Log.i(
-                                    "StreamCallPlugin",
-                                    "Attempt to endCallRaw, activeCall == null: ${activeCall == null}",
-                                )
-                                activeCall?.let { endCallRaw(it) }
-                            } catch (e: Exception) {
-                                android.util.Log.e(
-                                    "StreamCallPlugin",
-                                    "Error ending after missed call notif action",
-                                    e
-                                )
-                            }
-                        }
-                    },
-                    incomingCall = {
-                        if (this.savedContext != null && initializationTime != 0L) {
-                            val contextCreatedAt = initializationTime
-                            val now = System.currentTimeMillis()
-                            val isWithinOneSecond = (now - contextCreatedAt) <= 1000L
-
-                            android.util.Log.i("StreamCallPlugin", "Time between context creation and activity created (incoming call notif): ${now - contextCreatedAt}")
-                            if (isWithinOneSecond && !bootedToHandleCall) {
-                                android.util.Log.i("StreamCallPlugin", "Notification incomingCall received less than 1 second after the creation of streamVideoSDK. Booted FOR SURE in order to handle the notification")
-                            }
-                        }
-
-                    }
-                )
+                notificationHandler = notificationHandler,
             )
 
-            val soundsConfig = incomingRingingConfig(incomingCallSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE))
+            val soundsConfig = emptyRingingConfig()
             soundsConfig.incomingCallSoundUri
             // Initialize StreamVideo client
             streamVideoClient = StreamVideoBuilder(
@@ -631,7 +678,7 @@ public class StreamCallPlugin : Plugin() {
                         android.util.Log.d("StreamCallPlugin", "Detected that the app booted an activity while locked. We will kill after the call fails")
                     }
 
-                    if (this@StreamCallPlugin.bridge == null) {
+                    if (this@StreamCallPlugin.bridge == null && activity is BridgeActivity) {
                         this@StreamCallPlugin.savedActivity = activity
                     }
                 }

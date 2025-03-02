@@ -6,12 +6,10 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import androidx.core.app.NotificationCompat
-import io.getstream.video.android.core.notifications.DefaultNotificationHandler
-import io.getstream.video.android.core.notifications.NotificationHandler
-import android.media.AudioAttributes
 import android.media.RingtoneManager
 import android.os.Build
+import androidx.core.app.NotificationCompat
+import io.getstream.video.android.core.notifications.DefaultNotificationHandler
 import io.getstream.video.android.model.StreamCallId
 
 class CustomNotificationHandler(
@@ -23,6 +21,7 @@ class CustomNotificationHandler(
         private const val PREFS_NAME = "StreamCallPrefs"
         private const val KEY_NOTIFICATION_TIME = "notification_creation_time"
     }
+    var allowSound = true;
 
     override fun getIncomingCallNotification(
         fullScreenPendingIntent: PendingIntent,
@@ -31,13 +30,6 @@ class CustomNotificationHandler(
         callerName: String?,
         shouldHaveContentIntent: Boolean,
     ): Notification {
-        // Store notification creation time
-        val currentTime = System.currentTimeMillis()
-        application.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putLong(KEY_NOTIFICATION_TIME, currentTime)
-            .apply()
-
         val showAsHighPriority = true
         val channelId = "incoming_calls_custom"
 
@@ -71,9 +63,18 @@ class CustomNotificationHandler(
             setOngoing(true)
             setAutoCancel(false)
             setCategory(NotificationCompat.CATEGORY_CALL)
-//            if (includeSound) {
-//                setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE))
-//            }
+            
+            // Clear all defaults first
+            setDefaults(0)
+            
+            if (includeSound && allowSound) {
+                setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE))
+                setDefaults(NotificationCompat.DEFAULT_VIBRATE or NotificationCompat.DEFAULT_LIGHTS)
+            } else {
+                setSound(null)
+                setDefaults(NotificationCompat.DEFAULT_VIBRATE or NotificationCompat.DEFAULT_LIGHTS)
+            }
+            
             setVibrate(longArrayOf(0, 1000, 500, 1000))
             setLights(0xFF0000FF.toInt(), 1000, 1000)
             setFullScreenIntent(fullScreenPendingIntent, true)
@@ -88,9 +89,6 @@ class CustomNotificationHandler(
                 )
                 setContentIntent(emptyIntent)
             }
-            
-            // Set the notification as ongoing using the proper flags
-            setDefaults(NotificationCompat.DEFAULT_ALL)
             addCallActions(acceptCallPendingIntent, rejectCallPendingIntent, callerName)
         }.apply {
             // flags = flags or NotificationCompat.FLAG_ONGOING_EVENT
@@ -136,5 +134,9 @@ class CustomNotificationHandler(
                 }
             },
         )
+    }
+
+    public fun clone(): CustomNotificationHandler {
+        return CustomNotificationHandler(this.application, this.endCall, this.incomingCall)
     }
 }
