@@ -69,10 +69,11 @@ class CustomNotificationHandler(
             setContentText("Incoming call")
             setChannelId(channelId)
             setOngoing(true)
+            setAutoCancel(false)
             setCategory(NotificationCompat.CATEGORY_CALL)
-            if (includeSound) {
-                setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE))
-            }
+//            if (includeSound) {
+//                setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE))
+//            }
             setVibrate(longArrayOf(0, 1000, 500, 1000))
             setLights(0xFF0000FF.toInt(), 1000, 1000)
             setFullScreenIntent(fullScreenPendingIntent, true)
@@ -86,9 +87,13 @@ class CustomNotificationHandler(
                     PendingIntent.FLAG_IMMUTABLE,
                 )
                 setContentIntent(emptyIntent)
-                setAutoCancel(false)
             }
+            
+            // Set the notification as ongoing using the proper flags
+            setDefaults(NotificationCompat.DEFAULT_ALL)
             addCallActions(acceptCallPendingIntent, rejectCallPendingIntent, callerName)
+        }.apply {
+            // flags = flags or NotificationCompat.FLAG_ONGOING_EVENT
         }
     }
 

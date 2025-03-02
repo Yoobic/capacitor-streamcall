@@ -1,10 +1,12 @@
 package ee.forgr.capacitor.streamcall
 
 import android.app.Application
+import android.app.NotificationManager
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.media.RingtoneManager
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -19,6 +21,19 @@ class RingtonePlayer(private val application: Application) {
     private var mediaPlayer: MediaPlayer? = null
     private val handler = Handler(Looper.getMainLooper())
     private var stopRingtoneRunnable: Runnable? = null
+
+    private fun isOurNotification(notification: android.service.notification.StatusBarNotification): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Check channel ID for Android O and above
+            notification.notification.channelId == "incoming_calls_custom" &&
+            notification.notification.category == android.app.Notification.CATEGORY_CALL &&
+            notification.notification.actions?.size == 2
+        } else {
+            // For older devices, just check category and actions
+            notification.notification.category == android.app.Notification.CATEGORY_CALL &&
+            notification.notification.actions?.size == 2
+        }
+    }
 
     fun startRinging() {
         try {
@@ -40,6 +55,70 @@ class RingtonePlayer(private val application: Application) {
                             .build()
                     )
                     prepare()
+                }
+            }
+
+            val notificationManager = application.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val notifs = notificationManager.activeNotifications.toList()
+            for (notification in notifs) {
+                // First check if it's our notification
+                val isOurs = isOurNotification(notification)
+                Log.d("RingtonePlayer", """Notification details:
+                    |Is Our Notification: $isOurs
+                    |Tag: ${notification.tag}
+                    |Key: ${notification.key}
+                    |ID: ${notification.id}
+                    |Channel ID: ${if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) notification.notification.channelId else "N/A"}
+                    |Group: ${notification.notification.group ?: "No group"}
+                    |When: ${notification.notification.`when`}
+                    |Post Time: ${notification.postTime}
+                    |Creation Time: ${notification.notification.`when`}
+                    |Package Name: ${notification.packageName}
+                    |Title: ${notification.notification.extras.getString("android.title")}
+                    |Text: ${notification.notification.extras.getString("android.text")}
+                    |Sub Text: ${notification.notification.extras.getString("android.subText")}
+                    |Info Text: ${notification.notification.extras.getString("android.infoText")}
+                    |Category: ${notification.notification.category ?: "No category"}
+                    |Priority: ${notification.notification.priority}
+                    |Flags: ${notification.notification.flags}
+                    |Flag Analysis: ${analyzeFlagsBinary(notification.notification.flags)}
+                    |Is FLAG_NO_CLEAR Set: ${(notification.notification.flags and android.app.Notification.FLAG_NO_CLEAR) != 0}
+                    |Is FLAG_ONGOING_EVENT Set: ${(notification.notification.flags and android.app.Notification.FLAG_ONGOING_EVENT) != 0}
+                    |Is FLAG_FOREGROUND_SERVICE Set: ${(notification.notification.flags and android.app.Notification.FLAG_FOREGROUND_SERVICE) != 0}
+                    |Number: ${notification.notification.number}
+                    |Visibility: ${notification.notification.visibility}
+                    |Sound URI: ${notification.notification.sound}
+                    |Vibrate Pattern: ${notification.notification.vibrate?.contentToString() ?: "No vibration"}
+                    |LED Color: ${notification.notification.ledARGB}
+                    |LED On MS: ${notification.notification.ledOnMS}
+                    |LED Off MS: ${notification.notification.ledOffMS}
+                    |Defaults: ${notification.notification.defaults}
+                    |Actions: ${notification.notification.actions?.size ?: 0} actions
+                    |Ongoing: ${notification.isOngoing}
+                    |Clearable: ${notification.isClearable}
+                    |Group Key: ${notification.groupKey ?: "No group key"}
+                    |Overflow: ${notification.isGroup}
+                    |User ID: ${notification.userId}
+                    |Badge Icon Type: ${if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) notification.notification.badgeIconType else "N/A"}
+                    |Settings Text: ${if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) notification.notification.settingsText else "N/A"}
+                    |Shortcut ID: ${if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) notification.notification.shortcutId else "N/A"}
+                    |Timeout After: ${if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) notification.notification.timeoutAfter else "N/A"}
+                    |All Extras: ${notification.notification.extras}
+                    """.trimMargin())
+
+                // Only proceed with ringtone if it's our notification
+                if (!isOurs) {
+                    Log.d("RingtonePlayer", "Skipping notification as it's not our incoming call notification")
+                    continue
+                }
+
+                // Cancel our notification
+                try {
+                    Log.d("RingtonePlayer", "Cancelling our notification with ID: ${notification.id}")
+                    // notificationManager.cancel(notification.id)
+
+                } catch (e: Exception) {
+                    Log.e("RingtonePlayer", "Error cancelling notification: ${e.message}")
                 }
             }
             
@@ -95,5 +174,17 @@ class RingtonePlayer(private val application: Application) {
         } catch (e: Exception) {
             Log.e("RingtonePlayer", "Error stopping ringtone: ${e.message}")
         }
+    }
+
+    // Add helper function to analyze flags
+    private fun analyzeFlagsBinary(flags: Int): String {
+        val flagsList = mutableListOf<String>()
+        if ((flags and android.app.Notification.FLAG_AUTO_CANCEL) != 0) flagsList.add("FLAG_AUTO_CANCEL")
+        if ((flags and android.app.Notification.FLAG_NO_CLEAR) != 0) flagsList.add("FLAG_NO_CLEAR")
+        if ((flags and android.app.Notification.FLAG_ONGOING_EVENT) != 0) flagsList.add("FLAG_ONGOING_EVENT")
+        if ((flags and android.app.Notification.FLAG_INSISTENT) != 0) flagsList.add("FLAG_INSISTENT")
+        if ((flags and android.app.Notification.FLAG_ONLY_ALERT_ONCE) != 0) flagsList.add("FLAG_ONLY_ALERT_ONCE")
+        if ((flags and android.app.Notification.FLAG_FOREGROUND_SERVICE) != 0) flagsList.add("FLAG_FOREGROUND_SERVICE")
+        return flagsList.joinToString(", ")
     }
 } 

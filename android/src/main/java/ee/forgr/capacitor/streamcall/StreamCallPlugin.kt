@@ -7,6 +7,8 @@ import android.app.KeyguardManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -16,6 +18,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.view.isVisible
+import com.getcapacitor.BridgeActivity
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
@@ -30,8 +33,12 @@ import io.getstream.video.android.core.StreamVideoBuilder
 import io.getstream.video.android.core.model.RejectReason
 import io.getstream.video.android.core.notifications.NotificationConfig
 import io.getstream.video.android.core.notifications.NotificationHandler
+// import io.getstream.video.android.core.notifications.internal.service.CallService
+import io.getstream.video.android.core.sounds.RingingConfig
 import io.getstream.video.android.core.sounds.emptyRingingConfig
 import io.getstream.video.android.core.sounds.toSounds
+import io.getstream.video.android.core.sounds.uriRingingConfig
+import io.getstream.video.android.model.StreamCallId
 import io.getstream.video.android.model.User
 import io.getstream.video.android.model.streamCallId
 import kotlinx.coroutines.launch
@@ -61,6 +68,11 @@ public class StreamCallPlugin : Plugin() {
         NOT_INITIALIZED,
         INITIALIZING,
         INITIALIZED
+    }
+
+    public fun incomingRingingConfig(incomingCallSoundUri: Uri): RingingConfig = object : RingingConfig {
+        override val incomingCallSoundUri: Uri? = incomingCallSoundUri
+        override val outgoingCallSoundUri: Uri? = null
     }
 
     private fun runOnMainThread(action: () -> Unit) {
@@ -185,6 +197,14 @@ public class StreamCallPlugin : Plugin() {
             barrierView?.isVisible = false
         }
     }
+
+//    private fun remoteIncomingCallNotif() {
+//        CallService.removeIncomingCall(
+//            context,
+//            StreamCallId.fromCallCid(call.cid),
+//            StreamVideo.instance().state.callConfigRegistry.get(call.type),
+//        )
+//    }
 
     private fun setupViews() {
         val context = context
@@ -391,6 +411,8 @@ public class StreamCallPlugin : Plugin() {
                 )
             )
 
+            val soundsConfig = incomingRingingConfig(incomingCallSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE))
+            soundsConfig.incomingCallSoundUri
             // Initialize StreamVideo client
             streamVideoClient = StreamVideoBuilder(
                 context = contextToUse,
@@ -399,7 +421,7 @@ public class StreamCallPlugin : Plugin() {
                 user = savedCredentials.user,
                 token = savedCredentials.tokenValue,
                 notificationConfig = notificationConfig,
-                sounds = emptyRingingConfig().toSounds()
+                sounds = soundsConfig.toSounds()
                 //, loggingLevel = LoggingLevel(priority = Priority.VERBOSE)
             ).build()
 
@@ -741,18 +763,7 @@ public class StreamCallPlugin : Plugin() {
         
         runOnMainThread {
             android.util.Log.d("StreamCallPlugin", "Setting overlay invisible after ending call $callId")
-            overlayView?.setContent {
-                CallOverlayView(
-                    context = currentContext,
-                    streamVideo = streamVideoClient,
-                    call = null
-                )
-            }
-            overlayView?.isVisible = false
 
-            // Also hide incoming call view if visible
-            android.util.Log.d("StreamCallPlugin", "Hiding incoming call view for call $callId")
-            incomingCallView?.isVisible = false
 
             currentContext.let { ctx ->
                 val keyguardManager = ctx.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
@@ -765,6 +776,47 @@ public class StreamCallPlugin : Plugin() {
                     moveAllActivitiesToBackgroundOrKill(ctx, true)
                 }
             }
+
+            var savedCapacitorActivity = savedActivity
+            if (savedCapacitorActivity != null) {
+                android.util.Log.d("StreamCallPlugin", "Performing a trans-instance call to end call with id $callId")
+                if (savedCapacitorActivity !is BridgeActivity) {
+                    android.util.Log.e("StreamCallPlugin", "Saved activity is NOT a Capactor activity")
+                    return@runOnMainThread
+                }
+                val plugin = savedCapacitorActivity.bridge.getPlugin("StreamCall")
+                if (plugin == null) {
+                    android.util.Log.e("StreamCallPlugin", "Plugin with name StreamCall not found?????")
+                    return@runOnMainThread
+                }
+                if (plugin.instance !is StreamCallPlugin) {
+                    android.util.Log.e("StreamCallPlugin", "Plugin found, but invalid instance")
+                    return@runOnMainThread
+                }
+                kotlinx.coroutines.GlobalScope.launch {
+                    try {
+                        (plugin.instance as StreamCallPlugin).endCallRaw(call)
+                    } catch (e: Exception) {
+                        android.util.Log.e("StreamCallPlugin", "Error ending call on remote instance", e)
+                    }
+                }
+
+                return@runOnMainThread
+            }
+
+            overlayView?.setContent {
+                CallOverlayView(
+                    context = currentContext,
+                    streamVideo = streamVideoClient,
+                    call = null
+                )
+            }
+            overlayView?.isVisible = false
+            this@StreamCallPlugin.ringtonePlayer?.stopRinging()
+
+            // Also hide incoming call view if visible
+            android.util.Log.d("StreamCallPlugin", "Hiding incoming call view for call $callId")
+            incomingCallView?.isVisible = false
         }
         
         // Notify that call has ended
