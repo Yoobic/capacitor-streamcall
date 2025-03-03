@@ -58,6 +58,8 @@ public class StreamCallPlugin : Plugin() {
     private var bootedToHandleCall: Boolean = false
     private var initializationTime: Long = 0
     private var savedActivity: Activity? = null
+    private var savedActivityPaused = false
+    private var savedCallsToEndOnResume = mutableListOf<Call>()
 
     private enum class State {
         NOT_INITIALIZED,
@@ -660,7 +662,7 @@ public class StreamCallPlugin : Plugin() {
             override fun onActivityCreated(activity: Activity, bunlde: Bundle?) {
                 android.util.Log.d("StreamCallPlugin", "onActivityCreated called")
                 savedContext?.let {
-                    if (this@StreamCallPlugin.savedActivity != null) {
+                    if (this@StreamCallPlugin.savedActivity != null && activity is BridgeActivity) {
                         android.util.Log.d("StreamCallPlugin", "Activity created before, but got re-created. saving and returning")
                         this@StreamCallPlugin.savedActivity = activity;
                         return
@@ -683,6 +685,24 @@ public class StreamCallPlugin : Plugin() {
                     }
                 }
                 super.onActivityCreated(activity, bunlde)
+            }
+
+            override fun onActivityPaused(activity: Activity) {
+                if (activity is BridgeActivity && activity == this@StreamCallPlugin.savedActivity) {
+                    this@StreamCallPlugin.savedActivityPaused = true
+                }
+                super.onActivityPaused(activity)
+            }
+
+            override fun onActivityResumed(activity: Activity) {
+                if (activity is BridgeActivity && activity == this@StreamCallPlugin.savedActivity) {
+                    this@StreamCallPlugin.savedActivityPaused = false
+                }
+                for (call in this@StreamCallPlugin.savedCallsToEndOnResume) {
+                    android.util.Log.d("StreamCallPlugin", "Trying to end call with ID ${call.id} on resume")
+                    transEndCallRaw(call)
+                }
+                super.onActivityResumed(activity)
             }
         })
     }
@@ -826,26 +846,12 @@ public class StreamCallPlugin : Plugin() {
 
             var savedCapacitorActivity = savedActivity
             if (savedCapacitorActivity != null) {
-                android.util.Log.d("StreamCallPlugin", "Performing a trans-instance call to end call with id $callId")
-                if (savedCapacitorActivity !is BridgeActivity) {
-                    android.util.Log.e("StreamCallPlugin", "Saved activity is NOT a Capactor activity")
-                    return@runOnMainThread
-                }
-                val plugin = savedCapacitorActivity.bridge.getPlugin("StreamCall")
-                if (plugin == null) {
-                    android.util.Log.e("StreamCallPlugin", "Plugin with name StreamCall not found?????")
-                    return@runOnMainThread
-                }
-                if (plugin.instance !is StreamCallPlugin) {
-                    android.util.Log.e("StreamCallPlugin", "Plugin found, but invalid instance")
-                    return@runOnMainThread
-                }
-                kotlinx.coroutines.GlobalScope.launch {
-                    try {
-                        (plugin.instance as StreamCallPlugin).endCallRaw(call)
-                    } catch (e: Exception) {
-                        android.util.Log.e("StreamCallPlugin", "Error ending call on remote instance", e)
-                    }
+
+                if (savedActivityPaused) {
+                    android.util.Log.d("StreamCallPlugin", "Activity is paused. Adding call ${call.id} to savedCallsToEndOnResume")
+                    savedCallsToEndOnResume.add(call)
+                } else {
+                    transEndCallRaw(call)
                 }
 
                 return@runOnMainThread
@@ -872,6 +878,37 @@ public class StreamCallPlugin : Plugin() {
             put("state", "left")
         }
         notifyListeners("callEvent", data)
+    }
+
+    private fun transEndCallRaw(call: Call) {
+        val callId = call.id
+        var savedCapacitorActivity = savedActivity
+        if (savedCapacitorActivity == null) {
+            android.util.Log.d("StreamCallPlugin", "Cannot perform transEndCallRaw for call $callId. savedCapacitorActivity is null")
+            return
+        }
+        android.util.Log.d("StreamCallPlugin", "Performing a trans-instance call to end call with id $callId")
+        if (savedCapacitorActivity !is BridgeActivity) {
+            android.util.Log.e("StreamCallPlugin", "Saved activity is NOT a Capactor activity. Saved activity class: ${savedCapacitorActivity.javaClass.canonicalName}")
+            return
+        }
+        val plugin = savedCapacitorActivity.bridge.getPlugin("StreamCall")
+        if (plugin == null) {
+            android.util.Log.e("StreamCallPlugin", "Plugin with name StreamCall not found?????")
+            return
+        }
+        if (plugin.instance !is StreamCallPlugin) {
+            android.util.Log.e("StreamCallPlugin", "Plugin found, but invalid instance")
+            return
+        }
+
+        kotlinx.coroutines.GlobalScope.launch {
+            try {
+                (plugin.instance as StreamCallPlugin).endCallRaw(call)
+            } catch (e: Exception) {
+                android.util.Log.e("StreamCallPlugin", "Error ending call on remote instance", e)
+            }
+        }
     }
 
     @PluginMethod
