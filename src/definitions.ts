@@ -26,6 +26,10 @@ export interface CallEvent {
   state: string;
 }
 
+export interface CameraEnabledResponse {
+  enabled: boolean;
+}
+
 export interface StreamCallPlugin {
   login(options: LoginOptions): Promise<SuccessResponse>;
   logout(): Promise<SuccessResponse>;
@@ -43,4 +47,5 @@ export interface StreamCallPlugin {
 
   acceptCall(): Promise<SuccessResponse>;
   rejectCall(): Promise<SuccessResponse>;
+  isCameraEnabled(): Promise<CameraEnabledResponse>;
 }

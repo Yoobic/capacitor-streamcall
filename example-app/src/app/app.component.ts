@@ -122,7 +122,11 @@ export class AppComponent {
       if (event.state === 'joined') {
         this.isInCall = true;
         console.log('Call started', event);
-        this.cdr.detectChanges();
+        setTimeout(async () => {
+          const cameraEnabled = await StreamCall.isCameraEnabled();
+          this.isCameraOff = !cameraEnabled.enabled;
+          this.cdr.detectChanges();
+        }, 1000);
       } else if (event.state === 'left') {
         this.isInCall = false;
         console.log('Call ended', event);
