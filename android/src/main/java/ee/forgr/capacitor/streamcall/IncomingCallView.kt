@@ -33,8 +33,8 @@ import io.getstream.video.android.core.RingingState
 import io.getstream.video.android.core.StreamVideo
 import io.getstream.video.android.core.call.state.AcceptCall
 import io.getstream.video.android.core.call.state.DeclineCall
+import io.getstream.video.android.core.call.state.ToggleCamera
 import io.getstream.video.android.model.User
-import java.time.OffsetDateTime
 
 @Composable
 fun IncomingCallView(
@@ -130,6 +130,9 @@ fun IncomingCallView(
                             when (action) {
                                 DeclineCall -> onDeclineCall?.invoke(call)
                                 AcceptCall -> onAcceptCall?.invoke(call)
+                                is ToggleCamera -> {
+                                    call.camera.setEnabled(action.isEnabled)
+                                }
                                 else -> { /* ignore other actions */ }
                             }
                         }

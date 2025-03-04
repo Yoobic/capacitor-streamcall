@@ -72,6 +72,10 @@ export interface CallEvent {
   state: string;
 }
 
+export interface CameraEnabledResponse {
+  enabled: boolean;
+}
+
 /**
  * @interface StreamCallPlugin
  * @description Capacitor plugin for Stream Video calling functionality
@@ -176,4 +180,5 @@ export interface StreamCallPlugin {
    * await StreamCall.rejectCall();
    */
   rejectCall(): Promise<SuccessResponse>;
+  isCameraEnabled(): Promise<CameraEnabledResponse>;
 }
