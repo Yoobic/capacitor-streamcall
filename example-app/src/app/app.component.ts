@@ -1,6 +1,5 @@
 import { Component } from '@angular/core';
 import { ChangeDetectorRef } from '@angular/core';
-import { Capacitor } from '@capacitor/core';
 import { ToastController } from '@ionic/angular';
 import { StreamCall } from '@capgo/capacitor-stream-call';
 
@@ -125,19 +124,26 @@ export class AppComponent {
         setTimeout(async () => {
           const cameraEnabled = await StreamCall.isCameraEnabled();
           this.isCameraOff = !cameraEnabled.enabled;
+          await this.presentToast('Call started', 'success');
           this.cdr.detectChanges();
         }, 1000);
       } else if (event.state === 'left') {
         this.isInCall = false;
         console.log('Call ended', event);
+        await this.presentToast('Call ended', 'success');
         this.cdr.detectChanges();
       } else if (event.state === 'rejected') {
         this.isInCall = false;
         console.log('Call rejected', event);
+        await this.presentToast('Call rejected', 'success');
         this.cdr.detectChanges();
       } else if (event.state === 'ringing') {
         this.incomingCallId = event.callId;
         await this.presentIncomingCallToast();
+        this.cdr.detectChanges();
+      } else {
+        console.log('Call event', event);
+        await this.presentToast(`Call event: ${event.state}`, 'success');
         this.cdr.detectChanges();
       }
     });
