@@ -1,6 +1,6 @@
 {
   "name": "@capgo/capacitor-stream-call",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Uses the https://getstream.io/ SDK to implement calling in Capacitor",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
@@ -15,7 +15,7 @@
     "Package.swift",
     "StreamCall.podspec"
   ],
-  "author": "",
+  "author": "Martin Donadieu <martin@capgo.app>",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -27,7 +27,19 @@
   "keywords": [
     "capacitor",
     "plugin",
-    "native"
+    "stream",
+    "call",
+    "video",
+    "audio",
+    "getstream",
+    "stream-video",
+    "stream-call",
+    "group-call",
+    "native",
+    "ios",
+    "android",
+    "web",
+    "capacitor-plugin"    
   ],
   "scripts": {
     "verify": "npm run verify:ios && npm run verify:android && npm run verify:web",
