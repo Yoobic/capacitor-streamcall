@@ -201,7 +201,7 @@ public class StreamCallPlugin : Plugin() {
     private fun declineCall(call: Call) {
         kotlinx.coroutines.GlobalScope.launch {
             try {
-                call.reject(RejectReason.Decline)
+                call.leave()
                 
                 // Stop ringtone
                 ringtonePlayer?.stopRinging()

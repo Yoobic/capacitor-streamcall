@@ -49,7 +49,7 @@ fun IncomingCallView(
     LaunchedEffect(ringingState?.value) {
         Log.d("IncomingCallView", "Changing ringingState to ${ringingState?.value}")
         when (ringingState?.value) {
-            RingingState.TimeoutNoAnswer, RingingState.RejectedByAll, RingingState.RejectedByAll -> {
+            RingingState.TimeoutNoAnswer, RingingState.RejectedByAll -> {
                 Log.d("IncomingCallView", "Call ended (${ringingState.value}), hiding incoming call view")
                 onHideIncomingCall?.invoke()
             }
