@@ -14,4 +14,4 @@ struct CallOverlayView_Previews: PreviewProvider {
         CallOverlayView()
     }
 }
-#endif 
+#endif

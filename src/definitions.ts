@@ -137,7 +137,7 @@ export interface StreamCallPlugin {
    * await StreamCall.setCameraEnabled({ enabled: false });
    */
   setCameraEnabled(options: { enabled: boolean }): Promise<SuccessResponse>;
-  
+
   /**
    * Add listener for call events
    * @param {'callEvent'} eventName - Name of the event to listen for
@@ -152,7 +152,7 @@ export interface StreamCallPlugin {
     eventName: 'callEvent',
     listenerFunc: (event: CallEvent) => void,
   ): Promise<{ remove: () => Promise<void> }>;
-  
+
   /**
    * Remove all event listeners
    * @returns {Promise<void>}

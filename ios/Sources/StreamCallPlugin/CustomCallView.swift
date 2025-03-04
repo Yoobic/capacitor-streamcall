@@ -10,7 +10,7 @@ import StreamVideoSwiftUI
 // Custom class to hold bindable settings
 class BindableCallSettings: ObservableObject {
     @Published var settings: CallSettings
-    
+
     init(settings: CallSettings) {
         self.settings = settings
     }
@@ -171,7 +171,7 @@ public struct CustomCallView<Factory: ViewFactory>: View {
             onChangeTrackVisibility: viewModel.changeTrackVisibility(for:isVisible:)
         )
     }
-    
+
     public func makeVideoParticipantsView(
         viewModel: CallViewModel,
         availableFrame: CGRect,
@@ -195,7 +195,7 @@ struct CustomLocalParticipantViewModifier: ViewModifier {
     let localParticipant: CallParticipant
     let callSettings: CallSettings
     let call: Call?
-    
+
     func body(content: Content) -> some View {
         content
             .overlay(

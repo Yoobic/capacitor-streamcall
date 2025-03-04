@@ -39,7 +39,7 @@ public struct CustomVideoCallParticipantView<Factory: ViewFactory>: View {
         self.customData = customData
         self.call = call
     }
-    
+
     public var body: some View {
         withCallSettingsObservation {
             VideoRendererView(
@@ -62,16 +62,16 @@ public struct CustomVideoCallParticipantView<Factory: ViewFactory>: View {
         .accessibility(identifier: "callParticipantView")
         .streamAccessibility(value: showVideo ? "1" : "0")
         .overlay(
-//            CustomCallParticipantImageView(
-//                viewFactory: viewFactory,
-//                id: participant.id,
-//                name: participant.name,
-//                imageURL: participant.profileImageURL
-//                // frame: availableFrame.size
-//            )
+            //            CustomCallParticipantImageView(
+            //                viewFactory: viewFactory,
+            //                id: participant.id,
+            //                name: participant.name,
+            //                imageURL: participant.profileImageURL
+            //                // frame: availableFrame.size
+            //            )
             Color.green
-            .frame(width: availableFrame.width, height: availableFrame.height)
-            .opacity(showVideo ? 0 : 1)
+                .frame(width: availableFrame.width, height: availableFrame.height)
+                .opacity(showVideo ? 0 : 1)
         )
     }
 

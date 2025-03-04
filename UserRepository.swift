@@ -17,36 +17,36 @@ struct UserCredentials: Identifiable, Codable {
 }
 
 protocol UserRepository {
-    
+
     func save(user: UserCredentials)
-    
+
     func loadCurrentUser() -> UserCredentials?
-    
+
     func removeCurrentUser()
-    
+
     func save(token: String)
-    
+
 }
 
 protocol VoipTokenHandler {
-    
+
     func save(voipPushToken: String?)
-    
+
     func currentVoipPushToken() -> String?
-    
+
 }
 
 class SecureUserRepository: UserRepository, VoipTokenHandler {
-    
+
     static let shared = SecureUserRepository()
-    
+
     private let serviceIdentifier = "stream.video.keychain"
     private let userKey = "stream.video.user"
     private let tokenKey = "stream.video.token"
     private let voipPushTokenKey = "stream.video.voip.token"
-    
+
     private init() {}
-    
+
     private func save(data: Data, forKey key: String) {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -55,10 +55,10 @@ class SecureUserRepository: UserRepository, VoipTokenHandler {
             kSecValueData as String: data,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock // More permissive access
         ]
-        
+
         // First try to delete any existing item
         SecItemDelete(query as CFDictionary)
-        
+
         // Then add the new item
         let status = SecItemAdd(query as CFDictionary, nil)
         if status != errSecSuccess {
@@ -76,7 +76,7 @@ class SecureUserRepository: UserRepository, VoipTokenHandler {
             }
         }
     }
-    
+
     private func loadData(forKey key: String) -> Data? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -85,10 +85,10 @@ class SecureUserRepository: UserRepository, VoipTokenHandler {
             kSecReturnData as String: true,
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
         ]
-        
+
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
-        
+
         if status != errSecSuccess && status != errSecItemNotFound {
             switch status {
             case errSecNotAvailable:
@@ -99,20 +99,20 @@ class SecureUserRepository: UserRepository, VoipTokenHandler {
                 log.error("Keychain error: Unhandled error \(status)")
             }
         }
-        
+
         return result as? Data
     }
-    
+
     private func deleteData(forKey key: String) {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: serviceIdentifier,
             kSecAttrAccount as String: key
         ]
-        
+
         SecItemDelete(query as CFDictionary)
     }
-    
+
     func save(user: UserCredentials) {
         let encoder = JSONEncoder()
         if let encoded = try? encoder.encode(user.user) {
@@ -122,20 +122,20 @@ class SecureUserRepository: UserRepository, VoipTokenHandler {
             }
         }
     }
-    
+
     func save(token: String) {
         if let tokenData = token.data(using: .utf8) {
             save(data: tokenData, forKey: tokenKey)
         }
     }
-    
+
     func loadCurrentUser() -> UserCredentials? {
         guard let userData = loadData(forKey: userKey),
               let tokenData = loadData(forKey: tokenKey),
               let tokenString = String(data: tokenData, encoding: .utf8) else {
             return nil
         }
-        
+
         let decoder = JSONDecoder()
         do {
             let loadedUser = try decoder.decode(User.self, from: userData)
@@ -145,7 +145,7 @@ class SecureUserRepository: UserRepository, VoipTokenHandler {
             return nil
         }
     }
-    
+
     func save(voipPushToken: String?) {
         if let token = voipPushToken,
            let tokenData = token.data(using: .utf8) {
@@ -154,18 +154,17 @@ class SecureUserRepository: UserRepository, VoipTokenHandler {
             deleteData(forKey: voipPushTokenKey)
         }
     }
-    
+
     func currentVoipPushToken() -> String? {
         guard let tokenData = loadData(forKey: voipPushTokenKey) else {
             return nil
         }
         return String(data: tokenData, encoding: .utf8)
     }
-    
+
     func removeCurrentUser() {
         deleteData(forKey: userKey)
         deleteData(forKey: tokenKey)
         deleteData(forKey: voipPushTokenKey)
     }
 }
-

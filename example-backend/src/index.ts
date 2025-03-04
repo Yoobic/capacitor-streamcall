@@ -1,23 +1,26 @@
-import { serve } from '@hono/node-server'
-import { StreamClient, type UserRequest } from "@stream-io/node-sdk";
+import { serve } from '@hono/node-server';
+import { StreamClient, type UserRequest } from '@stream-io/node-sdk';
 import dotenv from 'dotenv';
-import { Hono } from 'hono'
-import { cors } from 'hono/cors'
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 
 // Load environment variables from .env file
 dotenv.config();
 
-const app = new Hono()
+const app = new Hono();
 
 // Enable CORS
-app.use('/*', cors({
-  origin: '*', // In production, you should specify your actual frontend domain
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization', 'magic-shit'],
-  exposeHeaders: ['Content-Length', 'X-Requested-With'],
-  maxAge: 86400,
-  credentials: true
-}))
+app.use(
+  '/*',
+  cors({
+    origin: '*', // In production, you should specify your actual frontend domain
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization', 'magic-shit'],
+    exposeHeaders: ['Content-Length', 'X-Requested-With'],
+    maxAge: 86400,
+    credentials: true,
+  }),
+);
 
 // Check for required environment variables
 if (!process.env.STREAM_API_KEY || !process.env.STREAM_API_SECRET) {
@@ -33,13 +36,13 @@ const client = new StreamClient(apiKey, apiSecret);
 app.get('/', (c) => {
   console.log('apiKey', apiKey);
   console.log('apiSecret', apiSecret);
-  return c.text(`${apiKey} ${apiSecret}`)
-})
+  return c.text(`${apiKey} ${apiSecret}`);
+});
 
 app.get('/user', async (c) => {
   try {
     const userId = c.req.query('user_id');
-    
+
     if (!userId) {
       return c.json({ error: 'user_id query parameter is required' }, 400);
     }
@@ -58,11 +61,11 @@ app.get('/user', async (c) => {
     const token = client.generateUserToken({ user_id: userId, validity_in_seconds: vailidity });
 
     console.log('token', token);
-    return c.json({ 
+    return c.json({
       token,
       userId,
       name: userName,
-      imageURL
+      imageURL,
     });
   } catch (error) {
     console.error('Error fetching user:', error);
@@ -70,10 +73,10 @@ app.get('/user', async (c) => {
   }
 });
 
-const port = 3763
-console.log(`Server is running on http://localhost:${port}`)
+const port = 3763;
+console.log(`Server is running on http://localhost:${port}`);
 
 serve({
   fetch: app.fetch,
-  port
-})
+  port,
+});
