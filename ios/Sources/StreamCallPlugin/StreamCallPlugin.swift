@@ -369,7 +369,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     func handleParticipantResponse(userId: String, response: String, eventType: String) async {
                         guard let streamCall = streamCall else { return }
                         participantResponses[userId] = response
-                        print("Call was \(response) by user: \(userId)")
+                        print("Call was \(response) by user: \(userId) in call: \(callId) with event type: \(eventType)")
                         await MainActor.run {
                             self.notifyListeners("callEvent", data: [
                                 "callId": callId,
@@ -406,10 +406,6 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                             print("Received event:", event)
                             if let rejectedEvent = event.rawValue as? CallRejectedEvent {
                                 await handleParticipantResponse(userId: rejectedEvent.user.id, response: "rejected", eventType: "rejected")
-                            } else if let missedEvent = event.rawValue as? CallMissedEvent {
-                                await handleParticipantResponse(userId: missedEvent.user.id, response: "missed", eventType: "missed")
-                            } else if let acceptedEvent = event.rawValue as? CallAcceptedEvent {
-                                await handleParticipantResponse(userId: acceptedEvent.user.id, response: "accepted", eventType: "accepted")
                             }
                         }
                     }
