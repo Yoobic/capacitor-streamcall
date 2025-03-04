@@ -1,5 +1,5 @@
 {
-  "name": "stream-call",
+  "name": "@capgo/capacitor-stream-call",
   "version": "0.0.1",
   "description": "Uses the https://getstream.io/ SDK to implement calling in Capacitor",
   "main": "dist/plugin.cjs.js",
