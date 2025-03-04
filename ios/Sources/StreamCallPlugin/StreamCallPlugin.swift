@@ -158,6 +158,9 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     
     private func setupActiveCallSubscription() {
         if let streamVideo = streamVideo {
+            // Track participants responses
+            var participantResponses: [String: String] = [:]
+            
             Task {
                 for await event in streamVideo.subscribe() {
                     print("Event", event)
@@ -168,6 +171,44 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         ])
                         return
                     }
+                    
+                    if let rejectedEvent = event.rawValue as? CallRejectedEvent {
+                        let userId = rejectedEvent.user.id
+                        participantResponses[userId] = "rejected"
+                        notifyListeners("callEvent", data: [
+                            "callId": rejectedEvent.callCid,
+                            "state": "rejected",
+                            "userId": userId
+                        ])
+                        
+                        await checkAllParticipantsResponded(participantResponses: participantResponses)
+                        return
+                    }
+                    
+                    if let missedEvent = event.rawValue as? CallMissedEvent {
+                        let userId = missedEvent.user.id
+                        participantResponses[userId] = "missed"
+                        notifyListeners("callEvent", data: [
+                            "callId": missedEvent.callCid,
+                            "state": "missed",
+                            "userId": userId
+                        ])
+                        
+                        await checkAllParticipantsResponded(participantResponses: participantResponses)
+                        return
+                    }
+                    
+                    if let acceptedEvent = event.rawValue as? CallAcceptedEvent {
+                        let userId = acceptedEvent.user.id
+                        participantResponses[userId] = "accepted"
+                        notifyListeners("callEvent", data: [
+                            "callId": acceptedEvent.callCid,
+                            "state": "accepted",
+                            "userId": userId
+                        ])
+                        return
+                    }
+                    
                     notifyListeners("callEvent", data: [
                         "callId": streamVideo.state.activeCall?.callId ?? "",
                         "state": event.type
@@ -220,11 +261,32 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
     
+    private func checkAllParticipantsResponded(participantResponses: [String: String]) async {
+        let call = streamVideo?.state.activeCall
+        let totalParticipants = await call?.state.participants.count ?? 0
+        let allResponded = participantResponses.count == totalParticipants
+        let allRejectedOrMissed = participantResponses.values.allSatisfy { $0 == "rejected" || $0 == "missed" }
+        
+        if allResponded && allRejectedOrMissed {
+            print("All participants have rejected or missed the call")
+            call?.leave()
+            await MainActor.run {
+                self.overlayViewModel?.updateCall(nil)
+                self.overlayView?.isHidden = true
+                self.webView?.isOpaque = true
+                self.notifyListeners("callEvent", data: [
+                    "callId": callCid,
+                    "state": "ended",
+                    "reason": "all_rejected_or_missed"
+                ])
+            }
+        }
+    }
+    
     @objc func login(_ call: CAPPluginCall) {
         guard let token = call.getString("token"),
               let userId = call.getString("userId"),
-              let name = call.getString("name"),
-              let apiKey = call.getString("apiKey") else {
+              let name = call.getString("name") else {
             call.reject("Missing required parameters")
             return
         }
@@ -323,10 +385,6 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
         // Initialize if needed
         if state == .notInitialized {
-            guard let credentials = SecureUserRepository.shared.loadCurrentUser() else {
-                call.reject("No user credentials found")
-                return
-            }
             initializeStreamVideo()
             if state != .initialized {
                 call.reject("Failed to initialize StreamVideo")
@@ -362,61 +420,10 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         ring: shouldRing
                     )
 
-                    // Track participants responses
-                    var participantResponses: [String: String] = [:]
-                    let totalParticipants = members.count
-
-                    func handleParticipantResponse(userId: String, response: String, eventType: String) async {
-                        guard let streamCall = streamCall else { return }
-                        participantResponses[userId] = response
-                        print("Call was \(response) by user: \(userId) in call: \(callId) with event type: \(eventType)")
-                        await MainActor.run {
-                            self.notifyListeners("callEvent", data: [
-                                "callId": callId,
-                                "state": eventType,
-                                "userId": userId
-                            ])
-                        }
-
-                        // Check if all participants have rejected or missed
-                        let allResponded = participantResponses.count == totalParticipants
-                        let allRejectedOrMissed = participantResponses.values.allSatisfy { $0 == "rejected" || $0 == "missed" }
-                        
-                        if allResponded && allRejectedOrMissed {
-                            print("All participants have rejected or missed the call")
-                            streamCall.leave()
-                            await MainActor.run {
-                                self.overlayViewModel?.updateCall(nil)
-                                self.overlayView?.isHidden = true
-                                self.webView?.isOpaque = true
-                                self.notifyListeners("callEvent", data: [
-                                    "callId": callId,
-                                    "state": "ended",
-                                    "reason": "all_rejected_or_missed"
-                                ])
-                            }
-                        }
-                    }
-
-                    // Set up event subscription
-                    let eventTask = Task { [weak self] in
-                        guard let self = self else { return }
-                        guard let streamCall = streamCall else { return }
-                        for await event in streamCall.subscribe() {
-                            print("Received event:", event)
-                            if let rejectedEvent = event.rawValue as? CallRejectedEvent {
-                                await handleParticipantResponse(userId: rejectedEvent.user.id, response: "rejected", eventType: "rejected")
-                            }
-                        }
-                    }
-
                     // Join the call
                     print("Joining call...")
                     try await streamCall?.join(create: false)
                     print("Successfully joined call")
-
-                    // Cancel the event task since we successfully joined
-                    eventTask.cancel()
 
                     // Update the CallOverlayView with the active call
                     await MainActor.run {
@@ -443,26 +450,21 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             try requireInitialized()
 
             Task {
-                do {
-                    if let activeCall = streamVideo?.state.activeCall {
-                        try await activeCall.leave()
+                if let activeCall = streamVideo?.state.activeCall {
+                    activeCall.leave()
 
-                        // Update view state instead of cleaning up
-                        await MainActor.run {
-                            self.overlayViewModel?.updateCall(nil)
-                            self.overlayView?.isHidden = true
-                            self.webView?.isOpaque = true
-                        }
-
-                        call.resolve([
-                            "success": true
-                        ])
-                    } else {
-                        call.reject("No active call to end")
+                    // Update view state instead of cleaning up
+                    await MainActor.run {
+                        self.overlayViewModel?.updateCall(nil)
+                        self.overlayView?.isHidden = true
+                        self.webView?.isOpaque = true
                     }
-                } catch {
-                    log.error("Error ending call: \(String(describing: error))")
-                    call.reject("Failed to end call: \(error.localizedDescription)")
+
+                    call.resolve([
+                        "success": true
+                    ])
+                } else {
+                    call.reject("No active call to end")
                 }
             }
         } catch {

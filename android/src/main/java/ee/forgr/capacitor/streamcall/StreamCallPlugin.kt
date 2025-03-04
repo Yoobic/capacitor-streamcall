@@ -35,6 +35,7 @@ import io.getstream.video.android.core.sounds.toSounds
 import io.getstream.video.android.model.StreamCallId
 import io.getstream.video.android.model.User
 import io.getstream.video.android.model.streamCallId
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.launch
 import org.openapitools.client.models.CallAcceptedEvent
 import org.openapitools.client.models.CallEndedEvent
@@ -920,6 +921,7 @@ public class StreamCallPlugin : Plugin() {
         notifyListeners("callEvent", data)
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     private fun transEndCallRaw(call: Call) {
         val callId = call.id
         var savedCapacitorActivity = savedActivity
@@ -951,6 +953,7 @@ public class StreamCallPlugin : Plugin() {
         }
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     @PluginMethod
     fun endCall(call: PluginCall) {
         try {
@@ -977,10 +980,11 @@ public class StreamCallPlugin : Plugin() {
         }
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     @PluginMethod
     fun call(call: PluginCall) {
         val userIds = call.getArray("userIds")?.toList<String>()
-        if (userIds == null || userIds.isEmpty()) {
+        if (userIds.isNullOrEmpty()) {
             call.reject("Missing required parameter: userIds (array of user IDs)")
             return
         }
@@ -1100,6 +1104,7 @@ public class StreamCallPlugin : Plugin() {
         }
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     private fun checkAllParticipantsResponded(
         participantResponses: Map<String, String>,
         totalParticipants: Int,

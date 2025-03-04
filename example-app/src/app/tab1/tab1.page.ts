@@ -73,6 +73,7 @@ export class Tab1Page {
       };
       localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
       await this.presentToast('Login successful', 'success');
+      
     } catch (error) {
       console.error('Login failed:', error);
       await this.presentToast('Login failed', 'danger');

@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { ChangeDetectorRef } from '@angular/core';
 import { ToastController } from '@ionic/angular';
 import { StreamCall } from '@capgo/capacitor-stream-call';
+import { Capacitor } from '@capacitor/core';
 
 @Component({
   selector: 'app-root',
@@ -17,6 +18,7 @@ export class AppComponent {
   isMuted = false;
   isCameraOff = false;
   incomingCallId: string | null = null;
+  incomingToast: HTMLIonToastElement | null = null;
 
   async endCall() {
     await StreamCall.endCall();
@@ -72,7 +74,10 @@ export class AppComponent {
   }
 
   private async presentIncomingCallToast() {
-    const toast = await this.toastController.create({
+    if (this.incomingToast) {
+      await this.incomingToast.dismiss();
+    }
+    this.incomingToast = await this.toastController.create({
       message: 'Incoming call...',
       position: 'top',
       buttons: [
@@ -93,7 +98,7 @@ export class AppComponent {
       ],
       duration: 0
     });
-    await toast.present();
+    await this.incomingToast.present();
   }
 
   ngOnInit() {
@@ -122,6 +127,7 @@ export class AppComponent {
         this.isInCall = true;
         console.log('Call started', event);
         setTimeout(async () => {
+          await this.incomingToast?.dismiss();
           const cameraEnabled = await StreamCall.isCameraEnabled();
           this.isCameraOff = !cameraEnabled.enabled;
           await this.presentToast('Call started', 'success');
@@ -134,13 +140,16 @@ export class AppComponent {
         this.cdr.detectChanges();
       } else if (event.state === 'rejected') {
         this.isInCall = false;
+        await this.incomingToast?.dismiss();
         console.log('Call rejected', event);
         await this.presentToast('Call rejected', 'success');
         this.cdr.detectChanges();
       } else if (event.state === 'ringing') {
-        this.incomingCallId = event.callId;
-        await this.presentIncomingCallToast();
-        this.cdr.detectChanges();
+        if (Capacitor.getPlatform() === 'web') {
+          this.incomingCallId = event.callId;
+          await this.presentIncomingCallToast();
+          this.cdr.detectChanges();
+        }
       } else {
         console.log('Call event', event);
         await this.presentToast(`Call event: ${event.state}`, 'success');
