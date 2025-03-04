@@ -54,7 +54,7 @@ public struct CustomCallView<Factory: ViewFactory>: View {
         .onDisappear {
             UIApplication.shared.isIdleTimerDisabled = false
         }
-        .enablePictureInPicture(viewModel.isPictureInPictureEnabled)
+        // .enablePictureInPicture(viewModel.isPictureInPictureEnabled)
         .presentParticipantListView(viewModel: viewModel, viewFactory: viewFactory)
         .onChange(of: viewModel.callSettings) { newSettings in
             bindableSettings.settings = newSettings

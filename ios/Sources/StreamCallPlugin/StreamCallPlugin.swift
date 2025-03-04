@@ -22,9 +22,10 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "endCall", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setMicrophoneEnabled", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setCameraEnabled", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "acceptCall", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "acceptCall", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "isCameraEnabled", returnType: CAPPluginReturnPromise)
     ]
-
+    
     private enum State {
         case notInitialized
         case initializing
@@ -36,7 +37,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     private static let tokenRefreshSemaphore = DispatchSemaphore(value: 1)
     private var currentToken: String?
     private var tokenWaitSemaphore: DispatchSemaphore?
-
+    
     private var overlayView: UIView?
     private var hostingController: UIHostingController<CallOverlayView>?
     private var overlayViewModel: CallOverlayViewModel?
@@ -44,17 +45,17 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     private var activeCallSubscription: AnyCancellable?
     private var lastVoIPToken: String?
     private var touchInterceptView: TouchInterceptView?
-
+    
     private var streamVideo: StreamVideo?
-
+    
     @Injected(\.callKitAdapter) var callKitAdapter
     @Injected(\.callKitPushNotificationAdapter) var callKitPushNotificationAdapter
-
+    
     private var refreshTokenURL: String?
     private var refreshTokenHeaders: [String: String]?
-
+    
     private var webviewDelegate: WebviewNavigationDelegate?
-
+    
     override public func load() {
         // Read API key from Info.plist
         if let apiKey = Bundle.main.object(forInfoDictionaryKey: "CAPACITOR_STREAM_VIDEO_APIKEY") as? String {
@@ -63,7 +64,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         if self.apiKey == nil {
             fatalError("Cannot get apikey")
         }
-
+        
         // Check if we have a logged in user for handling incoming calls
         if let credentials = SecureUserRepository.shared.loadCurrentUser() {
             print("Loading user for StreamCallPlugin: \(credentials.user.name)")
@@ -71,21 +72,21 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                 self.initializeStreamVideo()
             }
         }
-
+        
         // Create and set the navigation delegate
         self.webviewDelegate = WebviewNavigationDelegate(
             wrappedDelegate: self.webView?.navigationDelegate,
             onSetupOverlay: { [weak self] in
                 guard let self = self else { return }
                 print("Attempting to setup call view")
-
+                
                 self.setupViews()
             }
         )
-
+        
         self.webView?.navigationDelegate = self.webviewDelegate
     }
-
+    
     //    private func cleanupStreamVideo() {
     //        // Cancel subscriptions
     //        tokenSubscription?.cancel()
@@ -111,48 +112,48 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     //
     //        state = .notInitialized
     //    }
-
+    
     private func requireInitialized() throws {
         guard state == .initialized else {
             throw NSError(domain: "StreamCallPlugin", code: -1, userInfo: [NSLocalizedDescriptionKey: "StreamVideo not initialized"])
         }
     }
-
+    
     private func refreshToken() throws -> UserToken {
         // Acquire the semaphore in a thread-safe way
         StreamCallPlugin.tokenRefreshQueue.sync {
             StreamCallPlugin.tokenRefreshSemaphore.wait()
         }
-
+        
         defer {
             // Always release the semaphore when we're done, even if we throw an error
             StreamCallPlugin.tokenRefreshSemaphore.signal()
         }
-
+        
         // Clear current token
         currentToken = nil
-
+        
         // Create a local semaphore for waiting on the token
         let localSemaphore = DispatchSemaphore(value: 0)
         tokenWaitSemaphore = localSemaphore
-
+        
         // Capture webView before async context
         guard let webView = self.webView else {
             print("WebView not available")
             tokenWaitSemaphore = nil
             throw NSError(domain: "StreamCallPlugin", code: -1, userInfo: [NSLocalizedDescriptionKey: "WebView not available"])
         }
-
+        
         guard let refreshURL = self.refreshTokenURL else {
             print("Refresh URL not configured")
             tokenWaitSemaphore = nil
             throw NSError(domain: "StreamCallPlugin", code: -1, userInfo: [NSLocalizedDescriptionKey: "Refresh URL not configured"])
         }
-
+        
         let headersJSON = (self.refreshTokenHeaders ?? [:]).reduce(into: "") { result, pair in
             result += "\n'\(pair.key)': '\(pair.value)',"
         }
-
+        
         let script = """
             (function() {
                 console.log('Starting token refresh...');
@@ -177,7 +178,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                 });
             })();
         """
-
+        
         if Thread.isMainThread {
             print("Executing script on main thread")
             webView.evaluateJavaScript(script, completionHandler: nil)
@@ -187,7 +188,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                 webView.evaluateJavaScript(script, completionHandler: nil)
             }
         }
-
+        
         // Set up a timeout
         let timeoutQueue = DispatchQueue.global()
         let timeoutWork = DispatchWorkItem {
@@ -196,40 +197,40 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             self.tokenWaitSemaphore = nil
         }
         timeoutQueue.asyncAfter(deadline: .now() + 10.0, execute: timeoutWork) // 10 second timeout
-
+        
         // Wait for token to be set via loginMagicToken or timeout
         localSemaphore.wait()
         timeoutWork.cancel()
         tokenWaitSemaphore = nil
-
+        
         guard let token = currentToken else {
             print("Failed to get token")
             throw NSError(domain: "StreamCallPlugin", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get token or timeout occurred"])
         }
-
+        
         // Save the token
         SecureUserRepository.shared.save(token: token)
-
+        
         print("Got the token!!!")
         return UserToken(stringLiteral: token)
     }
-
+    
     @objc func loginMagicToken(_ call: CAPPluginCall) {
         guard let token = call.getString("token") else {
             call.reject("Missing token parameter")
             return
         }
-
+        
         print("loginMagicToken received token")
         currentToken = token
         tokenWaitSemaphore?.signal()
         call.resolve()
     }
-
+    
     private func setupTokenSubscription() {
         // Cancel existing subscription if any
         tokenSubscription?.cancel()
-
+        
         // Create new subscription
         tokenSubscription = callKitPushNotificationAdapter.$deviceToken.sink { [weak self] (updatedDeviceToken: String) in
             guard let self = self else { return }
@@ -255,7 +256,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             }
         }
     }
-
+    
     private func setupActiveCallSubscription() {
         if let streamVideo = streamVideo {
             Task {
@@ -290,12 +291,12 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         print("- Session ID: \(state.sessionId)")
                         print("- All participants: \(String(describing: state.participants))")
                         print("- Remote participants: \(String(describing: state.remoteParticipants))")
-
+                        
                         // Update overlay and make visible when there's an active call
                         self.overlayViewModel?.updateCall(newState)
                         self.overlayView?.isHidden = false
                         self.webView?.isOpaque = false
-
+                        
                         // Notify that a call has started
                         self.notifyListeners("callEvent", data: [
                             "callId": newState?.cId ?? "",
@@ -306,7 +307,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         self.overlayViewModel?.updateCall(nil)
                         self.overlayView?.isHidden = true
                         self.webView?.isOpaque = true
-
+                        
                         // Notify that call has ended
                         self.notifyListeners("callEvent", data: [
                             "callId": newState?.cId ?? "",
@@ -319,7 +320,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             }
         }
     }
-
+    
     @objc func login(_ call: CAPPluginCall) {
         guard let token = call.getString("token"),
               let userId = call.getString("userId"),
@@ -328,48 +329,48 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             call.reject("Missing required parameters")
             return
         }
-
+        
         let imageURL = call.getString("imageURL")
         let refreshTokenConfig = call.getObject("refreshToken")
         let refreshTokenURL = refreshTokenConfig?["url"] as? String
         let refreshTokenHeaders = refreshTokenConfig?["headers"] as? [String: String]
-
+        
         let user = User(
             id: userId,
             name: name,
             imageURL: imageURL.flatMap { URL(string: $0) },
             customData: [:]
         )
-
+        
         let credentials = UserCredentials(user: user, tokenValue: token)
         SecureUserRepository.shared.save(user: credentials)
-
+        
         // Store API key and refresh config for later use
         self.refreshTokenURL = refreshTokenURL
         self.refreshTokenHeaders = refreshTokenHeaders
-
+        
         // Initialize Stream Video with new credentials
         initializeStreamVideo()
-
+        
         if state != .initialized {
             call.reject("Failed to initialize StreamVideo")
             return
         }
-
+        
         // Update the CallOverlayView with new StreamVideo instance
         Task { @MainActor in
             self.overlayViewModel?.updateStreamVideo(self.streamVideo)
         }
-
+        
         call.resolve([
             "success": true
         ])
     }
-
+    
     @objc func logout(_ call: CAPPluginCall) {
         // Remove VOIP token from repository
         SecureUserRepository.shared.save(voipPushToken: nil)
-
+        
         // Try to delete the device from Stream if we have the last token
         if let lastVoIPToken = lastVoIPToken {
             Task {
@@ -380,16 +381,16 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                 }
             }
         }
-
+        
         // Cancel subscriptions
         tokenSubscription?.cancel()
         tokenSubscription = nil
         activeCallSubscription?.cancel()
         activeCallSubscription = nil
         lastVoIPToken = nil
-
+        
         SecureUserRepository.shared.removeCurrentUser()
-
+        
         // Update the CallOverlayView with nil StreamVideo instance
         Task { @MainActor in
             self.overlayViewModel?.updateCall(nil)
@@ -397,10 +398,26 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             self.overlayView?.isHidden = true
             self.webView?.isOpaque = true
         }
-
+        
         call.resolve([
             "success": true
         ])
+    }
+    
+    @objc func isCameraEnabled(_ call: CAPPluginCall) {
+        do {
+            try requireInitialized()
+        } catch {
+            call.reject("SDK not initialized")
+        }
+        
+        if let activeCall = streamVideo?.state.activeCall {
+            call.resolve([
+                "enabled": activeCall.camera.status == .enabled
+            ])
+        } else {
+            call.reject("No active call")
+        }
     }
 
     @objc func call(_ call: CAPPluginCall) {
