@@ -12,6 +12,9 @@ import androidx.core.app.NotificationCompat
 import io.getstream.video.android.core.notifications.DefaultNotificationHandler
 import io.getstream.video.android.model.StreamCallId
 
+// declare "incoming_calls_custom" as a constant
+const val INCOMING_CALLS_CUSTOM = "incoming_calls_custom"
+
 class CustomNotificationHandler(
     val application: Application,
     private val endCall: (callId: StreamCallId) -> Unit = {},
@@ -30,8 +33,6 @@ class CustomNotificationHandler(
         callerName: String?,
         shouldHaveContentIntent: Boolean,
     ): Notification {
-        val showAsHighPriority = true
-        val channelId = "incoming_calls_custom"
 
         customCreateIncomingCallChannel(channelId, showAsHighPriority)
 
@@ -41,7 +42,7 @@ class CustomNotificationHandler(
             rejectCallPendingIntent,
             callerName,
             shouldHaveContentIntent,
-            channelId,
+            INCOMING_CALLS_CUSTOM,
             true // Include sound
         )
     }
@@ -100,27 +101,17 @@ class CustomNotificationHandler(
         super.onMissedCall(callId, callDisplayName)
     }
 
-    open fun customCreateIncomingCallChannel(channelId: String, showAsHighPriority: Boolean) {
+    private fun customCreateIncomingCallChannel() {
         maybeCreateChannel(
-            channelId = channelId,
+            channelId = INCOMING_CALLS_CUSTOM,
             context = application,
             configure = {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     name = application.getString(
                         R.string.stream_video_incoming_call_notification_channel_title,
                     )
-                    description = application.getString(
-                        if (showAsHighPriority) {
-                            R.string.stream_video_incoming_call_notification_channel_description
-                        } else {
-                            R.string.stream_video_incoming_call_low_priority_notification_channel_description
-                        },
-                    )
-                    importance = if (showAsHighPriority) {
-                        NotificationManager.IMPORTANCE_HIGH
-                    } else {
-                        NotificationManager.IMPORTANCE_LOW
-                    }
+                    description = application.getString(R.string.stream_video_incoming_call_notification_channel_description)
+                    importance = NotificationManager.IMPORTANCE_HIGH
                     this.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
                     this.setShowBadge(true)
                     

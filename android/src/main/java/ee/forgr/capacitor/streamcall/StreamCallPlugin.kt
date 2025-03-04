@@ -6,7 +6,6 @@ import android.app.Application
 import android.app.KeyguardManager
 import android.content.Context
 import android.graphics.Color
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -87,7 +86,7 @@ public class StreamCallPlugin : Plugin() {
         ringtonePlayer = RingtonePlayer(
             this.activity.application,
             cancelIncomingCallService = {
-                var streamVideoClient = this.streamVideoClient
+                val streamVideoClient = this.streamVideoClient
                 if (streamVideoClient == null) {
                     android.util.Log.d("StreamCallPlugin", "StreamVideo SDK client is null, no incoming call notification can be constructed")
                     return@RingtonePlayer
@@ -117,7 +116,7 @@ public class StreamCallPlugin : Plugin() {
                     val defaultConfig = defaultMethod.invoke(defaultInstance)
 
                     val app = this.activity.application
-                    val cId = streamVideoClient?.state?.ringingCall?.value?.cid?.let { StreamCallId.fromCallCid(it) }
+                    val cId = streamVideoClient.state.ringingCall.value?.cid?.let { StreamCallId.fromCallCid(it) }
                     if (app == null || cId == null || defaultConfig == null) {
                         android.util.Log.e("StreamCallPlugin", "Some required parameters are null - app: ${app == null}, cId: ${cId == null}, defaultConfig: ${defaultConfig == null}")
                     }
@@ -137,6 +136,7 @@ public class StreamCallPlugin : Plugin() {
         activity?.intent?.let { handleOnNewIntent(it) }
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     override fun handleOnNewIntent(intent: android.content.Intent) {
         super.handleOnNewIntent(intent)
         
@@ -198,6 +198,7 @@ public class StreamCallPlugin : Plugin() {
         android.util.Log.d("StreamCallPlugin", "New Intent - Extras: $extras")
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     private fun declineCall(call: Call) {
         kotlinx.coroutines.GlobalScope.launch {
             try {
@@ -371,6 +372,7 @@ public class StreamCallPlugin : Plugin() {
         }
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     public fun initializeStreamVideo(passedContext: Context? = null, passedApplication: Application? = null) {
         android.util.Log.v("StreamCallPlugin", "Attempting to initialize streamVideo")
         if (state == State.INITIALIZING) {
@@ -510,18 +512,14 @@ public class StreamCallPlugin : Plugin() {
                         // Get the ActivityManager
                         val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
                         // Remove the task
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                            val tasks = activityManager.appTasks
-                            tasks.forEach { task ->
-                                task.finishAndRemoveTask()
-                            }
+                        val tasks = activityManager.appTasks
+                        tasks.forEach { task ->
+                            task.finishAndRemoveTask()
                         }
                         // Finish the activity
                         act.finish()
                         // Remove from recents
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                            act.finishAndRemoveTask()
-                        }
+                        act.finishAndRemoveTask()
                         // Give a small delay for cleanup
                         Handler(Looper.getMainLooper()).postDelayed({
                             // Kill the process
@@ -547,6 +545,7 @@ public class StreamCallPlugin : Plugin() {
         }
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     private fun registerEventHandlers() {
         // Subscribe to call events
         streamVideoClient?.let { client ->
@@ -720,6 +719,7 @@ public class StreamCallPlugin : Plugin() {
         })
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     private fun acceptCall(call: Call) {
         kotlinx.coroutines.GlobalScope.launch {
             try {
@@ -732,8 +732,8 @@ public class StreamCallPlugin : Plugin() {
                     incomingCallView?.isVisible = false
                 }
 
-                // Accept the call
-                call.accept()
+                // Join the call without affecting others
+                call.join()
 
                 // Notify that call has started
                 val data = JSObject().apply {
@@ -767,6 +767,7 @@ public class StreamCallPlugin : Plugin() {
         }
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     @PluginMethod
     fun setMicrophoneEnabled(call: PluginCall) {
         val enabled = call.getBoolean("enabled") ?: run {
@@ -797,6 +798,7 @@ public class StreamCallPlugin : Plugin() {
         }
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     @PluginMethod
     fun isCameraEnabled(call: PluginCall) {
         try {
@@ -826,6 +828,7 @@ public class StreamCallPlugin : Plugin() {
         }
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     @PluginMethod
     fun setCameraEnabled(call: PluginCall) {
         val enabled = call.getBoolean("enabled") ?: run {
@@ -856,7 +859,7 @@ public class StreamCallPlugin : Plugin() {
         }
     }
 
-    suspend fun endCallRaw(call: Call) {
+    private suspend fun endCallRaw(call: Call) {
         val callId = call.id
         android.util.Log.d("StreamCallPlugin", "Attempting to end call $callId")
         call.leave()
@@ -885,7 +888,7 @@ public class StreamCallPlugin : Plugin() {
                 }
             }
 
-            var savedCapacitorActivity = savedActivity
+            val savedCapacitorActivity = savedActivity
             if (savedCapacitorActivity != null) {
 
                 if (savedActivityPaused) {
@@ -924,7 +927,7 @@ public class StreamCallPlugin : Plugin() {
     @OptIn(DelicateCoroutinesApi::class)
     private fun transEndCallRaw(call: Call) {
         val callId = call.id
-        var savedCapacitorActivity = savedActivity
+        val savedCapacitorActivity = savedActivity
         if (savedCapacitorActivity == null) {
             android.util.Log.d("StreamCallPlugin", "Cannot perform transEndCallRaw for call $callId. savedCapacitorActivity is null")
             return
