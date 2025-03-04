@@ -7,6 +7,7 @@
 
 import Security
 import StreamVideo
+import Foundation
 
 struct UserCredentials: Identifiable, Codable {
     var id: String {
@@ -17,39 +18,39 @@ struct UserCredentials: Identifiable, Codable {
 }
 
 protocol UserRepository {
-    
+
     func save(user: UserCredentials)
-    
+
     func loadCurrentUser() -> UserCredentials?
-    
+
     func removeCurrentUser()
-    
+
     func save(token: String)
-    
+
 }
 
 protocol VoipTokenHandler {
-    
+
     func save(voipPushToken: String?)
-    
+
     func currentVoipPushToken() -> String?
-    
+
 }
 
-//NOTE: This is just for simplicity. User data shouldn't be kept in `UserDefaults`.
-//NOTE: This is just for simplicity. User data shouldn't be kept in `UserDefaults`.
+// NOTE: This is just for simplicity. User data shouldn't be kept in `UserDefaults`.
+// NOTE: This is just for simplicity. User data shouldn't be kept in `UserDefaults`.
 class SecureUserRepository: UserRepository, VoipTokenHandler {
-    
+
     private let defaults = UserDefaults.standard
     private let userKey = "stream.video.user"
     private let tokenKey = "stream.video.token"
     private let chatTokenKey = "stream.chat.token"
     private let voipPushTokenKey = "stream.video.voip.token"
-    
+
     static let shared = SecureUserRepository()
-    
+
     private init() {}
-    
+
     func save(user: UserCredentials) {
         let encoder = JSONEncoder()
         if let encoded = try? encoder.encode(user.user) {
@@ -57,11 +58,11 @@ class SecureUserRepository: UserRepository, VoipTokenHandler {
             defaults.set(user.tokenValue, forKey: tokenKey)
         }
     }
-    
+
     func save(token: String) {
         defaults.set(token, forKey: tokenKey)
     }
-    
+
     func loadCurrentUser() -> UserCredentials? {
         if let savedUser = defaults.object(forKey: userKey) as? Data {
             let decoder = JSONDecoder()
@@ -77,20 +78,19 @@ class SecureUserRepository: UserRepository, VoipTokenHandler {
         }
         return nil
     }
-    
+
     func save(voipPushToken: String?) {
         defaults.set(voipPushToken, forKey: voipPushTokenKey)
     }
-    
+
     func currentVoipPushToken() -> String? {
         defaults.value(forKey: voipPushTokenKey) as? String
     }
-    
+
     func removeCurrentUser() {
         defaults.set(nil, forKey: userKey)
         defaults.set(nil, forKey: tokenKey)
         defaults.set(nil, forKey: voipPushTokenKey)
     }
-    
-    
+
 }

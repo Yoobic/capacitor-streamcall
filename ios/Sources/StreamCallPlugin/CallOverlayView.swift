@@ -9,19 +9,19 @@ class CallOverlayViewModel: ObservableObject {
     @Published var callState: CallState?
     @Published var viewModel: CallViewModel?
     @Published var participants: [CallParticipant] = []
-    
+
     private var participantsSubscription: AnyCancellable?
-    
+
     init(streamVideo: StreamVideo?) {
         self.streamVideo = streamVideo
     }
-    
+
     @MainActor
     func updateCall(_ call: Call?) {
         self.call = call
         // Clean up previous subscription if any
         participantsSubscription?.cancel()
-        
+
         if let call = call {
             participantsSubscription = call.state.$participants.sink { [weak self] participants in
                 print("Participants update \(participants.map { $0.name })")
@@ -39,7 +39,7 @@ class CallOverlayViewModel: ObservableObject {
             self.callState = nil
         }
     }
-    
+
     @MainActor
     func updateStreamVideo(_ streamVideo: StreamVideo?) {
         self.streamVideo = streamVideo
@@ -52,7 +52,7 @@ class CallOverlayViewModel: ObservableObject {
 
 class CallOverlayViewFactory: ViewFactory {
     // ... existing ViewFactory methods ...
-    public func makeVideoParticipantView(
+    func makeVideoParticipantView(
         participant: CallParticipant,
         id: String,
         availableFrame: CGRect,
@@ -76,12 +76,12 @@ struct CallOverlayView: View {
     @ObservedObject var viewModel: CallOverlayViewModel
     @State private var safeAreaInsets: EdgeInsets = .init()
     private let viewFactory: CallOverlayViewFactory
-    
+
     init(viewModel: CallOverlayViewModel) {
         self.viewModel = viewModel
         self.viewFactory = CallOverlayViewFactory()
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
             if let viewModelStandard = viewModel.viewModel {
@@ -106,11 +106,11 @@ struct CallOverlayView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-    
+
     private func changeTrackVisibility(_ participant: CallParticipant?, isVisible: Bool) {
         print("changeTrackVisibility for \(participant?.userId), visible: \(isVisible)")
         guard let participant = participant,
-    	let call = viewModel.call else { return }
+              let call = viewModel.call else { return }
         Task {
             await call.changeTrackVisibility(for: participant, isVisible: isVisible)
         }
@@ -123,10 +123,10 @@ extension CallOverlayView {
         let view = CallOverlayView(viewModel: viewModel)
         let hostingController = UIHostingController(rootView: view)
         hostingController.view.backgroundColor = .clear
-        
+
         // Make sure we respect safe areas
         hostingController.view.insetsLayoutMarginsFromSafeArea = true
-        
+
         return (hostingController, viewModel)
     }
 }
@@ -144,4 +144,4 @@ struct SafeAreaInsetsKey: PreferenceKey {
     static func reduce(value: inout EdgeInsets, nextValue: () -> EdgeInsets) {
         value = nextValue()
     }
-} 
+}

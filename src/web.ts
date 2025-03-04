@@ -1,6 +1,6 @@
 import { WebPlugin } from '@capacitor/core';
-import type { AllClientEvents, Call, CallResponse, StreamVideoParticipant } from "@stream-io/video-client";
-import { CallingState, StreamVideoClient } from "@stream-io/video-client";
+import type { AllClientEvents, Call, CallResponse, StreamVideoParticipant } from '@stream-io/video-client';
+import { CallingState, StreamVideoClient } from '@stream-io/video-client';
 
 import type { CallOptions, StreamCallPlugin, SuccessResponse, LoginOptions, CameraEnabledResponse} from './definitions';
 
@@ -43,9 +43,9 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
         } else {
           this.notifyListeners('callEvent', { callId: this.currentCall?.id, state: s });
         }
-      })
+      });
     }
-  }
+  };
 
   private setupParticipantListener() {
     // Subscribe to participant changes
@@ -66,7 +66,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
       if (this.magicDivId && event.participant) {
         const videoId = `video-${event.participant.sessionId}`;
         const audioId = `audio-${event.participant.sessionId}`;
-        
+
         // Remove video element
         const videoEl = document.getElementById(videoId) as HTMLVideoElement;
         if (videoEl) {
@@ -77,7 +77,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
           }
           const tracks = videoEl.srcObject as MediaStream;
           if (tracks) {
-            tracks.getTracks().forEach(track => {
+            tracks.getTracks().forEach((track) => {
               track.stop();
               track.enabled = false;
             });
@@ -96,7 +96,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
           }
           const tracks = audioEl.srcObject as MediaStream;
           if (tracks) {
-            tracks.getTracks().forEach(track => {
+            tracks.getTracks().forEach((track) => {
               track.stop();
               track.enabled = false;
             });
@@ -173,7 +173,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
       if (magicDiv) {
         // Remove all video elements
         const videoElements = magicDiv.querySelectorAll('video');
-        videoElements.forEach(video => {
+        videoElements.forEach((video) => {
           const id = video.id;
           const unbind = this.videoBindings.get(id);
           if (unbind) {
@@ -183,7 +183,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
           // Stop all tracks
           const tracks = (video as HTMLVideoElement).srcObject as MediaStream;
           if (tracks) {
-            tracks.getTracks().forEach(track => {
+            tracks.getTracks().forEach((track) => {
               track.stop();
               track.enabled = false;
             });
@@ -194,7 +194,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
 
         // Remove all audio elements
         const audioElements = magicDiv.querySelectorAll('audio');
-        audioElements.forEach(audio => {
+        audioElements.forEach((audio) => {
           const id = audio.id;
           const unbind = this.audioBindings.get(id);
           if (unbind) {
@@ -204,7 +204,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
           // Stop all tracks
           const tracks = (audio as HTMLAudioElement).srcObject as MediaStream;
           if (tracks) {
-            tracks.getTracks().forEach(track => {
+            tracks.getTracks().forEach((track) => {
               track.stop();
               track.enabled = false;
             });
@@ -223,7 +223,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
     // Clear all bindings
     this.videoBindings.clear();
     this.audioBindings.clear();
-    
+
     // Clear call references
     this.currentCall = undefined;
     this.incomingCall = undefined;
@@ -247,11 +247,11 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
       console.log('No client', this.client);
       throw new Error('Client not initialized');
     }
-    
+
     // Cleanup subscription
     this.callStateSubscription?.unsubscribe();
     this.callStateSubscription = undefined;
-    
+
     await this.client.disconnectUser();
     this.client = undefined;
     this.currentCall = undefined;
@@ -263,7 +263,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
       console.log('No client', this.client);
       throw new Error('Client not initialized - Please login first');
     }
-    
+
     const call = this.client.call(options.type || 'default', crypto.randomUUID());
     const members = [{ user_id: options.userId }];
     if (this.client.streamClient.userID && options.userId !== this.client.streamClient.userID) {
@@ -272,10 +272,10 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
     await call.getOrCreate({ data: { members } });
     this.currentCall = call;
     if (options.ring) {
-      this.outgoingCall =  call.cid;
+      this.outgoingCall = call.cid;
       await call.ring();
     }
-    
+
     await call.join();
     return { success: true };
   }
@@ -285,12 +285,11 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
       console.log('No active call', this.currentCall);
       throw new Error('No active call');
     }
-    
+
     await this.currentCall.leave();
     this.currentCall = undefined;
     this.cleanupCall();
 
-    
     return { success: true };
   }
 
@@ -299,13 +298,13 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
       console.log('No active call', this.currentCall);
       throw new Error('No active call');
     }
-    
+
     if (options.enabled) {
       await this.currentCall.microphone.enable();
     } else {
       await this.currentCall.microphone.disable();
     }
-    
+
     return { success: true };
   }
 
@@ -314,13 +313,13 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
       console.log('No active call', this.currentCall);
       throw new Error('No active call');
     }
-    
+
     if (options.enabled) {
       await this.currentCall.camera.enable();
     } else {
       await this.currentCall.camera.disable();
     }
-    
+
     return { success: true };
   }
 
@@ -338,7 +337,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
     console.log('Joined call', call);
     this.notifyListeners('callEvent', { callId: call.id, state: CallingState.JOINED });
     this.setupParticipantListener();
-    return { success: true }
+    return { success: true };
   }
 
   async rejectCall(): Promise<SuccessResponse> {

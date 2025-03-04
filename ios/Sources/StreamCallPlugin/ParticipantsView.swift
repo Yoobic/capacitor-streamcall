@@ -18,7 +18,7 @@ struct ViewFramePreferenceData: Equatable {
 // PreferenceKey to collect frames.
 struct ViewFramePreferenceKey: PreferenceKey {
     static var defaultValue: [ViewFramePreferenceData] = []
-    
+
     static func reduce(value: inout [ViewFramePreferenceData], nextValue: () -> [ViewFramePreferenceData]) {
         value.append(contentsOf: nextValue())
     }
@@ -49,7 +49,7 @@ struct ParticipantsView: View {
     var onChangeTrackVisibility: (CallParticipant?, Bool) -> Void
     var localParticipant: CallParticipant
     @State private var labeledFrames: [ViewFramePreferenceData] = []
-    
+
     private func findTouchInterceptView() -> TouchInterceptView? {
         // Find the TouchInterceptView by traversing up the view hierarchy
         var currentView = UIApplication.shared.windows.first?.rootViewController?.view
@@ -71,7 +71,7 @@ struct ParticipantsView: View {
                         let hStackSpacing: CGFloat = 8
                         let vStackSpacing: CGFloat = 8
                         let columnWidth = (proxy.size.width - hStackSpacing) / 2  // Account for spacing between columns
-                        
+
                         HStack(spacing: hStackSpacing) {
                             VStack(spacing: vStackSpacing) {
                                 ForEach(nonLocalParticipants.prefix(3)) { participant in
@@ -86,7 +86,7 @@ struct ParticipantsView: View {
                                 }
                             }
                             .frame(width: columnWidth, height: proxy.size.height)
-                            
+
                             VStack(spacing: vStackSpacing) {
                                 ForEach(nonLocalParticipants.dropFirst(3)) { participant in
                                     let frame = CGRect(
@@ -115,13 +115,13 @@ struct ParticipantsView: View {
                         ScrollView {
                             LazyVStack {
                                 if participants.count == 1, let participant = participants.first {
-                                  let frame = CGRect(
+                                    let frame = CGRect(
                                         x: proxy.frame(in: .global).origin.x,
                                         y: proxy.frame(in: .global).origin.y,
                                         width: proxy.size.width,
                                         height: proxy.size.height
                                     )
-                                    
+
                                     makeCallParticipantView(participant, frame: frame)
                                         .frame(width: frame.width, height: frame.height)
                                 } else {
@@ -132,14 +132,14 @@ struct ParticipantsView: View {
                                             width: proxy.size.width,
                                             height: participants.count == 4 ? proxy.size.height / 3 : (participants.count == 2 ? proxy.size.height : proxy.size.height / 2)
                                         )
-                                        
+
                                         makeCallParticipantView(participant, frame: frame)
                                             .frame(width: frame.width, height: frame.height)
                                     }
                                 }
                             }
                         }
-                        
+
                         if participants.count >= 2 && participants.count <= 4 {
                             CornerDraggableView(
                                 content: { availableFrame in
@@ -200,7 +200,7 @@ struct ParticipantsView: View {
             customData: [:],
             call: call
         )
-//        .onAppear { onChangeTrackVisibility(participant, true) }
-//        .onDisappear{ onChangeTrackVisibility(participant, false) }
+        //        .onAppear { onChangeTrackVisibility(participant, true) }
+        //        .onDisappear{ onChangeTrackVisibility(participant, false) }
     }
 }

@@ -1,6 +1,12 @@
 # stream-call
+ <a href="https://capgo.app/"><img src='https://raw.githubusercontent.com/Cap-go/capgo/main/assets/capgo_banner.png' alt='Capgo - Instant updates for capacitor'/></a>
 
-WIP: We are actively working on this plugin. not yet ready for production. not Released on npm yet.
+<div align="center">
+  <h2><a href="https://capgo.app/?ref=plugin"> ➡️ Get Instant updates for your App with Capgo 🚀</a></h2>
+  <h2><a href="https://capgo.app/consulting/?ref=plugin"> Fix your annoying bug now, Hire a Capacitor expert 💪</a></h2>
+</div>
+
+WIP: We are actively working on this plugin. not yet ready for production.
 Uses the https://getstream.io/ SDK to implement calling in Capacitor
 
 ## Install

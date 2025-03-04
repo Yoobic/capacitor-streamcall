@@ -3,13 +3,13 @@ import StreamVideo
 import StreamVideoSwiftUI
 
 struct CircledTitleView: View {
-    
+
     @Injected(\.colors) var colors
     @Injected(\.fonts) var fonts
-    
+
     var title: String
-    var size: CGFloat = 172 //.expandedAvatarSize
-    
+    var size: CGFloat = 172 // .expandedAvatarSize
+
     var body: some View {
         ZStack {
             Circle()
@@ -32,10 +32,10 @@ struct CustomCallParticipantImageView<Factory: ViewFactory>: View {
     var imageURL: URL?
     var size: CGFloat = 90
     // var frame: CGSize?
-    
+
     @Injected(\.colors) var colors
-    
-    public var body: some View {
+
+    var body: some View {
         StreamLazyImage(imageURL: imageURL) {
             Color(colors.participantBackground)
         }
@@ -57,5 +57,4 @@ struct CustomCallParticipantImageView<Factory: ViewFactory>: View {
         )
         .clipShape(Rectangle())
     }
-} 
-
+}
