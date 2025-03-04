@@ -58,12 +58,12 @@ export class Tab1Page {
         imageURL: response.imageURL,
         apiKey: this.API_KEY,
         magicDivId: 'call-container',
-        refreshToken: {
-          url: `${this.API_URL}/user?user_id=${userId}`,
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        },
+        // refreshToken: {
+        //   url: `${this.API_URL}/user?user_id=${userId}`,
+        //   headers: {
+        //     'Content-Type': 'application/json',
+        //   },
+        // },
       });
 
       this.currentUser = {

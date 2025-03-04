@@ -131,8 +131,8 @@ The SDK will automatically use the system language and these translations.
 * [`removeAllListeners()`](#removealllisteners)
 * [`acceptCall()`](#acceptcall)
 * [`rejectCall()`](#rejectcall)
+* [`isCameraEnabled()`](#iscameraenabled)
 * [Interfaces](#interfaces)
-* [Type Aliases](#type-aliases)
 
 </docgen-index>
 
@@ -288,6 +288,17 @@ Reject an incoming call
 --------------------
 
 
+### isCameraEnabled()
+
+```typescript
+isCameraEnabled() => Promise<CameraEnabledResponse>
+```
+
+**Returns:** <code>Promise&lt;<a href="#cameraenabledresponse">CameraEnabledResponse</a>&gt;</code>
+
+--------------------
+
+
 ### Interfaces
 
 
@@ -300,15 +311,14 @@ Reject an incoming call
 
 #### LoginOptions
 
-| Prop               | Type                                                                                        | Description                                             |
-| ------------------ | ------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| **`token`**        | <code>string</code>                                                                         | Stream Video API token                                  |
-| **`userId`**       | <code>string</code>                                                                         | User ID for the current user                            |
-| **`name`**         | <code>string</code>                                                                         | Display name for the current user                       |
-| **`imageURL`**     | <code>string</code>                                                                         | Optional avatar URL for the current user                |
-| **`apiKey`**       | <code>string</code>                                                                         | Stream Video API key                                    |
-| **`magicDivId`**   | <code>string</code>                                                                         | ID of the HTML element where the video will be rendered |
-| **`refreshToken`** | <code>{ url: string; headers?: <a href="#record">Record</a>&lt;string, string&gt;; }</code> | Configuration for token refresh                         |
+| Prop             | Type                | Description                                             |
+| ---------------- | ------------------- | ------------------------------------------------------- |
+| **`token`**      | <code>string</code> | Stream Video API token                                  |
+| **`userId`**     | <code>string</code> | User ID for the current user                            |
+| **`name`**       | <code>string</code> | Display name for the current user                       |
+| **`imageURL`**   | <code>string</code> | Optional avatar URL for the current user                |
+| **`apiKey`**     | <code>string</code> | Stream Video API key                                    |
+| **`magicDivId`** | <code>string</code> | ID of the HTML element where the video will be rendered |
 
 
 #### CallOptions
@@ -328,13 +338,10 @@ Reject an incoming call
 | **`state`**  | <code>string</code> | Current state of the call |
 
 
-### Type Aliases
+#### CameraEnabledResponse
 
-
-#### Record
-
-Construct a type with a set of properties K of type T
-
-<code>{ [P in K]: T; }</code>
+| Prop          | Type                 |
+| ------------- | -------------------- |
+| **`enabled`** | <code>boolean</code> |
 
 </docgen-api>

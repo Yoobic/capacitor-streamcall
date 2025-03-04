@@ -50,9 +50,6 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     @Injected(\.callKitAdapter) var callKitAdapter
     @Injected(\.callKitPushNotificationAdapter) var callKitPushNotificationAdapter
 
-    private var refreshTokenURL: String?
-    private var refreshTokenHeaders: [String: String]?
-
     private var webviewDelegate: WebviewNavigationDelegate?
 
     override public func load() {
@@ -116,49 +113,6 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         guard state == .initialized else {
             throw NSError(domain: "StreamCallPlugin", code: -1, userInfo: [NSLocalizedDescriptionKey: "StreamVideo not initialized"])
         }
-    }
-
-    private func refreshToken() throws -> UserToken {
-        // Acquire the semaphore in a thread-safe way
-        StreamCallPlugin.tokenRefreshQueue.sync {
-            StreamCallPlugin.tokenRefreshSemaphore.wait()
-        }
-
-        defer {
-            // Always release the semaphore when we're done, even if we throw an error
-            StreamCallPlugin.tokenRefreshSemaphore.signal()
-        }
-
-        guard let refreshURL = self.refreshTokenURL else {
-            print("Refresh URL not configured")
-            throw NSError(domain: "StreamCallPlugin", code: -1, userInfo: [NSLocalizedDescriptionKey: "Refresh URL not configured"])
-        }
-
-        var request = URLRequest(url: URL(string: refreshURL)!)
-
-        // Add headers if they exist
-        if let headers = self.refreshTokenHeaders {
-            for (key, value) in headers {
-                request.setValue(value, forHTTPHeaderField: key)
-            }
-        }
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse,
-              (200...299).contains(httpResponse.statusCode) else {
-            throw NSError(domain: "StreamCallPlugin", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response from server"])
-        }
-
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let token = json["token"] as? String else {
-            throw NSError(domain: "StreamCallPlugin", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid token format in response"])
-        }
-
-        // Save the token
-        SecureUserRepository.shared.save(token: token)
-
-        return UserToken(stringLiteral: token)
     }
 
     @objc func loginMagicToken(_ call: CAPPluginCall) {
@@ -277,9 +231,6 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         }
 
         let imageURL = call.getString("imageURL")
-        let refreshTokenConfig = call.getObject("refreshToken")
-        let refreshTokenURL = refreshTokenConfig?["url"] as? String
-        let refreshTokenHeaders = refreshTokenConfig?["headers"] as? [String: String]
 
         let user = User(
             id: userId,
@@ -290,10 +241,6 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
         let credentials = UserCredentials(user: user, tokenValue: token)
         SecureUserRepository.shared.save(user: credentials)
-
-        // Store API key and refresh config for later use
-        self.refreshTokenURL = refreshTokenURL
-        self.refreshTokenHeaders = refreshTokenHeaders
 
         // Initialize Stream Video with new credentials
         initializeStreamVideo()
@@ -405,36 +352,28 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                             print("Received event:", event)
                             if let rejectedEvent = event.rawValue as? CallRejectedEvent {
                                 print("Call was rejected")
-                                do {
-                                    try await streamCall.leave()
-                                    await MainActor.run {
-                                        self.overlayViewModel?.updateCall(nil)
-                                        self.overlayView?.isHidden = true
-                                        self.webView?.isOpaque = true
-                                        self.notifyListeners("callEvent", data: [
-                                            "callId": callId,
-                                            "state": "rejected"
-                                        ])
-                                    }
-                                } catch {
-                                    print("Error leaving call: \(error)")
+                                streamCall.leave()
+                                await MainActor.run {
+                                    self.overlayViewModel?.updateCall(nil)
+                                    self.overlayView?.isHidden = true
+                                    self.webView?.isOpaque = true
+                                    self.notifyListeners("callEvent", data: [
+                                        "callId": callId,
+                                        "state": "rejected"
+                                    ])
                                 }
                                 return
                             } else if let missedEvent = event.rawValue as? CallMissedEvent {
                                 print("Call was missed")
-                                do {
-                                    try await streamCall.leave()
-                                    await MainActor.run {
-                                        self.overlayViewModel?.updateCall(nil)
-                                        self.overlayView?.isHidden = true
-                                        self.webView?.isOpaque = true
-                                        self.notifyListeners("callEvent", data: [
-                                            "callId": callId,
-                                            "state": "missed"
-                                        ])
-                                    }
-                                } catch {
-                                    print("Error leaving call: \(error)")
+                                streamCall.leave()
+                                await MainActor.run {
+                                    self.overlayViewModel?.updateCall(nil)
+                                    self.overlayView?.isHidden = true
+                                    self.webView?.isOpaque = true
+                                    self.notifyListeners("callEvent", data: [
+                                        "callId": callId,
+                                        "state": "missed"
+                                    ])
                                 }
                                 return
                             } else if let acceptedEvent = event.rawValue as? CallAcceptedEvent {
@@ -622,26 +561,10 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         }
         print("Initializing with saved credentials for user: \(savedCredentials.user.name)")
 
-        // Create a local reference to refreshToken to avoid capturing self
-        let refreshTokenFn = self.refreshToken
-
         self.streamVideo = StreamVideo(
             apiKey: apiKey,
             user: savedCredentials.user,
-            token: UserToken(stringLiteral: savedCredentials.tokenValue),
-            tokenProvider: { result in
-                print("attempt to refresh")
-                DispatchQueue.global().async {
-                    do {
-                        let newToken = try refreshTokenFn()
-                        print("Refresh successful")
-                        result(.success(newToken))
-                    } catch {
-                        print("Refresh fail")
-                        result(.failure(error))
-                    }
-                }
-            }
+            token: UserToken(stringLiteral: savedCredentials.tokenValue)
         )
 
         state = .initialized

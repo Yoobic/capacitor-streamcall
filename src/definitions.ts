@@ -7,9 +7,6 @@
  * @property {string} [imageURL] - Avatar URL for the current user
  * @property {string} apiKey - Stream Video API key for your application
  * @property {string} [magicDivId] - DOM element ID where video will be rendered
- * @property {Object} [refreshToken] - Token refresh configuration
- * @property {string} refreshToken.url - Endpoint URL for token refresh
- * @property {Record<string, string>} [refreshToken.headers] - Custom headers for refresh request
  */
 export interface LoginOptions {
   /** Stream Video API token */
@@ -24,13 +21,6 @@ export interface LoginOptions {
   apiKey: string;
   /** ID of the HTML element where the video will be rendered */
   magicDivId?: string;
-  /** Configuration for token refresh */
-  refreshToken?: {
-    /** URL to call for refreshing the token */
-    url: string;
-    /** Optional headers to include in the refresh request */
-    headers?: Record<string, string>;
-  };
 }
 
 /**
