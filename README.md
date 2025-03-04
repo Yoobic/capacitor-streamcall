@@ -139,9 +139,11 @@ The SDK will automatically use the system language and these translations.
 login(options: LoginOptions) => Promise<SuccessResponse>
 ```
 
-| Param         | Type                                                  |
-| ------------- | ----------------------------------------------------- |
-| **`options`** | <code><a href="#loginoptions">LoginOptions</a></code> |
+Login to Stream Video service
+
+| Param         | Type                                                  | Description           |
+| ------------- | ----------------------------------------------------- | --------------------- |
+| **`options`** | <code><a href="#loginoptions">LoginOptions</a></code> | - Login configuration |
 
 **Returns:** <code>Promise&lt;<a href="#successresponse">SuccessResponse</a>&gt;</code>
 
@@ -154,6 +156,8 @@ login(options: LoginOptions) => Promise<SuccessResponse>
 logout() => Promise<SuccessResponse>
 ```
 
+Logout from Stream Video service
+
 **Returns:** <code>Promise&lt;<a href="#successresponse">SuccessResponse</a>&gt;</code>
 
 --------------------
@@ -165,9 +169,11 @@ logout() => Promise<SuccessResponse>
 call(options: CallOptions) => Promise<SuccessResponse>
 ```
 
-| Param         | Type                                                |
-| ------------- | --------------------------------------------------- |
-| **`options`** | <code><a href="#calloptions">CallOptions</a></code> |
+Initiate a call to another user
+
+| Param         | Type                                                | Description          |
+| ------------- | --------------------------------------------------- | -------------------- |
+| **`options`** | <code><a href="#calloptions">CallOptions</a></code> | - Call configuration |
 
 **Returns:** <code>Promise&lt;<a href="#successresponse">SuccessResponse</a>&gt;</code>
 
@@ -180,6 +186,8 @@ call(options: CallOptions) => Promise<SuccessResponse>
 endCall() => Promise<SuccessResponse>
 ```
 
+End the current call
+
 **Returns:** <code>Promise&lt;<a href="#successresponse">SuccessResponse</a>&gt;</code>
 
 --------------------
@@ -191,9 +199,11 @@ endCall() => Promise<SuccessResponse>
 setMicrophoneEnabled(options: { enabled: boolean; }) => Promise<SuccessResponse>
 ```
 
-| Param         | Type                               |
-| ------------- | ---------------------------------- |
-| **`options`** | <code>{ enabled: boolean; }</code> |
+Enable or disable microphone
+
+| Param         | Type                               | Description        |
+| ------------- | ---------------------------------- | ------------------ |
+| **`options`** | <code>{ enabled: boolean; }</code> | - Microphone state |
 
 **Returns:** <code>Promise&lt;<a href="#successresponse">SuccessResponse</a>&gt;</code>
 
@@ -206,9 +216,11 @@ setMicrophoneEnabled(options: { enabled: boolean; }) => Promise<SuccessResponse>
 setCameraEnabled(options: { enabled: boolean; }) => Promise<SuccessResponse>
 ```
 
-| Param         | Type                               |
-| ------------- | ---------------------------------- |
-| **`options`** | <code>{ enabled: boolean; }</code> |
+Enable or disable camera
+
+| Param         | Type                               | Description    |
+| ------------- | ---------------------------------- | -------------- |
+| **`options`** | <code>{ enabled: boolean; }</code> | - Camera state |
 
 **Returns:** <code>Promise&lt;<a href="#successresponse">SuccessResponse</a>&gt;</code>
 
@@ -221,10 +233,12 @@ setCameraEnabled(options: { enabled: boolean; }) => Promise<SuccessResponse>
 addListener(eventName: 'callEvent', listenerFunc: (event: CallEvent) => void) => Promise<{ remove: () => Promise<void>; }>
 ```
 
-| Param              | Type                                                                |
-| ------------------ | ------------------------------------------------------------------- |
-| **`eventName`**    | <code>'callEvent'</code>                                            |
-| **`listenerFunc`** | <code>(event: <a href="#callevent">CallEvent</a>) =&gt; void</code> |
+Add listener for call events
+
+| Param              | Type                                                                | Description                       |
+| ------------------ | ------------------------------------------------------------------- | --------------------------------- |
+| **`eventName`**    | <code>'callEvent'</code>                                            | - Name of the event to listen for |
+| **`listenerFunc`** | <code>(event: <a href="#callevent">CallEvent</a>) =&gt; void</code> | - Callback function               |
 
 **Returns:** <code>Promise&lt;{ remove: () =&gt; Promise&lt;void&gt;; }&gt;</code>
 
@@ -237,6 +251,8 @@ addListener(eventName: 'callEvent', listenerFunc: (event: CallEvent) => void) =>
 removeAllListeners() => Promise<void>
 ```
 
+Remove all event listeners
+
 --------------------
 
 
@@ -245,6 +261,8 @@ removeAllListeners() => Promise<void>
 ```typescript
 acceptCall() => Promise<SuccessResponse>
 ```
+
+Accept an incoming call
 
 **Returns:** <code>Promise&lt;<a href="#successresponse">SuccessResponse</a>&gt;</code>
 
@@ -257,6 +275,8 @@ acceptCall() => Promise<SuccessResponse>
 rejectCall() => Promise<SuccessResponse>
 ```
 
+Reject an incoming call
+
 **Returns:** <code>Promise&lt;<a href="#successresponse">SuccessResponse</a>&gt;</code>
 
 --------------------
@@ -267,39 +287,39 @@ rejectCall() => Promise<SuccessResponse>
 
 #### SuccessResponse
 
-| Prop          | Type                 |
-| ------------- | -------------------- |
-| **`success`** | <code>boolean</code> |
+| Prop          | Type                 | Description                          |
+| ------------- | -------------------- | ------------------------------------ |
+| **`success`** | <code>boolean</code> | Whether the operation was successful |
 
 
 #### LoginOptions
 
-| Prop               | Type                                                                                        |
-| ------------------ | ------------------------------------------------------------------------------------------- |
-| **`token`**        | <code>string</code>                                                                         |
-| **`userId`**       | <code>string</code>                                                                         |
-| **`name`**         | <code>string</code>                                                                         |
-| **`imageURL`**     | <code>string</code>                                                                         |
-| **`apiKey`**       | <code>string</code>                                                                         |
-| **`magicDivId`**   | <code>string</code>                                                                         |
-| **`refreshToken`** | <code>{ url: string; headers?: <a href="#record">Record</a>&lt;string, string&gt;; }</code> |
+| Prop               | Type                                                                                        | Description                                             |
+| ------------------ | ------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| **`token`**        | <code>string</code>                                                                         | Stream Video API token                                  |
+| **`userId`**       | <code>string</code>                                                                         | User ID for the current user                            |
+| **`name`**         | <code>string</code>                                                                         | Display name for the current user                       |
+| **`imageURL`**     | <code>string</code>                                                                         | Optional avatar URL for the current user                |
+| **`apiKey`**       | <code>string</code>                                                                         | Stream Video API key                                    |
+| **`magicDivId`**   | <code>string</code>                                                                         | ID of the HTML element where the video will be rendered |
+| **`refreshToken`** | <code>{ url: string; headers?: <a href="#record">Record</a>&lt;string, string&gt;; }</code> | Configuration for token refresh                         |
 
 
 #### CallOptions
 
-| Prop         | Type                 |
-| ------------ | -------------------- |
-| **`userId`** | <code>string</code>  |
-| **`type`**   | <code>string</code>  |
-| **`ring`**   | <code>boolean</code> |
+| Prop         | Type                 | Description                                      |
+| ------------ | -------------------- | ------------------------------------------------ |
+| **`userId`** | <code>string</code>  | User ID of the person to call                    |
+| **`type`**   | <code>string</code>  | Type of call, defaults to 'default'              |
+| **`ring`**   | <code>boolean</code> | Whether to ring the other user, defaults to true |
 
 
 #### CallEvent
 
-| Prop         | Type                |
-| ------------ | ------------------- |
-| **`callId`** | <code>string</code> |
-| **`state`**  | <code>string</code> |
+| Prop         | Type                | Description               |
+| ------------ | ------------------- | ------------------------- |
+| **`callId`** | <code>string</code> | ID of the call            |
+| **`state`**  | <code>string</code> | Current state of the call |
 
 
 ### Type Aliases
