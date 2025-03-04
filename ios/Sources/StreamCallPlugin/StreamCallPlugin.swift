@@ -22,9 +22,10 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "endCall", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setMicrophoneEnabled", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setCameraEnabled", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "acceptCall", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "acceptCall", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "isCameraEnabled", returnType: CAPPluginReturnPromise)
     ]
-
+    
     private enum State {
         case notInitialized
         case initializing
@@ -36,7 +37,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     private static let tokenRefreshSemaphore = DispatchSemaphore(value: 1)
     private var currentToken: String?
     private var tokenWaitSemaphore: DispatchSemaphore?
-
+    
     private var overlayView: UIView?
     private var hostingController: UIHostingController<CallOverlayView>?
     private var overlayViewModel: CallOverlayViewModel?
@@ -44,14 +45,13 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     private var activeCallSubscription: AnyCancellable?
     private var lastVoIPToken: String?
     private var touchInterceptView: TouchInterceptView?
-
+    
     private var streamVideo: StreamVideo?
-
+    
     @Injected(\.callKitAdapter) var callKitAdapter
     @Injected(\.callKitPushNotificationAdapter) var callKitPushNotificationAdapter
-
     private var webviewDelegate: WebviewNavigationDelegate?
-
+    
     override public func load() {
         // Read API key from Info.plist
         if let apiKey = Bundle.main.object(forInfoDictionaryKey: "CAPACITOR_STREAM_VIDEO_APIKEY") as? String {
@@ -60,7 +60,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         if self.apiKey == nil {
             fatalError("Cannot get apikey")
         }
-
+        
         // Check if we have a logged in user for handling incoming calls
         if let credentials = SecureUserRepository.shared.loadCurrentUser() {
             print("Loading user for StreamCallPlugin: \(credentials.user.name)")
@@ -68,21 +68,21 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                 self.initializeStreamVideo()
             }
         }
-
+        
         // Create and set the navigation delegate
         self.webviewDelegate = WebviewNavigationDelegate(
             wrappedDelegate: self.webView?.navigationDelegate,
             onSetupOverlay: { [weak self] in
                 guard let self = self else { return }
                 print("Attempting to setup call view")
-
+                
                 self.setupViews()
             }
         )
-
+        
         self.webView?.navigationDelegate = self.webviewDelegate
     }
-
+    
     //    private func cleanupStreamVideo() {
     //        // Cancel subscriptions
     //        tokenSubscription?.cancel()
@@ -108,29 +108,28 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     //
     //        state = .notInitialized
     //    }
-
+    
     private func requireInitialized() throws {
         guard state == .initialized else {
             throw NSError(domain: "StreamCallPlugin", code: -1, userInfo: [NSLocalizedDescriptionKey: "StreamVideo not initialized"])
         }
     }
-
     @objc func loginMagicToken(_ call: CAPPluginCall) {
         guard let token = call.getString("token") else {
             call.reject("Missing token parameter")
             return
         }
-
+        
         print("loginMagicToken received token")
         currentToken = token
         tokenWaitSemaphore?.signal()
         call.resolve()
     }
-
+    
     private func setupTokenSubscription() {
         // Cancel existing subscription if any
         tokenSubscription?.cancel()
-
+        
         // Create new subscription
         tokenSubscription = callKitPushNotificationAdapter.$deviceToken.sink { [weak self] (updatedDeviceToken: String) in
             guard let self = self else { return }
@@ -156,7 +155,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             }
         }
     }
-
+    
     private func setupActiveCallSubscription() {
         if let streamVideo = streamVideo {
             Task {
@@ -191,12 +190,12 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         print("- Session ID: \(state.sessionId)")
                         print("- All participants: \(String(describing: state.participants))")
                         print("- Remote participants: \(String(describing: state.remoteParticipants))")
-
+                        
                         // Update overlay and make visible when there's an active call
                         self.overlayViewModel?.updateCall(newState)
                         self.overlayView?.isHidden = false
                         self.webView?.isOpaque = false
-
+                        
                         // Notify that a call has started
                         self.notifyListeners("callEvent", data: [
                             "callId": newState?.cId ?? "",
@@ -207,7 +206,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         self.overlayViewModel?.updateCall(nil)
                         self.overlayView?.isHidden = true
                         self.webView?.isOpaque = true
-
+                        
                         // Notify that call has ended
                         self.notifyListeners("callEvent", data: [
                             "callId": newState?.cId ?? "",
@@ -220,7 +219,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             }
         }
     }
-
+    
     @objc func login(_ call: CAPPluginCall) {
         guard let token = call.getString("token"),
               let userId = call.getString("userId"),
@@ -229,41 +228,39 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             call.reject("Missing required parameters")
             return
         }
-
+        
         let imageURL = call.getString("imageURL")
-
         let user = User(
             id: userId,
             name: name,
             imageURL: imageURL.flatMap { URL(string: $0) },
             customData: [:]
         )
-
+        
         let credentials = UserCredentials(user: user, tokenValue: token)
         SecureUserRepository.shared.save(user: credentials)
-
         // Initialize Stream Video with new credentials
         initializeStreamVideo()
-
+        
         if state != .initialized {
             call.reject("Failed to initialize StreamVideo")
             return
         }
-
+        
         // Update the CallOverlayView with new StreamVideo instance
         Task { @MainActor in
             self.overlayViewModel?.updateStreamVideo(self.streamVideo)
         }
-
+        
         call.resolve([
             "success": true
         ])
     }
-
+    
     @objc func logout(_ call: CAPPluginCall) {
         // Remove VOIP token from repository
         SecureUserRepository.shared.save(voipPushToken: nil)
-
+        
         // Try to delete the device from Stream if we have the last token
         if let lastVoIPToken = lastVoIPToken {
             Task {
@@ -274,16 +271,16 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                 }
             }
         }
-
+        
         // Cancel subscriptions
         tokenSubscription?.cancel()
         tokenSubscription = nil
         activeCallSubscription?.cancel()
         activeCallSubscription = nil
         lastVoIPToken = nil
-
+        
         SecureUserRepository.shared.removeCurrentUser()
-
+        
         // Update the CallOverlayView with nil StreamVideo instance
         Task { @MainActor in
             self.overlayViewModel?.updateCall(nil)
@@ -291,10 +288,26 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             self.overlayView?.isHidden = true
             self.webView?.isOpaque = true
         }
-
+        
         call.resolve([
             "success": true
         ])
+    }
+    
+    @objc func isCameraEnabled(_ call: CAPPluginCall) {
+        do {
+            try requireInitialized()
+        } catch {
+            call.reject("SDK not initialized")
+        }
+        
+        if let activeCall = streamVideo?.state.activeCall {
+            call.resolve([
+                "enabled": activeCall.camera.status == .enabled
+            ])
+        } else {
+            call.reject("No active call")
+        }
     }
 
     @objc func call(_ call: CAPPluginCall) {
