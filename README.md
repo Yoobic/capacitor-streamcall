@@ -1,4 +1,4 @@
-# stream-call
+# @capgo/capacitor-stream-call
  <a href="https://capgo.app/"><img src='https://raw.githubusercontent.com/Cap-go/capgo/main/assets/capgo_banner.png' alt='Capgo - Instant updates for capacitor'/></a>
 
 <div align="center">
@@ -12,7 +12,7 @@ Uses the https://getstream.io/ SDK to implement calling in Capacitor
 ## Install
 
 ```bash
-npm install stream-call
+npm install @capgo/capacitor-stream-call
 npx cap sync
 ```
 

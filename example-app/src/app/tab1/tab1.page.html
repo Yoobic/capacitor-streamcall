@@ -31,21 +31,39 @@
     </div>
 
     <div class="call-buttons" *ngIf="currentUser">
-      <ion-button *ngIf="currentUser.userId !== 'user1'" (click)="callUser('user1')" color="success">
+      <ion-button *ngIf="currentUser.userId !== 'user1'" (click)="callUser(['user1'])" color="success">
         <ion-icon name="call"></ion-icon>
         Call User 1
       </ion-button>
-      <ion-button *ngIf="currentUser.userId !== 'user2'" (click)="callUser('user2')" color="success">
+      <ion-button *ngIf="currentUser.userId !== 'user2'" (click)="callUser(['user2'])" color="success">
         <ion-icon name="call"></ion-icon>
         Call User 2
       </ion-button>
-      <ion-button *ngIf="currentUser.userId !== 'user3'" (click)="callUser('user3')" color="success">
+      <ion-button *ngIf="currentUser.userId !== 'user3'" (click)="callUser(['user3'])" color="success">
         <ion-icon name="call"></ion-icon>
         Call User 3
       </ion-button>
-      <ion-button *ngIf="currentUser.userId !== 'user4'" (click)="callUser('user4')" color="success">
+      <ion-button *ngIf="currentUser.userId !== 'user4'" (click)="callUser(['user4'])" color="success">
         <ion-icon name="call"></ion-icon>
         Call User 4
+      </ion-button>
+      <!-- add multi call test button -->
+      <ion-button (click)="callUser(['user1', 'user2'])" color="success">
+        <ion-icon name="call"></ion-icon>
+        Call User 1 and 2
+      </ion-button>
+      <ion-button (click)="callUser(['user1', 'user2', 'user3'])" color="success">
+        <ion-icon name="call"></ion-icon>
+        Call User 1, 2 and 3
+      </ion-button>
+      <ion-button (click)="callUser(['user1', 'user2', 'user3', 'user4'])" color="success">
+        <ion-icon name="call"></ion-icon>
+        Call All Users
+      </ion-button>
+      <!-- call 2,3 -->
+      <ion-button (click)="callUser(['user2', 'user3'])" color="success">
+        <ion-icon name="call"></ion-icon>
+        Call User 2 and 3
       </ion-button>
     </div>
   </div> 

@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { StreamCall } from 'stream-call';
+import { StreamCall } from '@capgo/capacitor-stream-call';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { ToastController } from '@ionic/angular';
@@ -79,17 +79,17 @@ export class Tab1Page {
     }
   }
 
-  async callUser(userId: string) {
+  async callUser(userIds: string[]) {
     try {
       await StreamCall.call({
-        userId: userId,
+        userIds: userIds,
         type: 'default',
         ring: true
       });
-      await this.presentToast(`Calling ${userId}...`, 'success');
+      await this.presentToast(`Calling ${userIds}...`, 'success');
     } catch (error) {
-      console.error(`Failed to call ${userId}:`, error);
-      await this.presentToast(`Failed to call ${userId}`, 'danger');
+      console.error(`Failed to call ${userIds}:`, error);
+      await this.presentToast(`Failed to call ${userIds}`, 'danger');
     }
   }
 

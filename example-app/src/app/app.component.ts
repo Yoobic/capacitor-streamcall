@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { ChangeDetectorRef } from '@angular/core';
 import { Capacitor } from '@capacitor/core';
 import { ToastController } from '@ionic/angular';
-import { StreamCall } from 'stream-call';
+import { StreamCall } from '@capgo/capacitor-stream-call';
 
 @Component({
   selector: 'app-root',

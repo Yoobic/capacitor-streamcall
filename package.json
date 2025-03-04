@@ -13,7 +13,7 @@
     "ios/Sources",
     "ios/Tests",
     "Package.swift",
-    "StreamCall.podspec"
+    "CapgoCapacitorStreamCall.podspec"
   ],
   "author": "Martin Donadieu <martin@capgo.app>",
   "license": "MIT",
