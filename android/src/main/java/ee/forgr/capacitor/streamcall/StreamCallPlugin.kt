@@ -794,6 +794,35 @@ public class StreamCallPlugin : Plugin() {
     }
 
     @PluginMethod
+    fun isCameraEnabled(call: PluginCall) {
+        try {
+            val activeCall = streamVideoClient?.state?.activeCall
+            if (activeCall == null) {
+                call.reject("No active call")
+                return
+            }
+
+            kotlinx.coroutines.GlobalScope.launch {
+                try {
+                    val enabled = activeCall.value?.camera?.isEnabled?.value
+                    if (enabled == null) {
+                        call.reject("Cannot figure out if camera is enabled or not")
+                        return@launch
+                    }
+                    call.resolve(JSObject().apply {
+                        put("enabled", enabled)
+                    })
+                } catch (e: Exception) {
+                    android.util.Log.e("StreamCallPlugin", "Error checking the camera status: ${e.message}")
+                    call.reject("Failed to check if camera is enabled: ${e.message}")
+                }
+            }
+        } catch (e: Exception) {
+            call.reject("StreamVideo not initialized")
+        }
+    }
+
+    @PluginMethod
     fun setCameraEnabled(call: PluginCall) {
         val enabled = call.getBoolean("enabled") ?: run {
             call.reject("Missing required parameter: enabled")

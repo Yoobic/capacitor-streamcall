@@ -2,7 +2,7 @@ import { WebPlugin } from '@capacitor/core';
 import type { AllClientEvents, Call, CallResponse, StreamVideoParticipant } from '@stream-io/video-client';
 import { CallingState, StreamVideoClient } from '@stream-io/video-client';
 
-import type { CallOptions, StreamCallPlugin, SuccessResponse, LoginOptions } from './definitions';
+import type { CallOptions, StreamCallPlugin, SuccessResponse, LoginOptions, CameraEnabledResponse} from './definitions';
 
 export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
   private client?: StreamVideoClient;
@@ -354,5 +354,14 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
     this.notifyListeners('callEvent', { callId: call.id, state: CallingState.LEFT });
     this.cleanupCall();
     return { success: true };
+  }
+
+  async isCameraEnabled(): Promise<CameraEnabledResponse> {
+    if (!this.currentCall) {
+      console.log('No active call', this.currentCall);
+      throw new Error('No active call');
+    }
+    const enabled = await this.currentCall.camera.enabled;
+    return { enabled };
   }
 }
