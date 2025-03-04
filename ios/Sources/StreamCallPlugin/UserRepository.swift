@@ -7,6 +7,7 @@
 
 import Security
 import StreamVideo
+import Foundation
 
 struct UserCredentials: Identifiable, Codable {
     var id: String {
