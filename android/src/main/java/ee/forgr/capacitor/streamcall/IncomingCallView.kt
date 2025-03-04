@@ -47,10 +47,19 @@ fun IncomingCallView(
     val ringingState = call?.state?.ringingState?.collectAsState(initial = RingingState.Idle)
 
     LaunchedEffect(ringingState?.value) {
-        Log.d("IncomingCallView", "Changing ringingState to $ringingState?.value")
-        if (ringingState?.value == RingingState.TimeoutNoAnswer || ringingState?.value == RingingState.RejectedByAll) {
-            Log.d("IncomingCallView", "Call timed out, hiding incoming call view")
-            onHideIncomingCall?.invoke()
+        Log.d("IncomingCallView", "Changing ringingState to ${ringingState?.value}")
+        when (ringingState?.value) {
+            RingingState.TimeoutNoAnswer, RingingState.RejectedByAll, RingingState.RejectedByAll -> {
+                Log.d("IncomingCallView", "Call ended (${ringingState.value}), hiding incoming call view")
+                onHideIncomingCall?.invoke()
+            }
+            RingingState.Active -> {
+                Log.d("IncomingCallView", "Call accepted, hiding incoming call view")
+                onHideIncomingCall?.invoke()
+            }
+            else -> {
+                // Keep the view visible for other states
+            }
         }
     }
 

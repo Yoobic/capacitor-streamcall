@@ -129,88 +129,35 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             StreamCallPlugin.tokenRefreshSemaphore.signal()
         }
 
-        // Clear current token
-        currentToken = nil
-
-        // Create a local semaphore for waiting on the token
-        let localSemaphore = DispatchSemaphore(value: 0)
-        tokenWaitSemaphore = localSemaphore
-
-        // Capture webView before async context
-        guard let webView = self.webView else {
-            print("WebView not available")
-            tokenWaitSemaphore = nil
-            throw NSError(domain: "StreamCallPlugin", code: -1, userInfo: [NSLocalizedDescriptionKey: "WebView not available"])
-        }
-
         guard let refreshURL = self.refreshTokenURL else {
             print("Refresh URL not configured")
-            tokenWaitSemaphore = nil
             throw NSError(domain: "StreamCallPlugin", code: -1, userInfo: [NSLocalizedDescriptionKey: "Refresh URL not configured"])
         }
 
-        let headersJSON = (self.refreshTokenHeaders ?? [:]).reduce(into: "") { result, pair in
-            result += "\n'\(pair.key)': '\(pair.value)',"
-        }
+        var request = URLRequest(url: URL(string: refreshURL)!)
 
-        let script = """
-            (function() {
-                console.log('Starting token refresh...');
-                fetch('\(refreshURL)', {
-                    headers: {
-                        \(headersJSON)
-                    }
-                })
-                .then(response => {
-                    console.log('Got response:', response.status);
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('Got data, token length:', data.token?.length);
-                    const tokenA = data.token;
-                    window.Capacitor.Plugins.StreamCall.loginMagicToken({
-                        token: tokenA
-                    });
-                })
-                .catch(error => {
-                    console.error('Token refresh error:', error);
-                });
-            })();
-        """
-
-        if Thread.isMainThread {
-            print("Executing script on main thread")
-            webView.evaluateJavaScript(script, completionHandler: nil)
-        } else {
-            print("Executing script from background thread")
-            DispatchQueue.main.sync {
-                webView.evaluateJavaScript(script, completionHandler: nil)
+        // Add headers if they exist
+        if let headers = self.refreshTokenHeaders {
+            for (key, value) in headers {
+                request.setValue(value, forHTTPHeaderField: key)
             }
         }
 
-        // Set up a timeout
-        let timeoutQueue = DispatchQueue.global()
-        let timeoutWork = DispatchWorkItem {
-            print("Token refresh timed out")
-            self.tokenWaitSemaphore?.signal()
-            self.tokenWaitSemaphore = nil
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw NSError(domain: "StreamCallPlugin", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response from server"])
         }
-        timeoutQueue.asyncAfter(deadline: .now() + 10.0, execute: timeoutWork) // 10 second timeout
 
-        // Wait for token to be set via loginMagicToken or timeout
-        localSemaphore.wait()
-        timeoutWork.cancel()
-        tokenWaitSemaphore = nil
-
-        guard let token = currentToken else {
-            print("Failed to get token")
-            throw NSError(domain: "StreamCallPlugin", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to get token or timeout occurred"])
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let token = json["token"] as? String else {
+            throw NSError(domain: "StreamCallPlugin", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid token format in response"])
         }
 
         // Save the token
         SecureUserRepository.shared.save(token: token)
 
-        print("Got the token!!!")
         return UserToken(stringLiteral: token)
     }
 
@@ -450,10 +397,60 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         ring: shouldRing
                     )
 
+                    // Set up event subscription
+                    let eventTask = Task { [weak self] in
+                        guard let self = self else { return }
+                        guard let streamCall = streamCall else { return }
+                        for await event in streamCall.subscribe() {
+                            print("Received event:", event)
+                            if let rejectedEvent = event.rawValue as? CallRejectedEvent {
+                                print("Call was rejected")
+                                do {
+                                    try await streamCall.leave()
+                                    await MainActor.run {
+                                        self.overlayViewModel?.updateCall(nil)
+                                        self.overlayView?.isHidden = true
+                                        self.webView?.isOpaque = true
+                                        self.notifyListeners("callEvent", data: [
+                                            "callId": callId,
+                                            "state": "rejected"
+                                        ])
+                                    }
+                                } catch {
+                                    print("Error leaving call: \(error)")
+                                }
+                                return
+                            } else if let missedEvent = event.rawValue as? CallMissedEvent {
+                                print("Call was missed")
+                                do {
+                                    try await streamCall.leave()
+                                    await MainActor.run {
+                                        self.overlayViewModel?.updateCall(nil)
+                                        self.overlayView?.isHidden = true
+                                        self.webView?.isOpaque = true
+                                        self.notifyListeners("callEvent", data: [
+                                            "callId": callId,
+                                            "state": "missed"
+                                        ])
+                                    }
+                                } catch {
+                                    print("Error leaving call: \(error)")
+                                }
+                                return
+                            } else if let acceptedEvent = event.rawValue as? CallAcceptedEvent {
+                                print("Call was accepted")
+                                return
+                            }
+                        }
+                    }
+
                     // Join the call
                     print("Joining call...")
                     try await streamCall?.join(create: false)
                     print("Successfully joined call")
+
+                    // Cancel the event task since we successfully joined
+                    eventTask.cancel()
 
                     // Update the CallOverlayView with the active call
                     await MainActor.run {

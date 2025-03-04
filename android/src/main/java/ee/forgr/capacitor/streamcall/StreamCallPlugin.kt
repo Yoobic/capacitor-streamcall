@@ -559,6 +559,10 @@ public class StreamCallPlugin : Plugin() {
                                 )
                             }
                             overlayView?.isVisible = false
+                            // Stop ringtone if it's still playing
+                            ringtonePlayer?.stopRinging()
+                            // Hide incoming call view if visible
+                            incomingCallView?.isVisible = false
                         }
                         val data = JSObject().apply {
                             put("callId", event.call.cid)
@@ -577,6 +581,10 @@ public class StreamCallPlugin : Plugin() {
                                 )
                             }
                             overlayView?.isVisible = false
+                            // Stop ringtone if it's still playing
+                            ringtonePlayer?.stopRinging()
+                            // Hide incoming call view if visible
+                            incomingCallView?.isVisible = false
                         }
                         val data = JSObject().apply {
                             put("callId", event.call.cid)
