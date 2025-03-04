@@ -323,19 +323,20 @@ isCameraEnabled() => Promise<CameraEnabledResponse>
 
 #### CallOptions
 
-| Prop         | Type                 | Description                                      |
-| ------------ | -------------------- | ------------------------------------------------ |
-| **`userId`** | <code>string</code>  | User ID of the person to call                    |
-| **`type`**   | <code>string</code>  | Type of call, defaults to 'default'              |
-| **`ring`**   | <code>boolean</code> | Whether to ring the other user, defaults to true |
+| Prop          | Type                  | Description                                      |
+| ------------- | --------------------- | ------------------------------------------------ |
+| **`userIds`** | <code>string[]</code> | User ID of the person to call                    |
+| **`type`**    | <code>string</code>   | Type of call, defaults to 'default'              |
+| **`ring`**    | <code>boolean</code>  | Whether to ring the other user, defaults to true |
 
 
 #### CallEvent
 
-| Prop         | Type                | Description               |
-| ------------ | ------------------- | ------------------------- |
-| **`callId`** | <code>string</code> | ID of the call            |
-| **`state`**  | <code>string</code> | Current state of the call |
+| Prop         | Type                | Description                                                    |
+| ------------ | ------------------- | -------------------------------------------------------------- |
+| **`callId`** | <code>string</code> | ID of the call                                                 |
+| **`state`**  | <code>string</code> | Current state of the call                                      |
+| **`userId`** | <code>string</code> | User ID of the participant in the call who triggered the event |
 
 
 #### CameraEnabledResponse

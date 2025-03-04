@@ -311,8 +311,13 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func call(_ call: CAPPluginCall) {
-        guard let userId = call.getString("userId") else {
-            call.reject("Missing required parameter: userId")
+        guard let members = call.getArray("userIds", String.self) else {
+            call.reject("Missing required parameter: userIds (array of user IDs)")
+            return
+        }
+
+        if members.isEmpty {
+            call.reject("userIds array cannot be empty")
             return
         }
 
@@ -343,19 +348,55 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     print("Creating call:")
                     print("- Call ID: \(callId)")
                     print("- Call Type: \(callType)")
-                    print("- User ID: \(userId)")
+                    print("- Users: \(members)")
                     print("- Should Ring: \(shouldRing)")
 
                     // Create the call object
                     let streamCall = streamVideo?.call(callType: callType, callId: callId)
 
-                    // Start the call with the member
-                    print("Creating call with member...")
+                    // Start the call with the members
+                    print("Creating call with members...")
                     try await streamCall?.create(
-                        memberIds: [userId],
+                        memberIds: members,
                         custom: [:],
                         ring: shouldRing
                     )
+
+                    // Track participants responses
+                    var participantResponses: [String: String] = [:]
+                    let totalParticipants = members.count
+
+                    func handleParticipantResponse(userId: String, response: String, eventType: String) async {
+                        guard let streamCall = streamCall else { return }
+                        participantResponses[userId] = response
+                        print("Call was \(response) by user: \(userId)")
+                        await MainActor.run {
+                            self.notifyListeners("callEvent", data: [
+                                "callId": callId,
+                                "state": eventType,
+                                "userId": userId
+                            ])
+                        }
+
+                        // Check if all participants have rejected or missed
+                        let allResponded = participantResponses.count == totalParticipants
+                        let allRejectedOrMissed = participantResponses.values.allSatisfy { $0 == "rejected" || $0 == "missed" }
+                        
+                        if allResponded && allRejectedOrMissed {
+                            print("All participants have rejected or missed the call")
+                            streamCall.leave()
+                            await MainActor.run {
+                                self.overlayViewModel?.updateCall(nil)
+                                self.overlayView?.isHidden = true
+                                self.webView?.isOpaque = true
+                                self.notifyListeners("callEvent", data: [
+                                    "callId": callId,
+                                    "state": "ended",
+                                    "reason": "all_rejected_or_missed"
+                                ])
+                            }
+                        }
+                    }
 
                     // Set up event subscription
                     let eventTask = Task { [weak self] in
@@ -364,34 +405,11 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         for await event in streamCall.subscribe() {
                             print("Received event:", event)
                             if let rejectedEvent = event.rawValue as? CallRejectedEvent {
-                                print("Call was rejected")
-                                streamCall.leave()
-                                await MainActor.run {
-                                    self.overlayViewModel?.updateCall(nil)
-                                    self.overlayView?.isHidden = true
-                                    self.webView?.isOpaque = true
-                                    self.notifyListeners("callEvent", data: [
-                                        "callId": callId,
-                                        "state": "rejected"
-                                    ])
-                                }
-                                return
+                                await handleParticipantResponse(userId: rejectedEvent.user.id, response: "rejected", eventType: "rejected")
                             } else if let missedEvent = event.rawValue as? CallMissedEvent {
-                                print("Call was missed")
-                                streamCall.leave()
-                                await MainActor.run {
-                                    self.overlayViewModel?.updateCall(nil)
-                                    self.overlayView?.isHidden = true
-                                    self.webView?.isOpaque = true
-                                    self.notifyListeners("callEvent", data: [
-                                        "callId": callId,
-                                        "state": "missed"
-                                    ])
-                                }
-                                return
+                                await handleParticipantResponse(userId: missedEvent.user.id, response: "missed", eventType: "missed")
                             } else if let acceptedEvent = event.rawValue as? CallAcceptedEvent {
-                                print("Call was accepted")
-                                return
+                                await handleParticipantResponse(userId: acceptedEvent.user.id, response: "accepted", eventType: "accepted")
                             }
                         }
                     }

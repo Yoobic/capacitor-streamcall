@@ -32,7 +32,7 @@ export interface LoginOptions {
  */
 export interface CallOptions {
   /** User ID of the person to call */
-  userId: string;
+  userIds: string[];
   /** Type of call, defaults to 'default' */
   type?: string;
   /** Whether to ring the other user, defaults to true */
@@ -60,6 +60,8 @@ export interface CallEvent {
   callId: string;
   /** Current state of the call */
   state: string;
+  /** User ID of the participant in the call who triggered the event */
+  userId?: string
 }
 
 export interface CameraEnabledResponse {
