@@ -169,7 +169,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                             "callId": ringingEvent.callCid,
                             "state": "ringing"
                         ])
-                        return
+                        continue
                     }
                     
                     if let rejectedEvent = event.rawValue as? CallRejectedEvent {
@@ -182,7 +182,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         ])
                         
                         await checkAllParticipantsResponded(participantResponses: participantResponses)
-                        return
+                        continue
                     }
                     
                     if let missedEvent = event.rawValue as? CallMissedEvent {
@@ -195,7 +195,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         ])
                         
                         await checkAllParticipantsResponded(participantResponses: participantResponses)
-                        return
+                        continue
                     }
                     
                     if let acceptedEvent = event.rawValue as? CallAcceptedEvent {
@@ -206,7 +206,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                             "state": "accepted",
                             "userId": userId
                         ])
-                        return
+                        continue
                     }
                     
                     notifyListeners("callEvent", data: [
