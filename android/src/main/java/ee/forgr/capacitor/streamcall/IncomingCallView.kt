@@ -80,6 +80,9 @@ fun IncomingCallView(
         val isCameraEnabled by call.camera.isEnabled.collectAsState()
         val isVideoType = true
 
+        // disable camera by default
+        call.camera.setEnabled(false)
+
         val statusBarPadding = WindowInsets.statusBars.asPaddingValues()
         val navigationBarPadding = WindowInsets.navigationBars.asPaddingValues()
         val safeDrawingPadding = WindowInsets.safeDrawing.asPaddingValues()

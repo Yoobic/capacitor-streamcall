@@ -34,7 +34,7 @@ class CustomNotificationHandler(
         shouldHaveContentIntent: Boolean,
     ): Notification {
 
-        customCreateIncomingCallChannel(channelId, showAsHighPriority)
+        customCreateIncomingCallChannel()
 
         return buildNotification(
             fullScreenPendingIntent,
