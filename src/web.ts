@@ -21,10 +21,23 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
   private audioBindings: Map<string, () => void> = new Map();
   private participantJoinedListener?: (event: { participant?: { sessionId: string } }) => void;
   private participantLeftListener?: (event: { participant?: { sessionId: string } }) => void;
+  private participantResponses: Map<string, string> = new Map();
 
   private setupCallRingListener() {
     this.client?.off('call.ring', this.ringCallback);
     this.client?.on('call.ring', this.ringCallback);
+  }
+
+  private setupCallEventListeners() {
+    // Clear previous listeners if any
+    this.client?.off('call.rejected', this.callRejectedCallback);
+    this.client?.off('call.accepted', this.callAcceptedCallback);
+    this.client?.off('call.missed', this.callMissedCallback);
+    
+    // Register event listeners
+    this.client?.on('call.rejected', this.callRejectedCallback);
+    this.client?.on('call.accepted', this.callAcceptedCallback);
+    this.client?.on('call.missed', this.callMissedCallback);
   }
 
   private ringCallback = (event: AllClientEvents['call.ring']) => {
@@ -34,6 +47,8 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
       console.log('Creating new call', event.call.id);
       this.currentCall = this.client?.call(event.call.type, event.call.id);
       this.notifyListeners('callEvent', { callId: event.call.id, state: CallingState.RINGING });
+      // Clear previous responses when a new call starts
+      this.participantResponses.clear();
     }
     if (this.currentCall) {
       console.log('Call found', this.currentCall.id);
@@ -41,6 +56,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
         console.log('Call state', s);
         if (s === CallingState.JOINED) {
           this.setupParticipantListener();
+          this.setupCallEventListeners();
         } else if (s === CallingState.LEFT || s === CallingState.RECONNECTING_FAILED) {
           this.cleanupCall();
         }
@@ -160,6 +176,84 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
     }
   }
 
+  private callRejectedCallback = (event: AllClientEvents['call.rejected']) => {
+    console.log('Call rejected', event);
+    if (event.user && event.user.id) {
+      this.participantResponses.set(event.user.id, 'rejected');
+      this.notifyListeners('callEvent', { 
+        callId: event.call_cid, 
+        state: 'rejected',
+        userId: event.user.id
+      });
+      
+      this.checkAllParticipantsResponded();
+    }
+  };
+
+  private callAcceptedCallback = (event: AllClientEvents['call.accepted']) => {
+    console.log('Call accepted', event);
+    if (event.user && event.user.id) {
+      this.participantResponses.set(event.user.id, 'accepted');
+      this.notifyListeners('callEvent', { 
+        callId: event.call_cid, 
+        state: 'accepted',
+        userId: event.user.id
+      });
+    }
+  };
+
+  private callMissedCallback = (event: AllClientEvents['call.missed']) => {
+    console.log('Call missed', event);
+    if (event.user && event.user.id) {
+      this.participantResponses.set(event.user.id, 'missed');
+      this.notifyListeners('callEvent', { 
+        callId: event.call_cid, 
+        state: 'missed',
+        userId: event.user.id
+      });
+      
+      this.checkAllParticipantsResponded();
+    }
+  };
+
+  private checkAllParticipantsResponded() {
+    if (!this.currentCall) return;
+    
+    // Get total participants from the call state
+    const participants = this.currentCall.state.participantCount || 0;
+    // We subtract 1 to exclude the current user
+    const expectedResponses = Math.max(0, participants - 1);
+    
+    // Count rejections and misses
+    let rejectedOrMissedCount = 0;
+    this.participantResponses.forEach(response => {
+      if (response === 'rejected' || response === 'missed') {
+        rejectedOrMissedCount++;
+      }
+    });
+    
+    console.log(`Participants responded: ${this.participantResponses.size}/${expectedResponses}`);
+    console.log(`Rejected or missed: ${rejectedOrMissedCount}`);
+    
+    // If all participants have rejected or missed the call
+    if (rejectedOrMissedCount > 0 && rejectedOrMissedCount >= expectedResponses) {
+      console.log('All participants have rejected or missed the call');
+      
+      // End the call
+      this.currentCall.leave();
+      
+      // Clean up
+      this.cleanupCall();
+      
+      // Notify listeners
+      this.notifyListeners('callEvent', { 
+        callId: this.currentCall.id, 
+        state: 'ended',
+        reason: 'all_rejected_or_missed'
+      });
+    }
+  }
+
   private cleanupCall() {
     // First cleanup the call listeners
     if (this.currentCall) {
@@ -272,7 +366,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
 
     const call = this.client.call(options.type || 'default', crypto.randomUUID());
     const members = options.userIds.map((userId) => ({ user_id: userId }));
-    if (this.client.streamClient.userID && options.userIds.includes(this.client.streamClient.userID)) {
+    if (this.client.streamClient.userID && !options.userIds.includes(this.client.streamClient.userID)) {
       members.push({ user_id: this.client.streamClient.userID });
     }
     await call.getOrCreate({ data: { members } });
