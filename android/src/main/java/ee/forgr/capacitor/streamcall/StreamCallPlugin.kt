@@ -202,7 +202,7 @@ public class StreamCallPlugin : Plugin() {
     private fun declineCall(call: Call) {
         kotlinx.coroutines.GlobalScope.launch {
             try {
-                call.leave()
+                call.reject()
                 
                 // Stop ringtone
                 ringtonePlayer?.stopRinging()
@@ -733,7 +733,7 @@ public class StreamCallPlugin : Plugin() {
                 }
 
                 // Join the call without affecting others
-                call.join()
+                call.accept()
 
                 // Notify that call has started
                 val data = JSObject().apply {
