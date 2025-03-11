@@ -62,6 +62,8 @@ export interface CallEvent {
   state: string;
   /** User ID of the participant in the call who triggered the event */
   userId?: string
+  /** Reason for the call state change */
+  reason?: string;
 }
 
 export interface CameraEnabledResponse {

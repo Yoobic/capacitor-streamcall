@@ -139,7 +139,7 @@ export class AppComponent {
         await this.presentToast('Call ended', 'success');
         this.cdr.detectChanges();
       } else if (event.state === 'rejected') {
-        this.isInCall = false;
+        //this.isInCall = false;
         await this.incomingToast?.dismiss();
         console.log('Call rejected', event);
         await this.presentToast('Call rejected', 'success');
@@ -150,6 +150,10 @@ export class AppComponent {
           await this.presentIncomingCallToast();
           this.cdr.detectChanges();
         }
+      } else if (event.state === 'ended' && event.reason === 'all_rejected_or_missed' && Capacitor.getPlatform() === 'web') {
+        await this.presentToast('Call rejected or missed by all participants', 'success');
+        this.isInCall = false;
+        this.cdr.detectChanges();
       } else {
         console.log('Call event', event);
         await this.presentToast(`Call event: ${event.state}`, 'success');

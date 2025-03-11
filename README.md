@@ -337,6 +337,7 @@ isCameraEnabled() => Promise<CameraEnabledResponse>
 | **`callId`** | <code>string</code> | ID of the call                                                 |
 | **`state`**  | <code>string</code> | Current state of the call                                      |
 | **`userId`** | <code>string</code> | User ID of the participant in the call who triggered the event |
+| **`reason`** | <code>string</code> | Reason for the call state change                               |
 
 
 #### CameraEnabledResponse
