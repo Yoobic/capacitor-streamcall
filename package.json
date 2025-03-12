@@ -1,6 +1,6 @@
 {
   "name": "@capgo/capacitor-stream-call",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Uses the https://getstream.io/ SDK to implement calling in Capacitor",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
@@ -39,7 +39,7 @@
     "ios",
     "android",
     "web",
-    "capacitor-plugin"    
+    "capacitor-plugin"
   ],
   "scripts": {
     "verify": "npm run verify:ios && npm run verify:android && npm run verify:web",
