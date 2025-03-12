@@ -35,6 +35,7 @@ import io.getstream.video.android.model.StreamCallId
 import io.getstream.video.android.model.User
 import io.getstream.video.android.model.streamCallId
 import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import org.openapitools.client.models.CallAcceptedEvent
 import org.openapitools.client.models.CallEndedEvent
@@ -42,6 +43,8 @@ import org.openapitools.client.models.CallMissedEvent
 import org.openapitools.client.models.CallRejectedEvent
 import org.openapitools.client.models.CallSessionEndedEvent
 import org.openapitools.client.models.VideoEvent
+import io.getstream.video.android.model.Device
+import kotlinx.coroutines.flow.first
 
 // I am not a religious pearson, but at this point, I am not sure even god himself would understand this code
 // It's a spaghetti-like, tangled, unreadable mess and frankly, I am deeply sorry for the code crimes commited in the Android impl
@@ -339,7 +342,7 @@ public class StreamCallPlugin : Plugin() {
             SecureUserRepository.getInstance(context).save(credentials)
 
             // Initialize Stream Video with new credentials
-            if (!hadSavedCredentials) {
+            if (!hadSavedCredentials || (savedCredentials!!.user.id !== userId)) {
                 initializeStreamVideo()
             }
 
@@ -358,15 +361,20 @@ public class StreamCallPlugin : Plugin() {
             SecureUserRepository.getInstance(context).removeCurrentUser()
             
             // Properly cleanup the client
-            streamVideoClient?.let {
-                StreamVideo.removeClient()
-            }
-            streamVideoClient = null
-            state = State.NOT_INITIALIZED
+            kotlinx.coroutines.GlobalScope.launch {
+                streamVideoClient?.let {
+                    magicDeviceDelete(it)
+                    it.logOut()
+                    StreamVideo.removeClient()
+                }
 
-            val ret = JSObject()
-            ret.put("success", true)
-            call.resolve(ret)
+                streamVideoClient = null
+                state = State.NOT_INITIALIZED
+
+                val ret = JSObject()
+                ret.put("success", true)
+                call.resolve(ret)
+            }
         } catch (e: Exception) {
             call.reject("Failed to logout", e)
         }
@@ -1142,6 +1150,69 @@ public class StreamCallPlugin : Plugin() {
             } catch (e: Exception) {
                 android.util.Log.e("StreamCallPlugin", "Error checking participant responses: ${e.message}")
             }
+        }
+    }
+
+    private suspend fun magicDeviceDelete(streamVideoClient: StreamVideo) {
+        try {
+            android.util.Log.d("StreamCallPlugin", "Starting magicDeviceDelete reflection operation")
+            
+            // Get the streamNotificationManager field from StreamVideo
+            val streamVideoClass = streamVideoClient.javaClass
+            val notificationManagerField = streamVideoClass.getDeclaredField("streamNotificationManager")
+            notificationManagerField.isAccessible = true
+            val notificationManager = notificationManagerField.get(streamVideoClient)
+            
+            if (notificationManager == null) {
+                android.util.Log.e("StreamCallPlugin", "streamNotificationManager is null")
+                return
+            }
+            
+            android.util.Log.d("StreamCallPlugin", "Successfully accessed streamNotificationManager")
+            
+            // Get deviceTokenStorage from notification manager
+            val notificationManagerClass = notificationManager.javaClass
+            val deviceTokenStorageField = notificationManagerClass.getDeclaredField("deviceTokenStorage")
+            deviceTokenStorageField.isAccessible = true
+            val deviceTokenStorage = deviceTokenStorageField.get(notificationManager)
+            
+            if (deviceTokenStorage == null) {
+                android.util.Log.e("StreamCallPlugin", "deviceTokenStorage is null")
+                return
+            }
+            
+            android.util.Log.d("StreamCallPlugin", "Successfully accessed deviceTokenStorage")
+            
+            // Access the DeviceTokenStorage object dynamically without hardcoding class
+            val deviceTokenStorageClass = deviceTokenStorage.javaClass
+            
+            // Get the userDevice Flow from deviceTokenStorage
+            val userDeviceField = deviceTokenStorageClass.getDeclaredField("userDevice")
+            userDeviceField.isAccessible = true
+            val userDeviceFlow = userDeviceField.get(deviceTokenStorage)
+            
+            if (userDeviceFlow == null) {
+                android.util.Log.e("StreamCallPlugin", "userDevice Flow is null")
+                return
+            }
+            
+            android.util.Log.d("StreamCallPlugin", "Successfully accessed userDevice Flow: $userDeviceFlow")
+
+            val castedUserDeviceFlow = userDeviceFlow as Flow<Device?>
+            try {
+                castedUserDeviceFlow.first {
+                    if (it == null) {
+                        android.util.Log.d("StreamCallPlugin", "Device is null. Nothing to remove")
+                        return@first true;
+                    }
+                    streamVideoClient.deleteDevice(it)
+                    return@first true;
+                }
+            } catch (e: Throwable) {
+                android.util.Log.e("StreamCallPlugin", "Cannot collect flow in magicDeviceDelete", e)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("StreamCallPlugin", "Error in magicDeviceDelete", e)
         }
     }
 }

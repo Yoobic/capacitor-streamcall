@@ -206,22 +206,11 @@ fun CallOverlayView(
                     floatingVideoRenderer = floatingVideoRender
                 )
             } else {
-                if (connection != RealtimeConnection.Connected) {
-                    android.util.Log.d("CallOverlayView", "Showing waiting message - not connected")
-                    Text(
-                        text = "waiting for a remote participant...",
-                        fontSize = 30.sp,
-                        color = VideoTheme.colors.basePrimary
-                    )
-                } else {
-                    Text(
-                        modifier = Modifier.padding(30.dp),
-                        text = "Join call ${call.id} in your browser to see the video here",
-                        fontSize = 30.sp,
-                        color = VideoTheme.colors.basePrimary,
-                        textAlign = TextAlign.Center
-                    )
-                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(VideoTheme.colors.baseSenary)
+                )
             }
         }
     }
