@@ -12,13 +12,11 @@ on:
         type: string
 
 jobs:
-  deploy:
-    runs-on: macos-latest
+  verify-android:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GH_PAT }}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2 
@@ -31,16 +29,8 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Install Android SDK components
-        run: |
-          brew install --cask android-commandlinetools
-          yes | sdkmanager "platforms;android-33" "build-tools;33.0.0" "ndk;21.4.7075529"
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
       - name: Cache dependencies
         uses: actions/cache@v3
@@ -48,10 +38,74 @@ jobs:
           path: |
             node_modules
             ~/.gradle/caches
-            ~/Library/Caches/CocoaPods
-          key: ${{ runner.os }}-deps-${{ hashFiles('**/package-lock.json', '**/build.gradle', '**/Podfile.lock') }}
+          key: ${{ runner.os }}-deps-android-${{ hashFiles('**/package-lock.json', '**/build.gradle') }}
           restore-keys: |
-            ${{ runner.os }}-deps-
+            ${{ runner.os }}-deps-android-
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Verify Android
+        run: cd android && ./gradlew clean build test && cd ..
+        env:
+          JAVA_HOME: ${{ env.JAVA_HOME }}
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+
+  verify-ios:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2 
+        with:
+          bun-version: latest
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            node_modules
+            ~/Library/Caches/CocoaPods
+          key: ${{ runner.os }}-deps-ios-${{ hashFiles('**/package-lock.json', '**/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-deps-ios-
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Verify iOS
+        run: xcodebuild -scheme StreamCall -destination generic/platform=iOS
+
+  deploy:
+    needs: [verify-android, verify-ios]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2 
+        with:
+          bun-version: latest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            node_modules
+          key: ${{ runner.os }}-deps-deploy-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-deps-deploy-
 
       - name: Install dependencies
         run: bun install
@@ -74,11 +128,8 @@ jobs:
           git push origin main
           git push origin "v${{ github.event.inputs.version }}"
 
-      - name: Verify all platforms
-        run: bun run verify
-        env:
-          JAVA_HOME: ${{ env.JAVA_HOME }}
-          ANDROID_SDK_ROOT: /Users/runner/Library/Android/sdk
+      - name: Verify Web
+        run: bun run verify:web
 
       - name: Build package
         run: bun run build
@@ -86,14 +137,4 @@ jobs:
       - name: Publish to NPM
         run: npm publish --access public
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          
-      - name: Create GitHub Release
-        if: github.event_name == 'workflow_dispatch' && inputs.version != ''
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: "v${{ github.event.inputs.version }}"
-          name: "v${{ github.event.inputs.version }}"
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }} 
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }} 
