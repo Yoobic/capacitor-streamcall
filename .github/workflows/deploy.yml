@@ -1,9 +1,6 @@
 name: Deploy
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       version:
@@ -68,7 +65,12 @@ jobs:
           path: |
             node_modules
             ~/Library/Caches/CocoaPods
-          key: ${{ runner.os }}-deps-ios-${{ hashFiles('**/package-lock.json', '**/Podfile.lock') }}
+            ~/.swiftpm
+            ~/Library/Developer/Xcode/DerivedData
+            ~/Library/Developer/Xcode/Archives
+            ~/Library/Developer/Xcode/iOS DeviceSupport
+            ~/Library/Caches/org.swift.swiftpm
+          key: ${{ runner.os }}-deps-ios-${{ hashFiles('**/package-lock.json', '**/Podfile.lock', '**/Package.resolved', '**/Package.swift') }}
           restore-keys: |
             ${{ runner.os }}-deps-ios-
 
