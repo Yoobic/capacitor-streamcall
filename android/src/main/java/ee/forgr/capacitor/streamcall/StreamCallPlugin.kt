@@ -20,6 +20,8 @@ import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
+import com.google.firebase.messaging.FirebaseMessaging
+import io.getstream.android.push.PushProvider
 import io.getstream.android.push.firebase.FirebasePushDeviceGenerator
 import io.getstream.android.push.permissions.ActivityLifecycleCallbacks
 import io.getstream.video.android.core.Call
@@ -45,6 +47,7 @@ import org.openapitools.client.models.CallSessionEndedEvent
 import org.openapitools.client.models.VideoEvent
 import io.getstream.video.android.model.Device
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.tasks.await
 
 // I am not a religious pearson, but at this point, I am not sure even god himself would understand this code
 // It's a spaghetti-like, tangled, unreadable mess and frankly, I am deeply sorry for the code crimes commited in the Android impl
@@ -1290,61 +1293,17 @@ public class StreamCallPlugin : Plugin() {
 
     private suspend fun magicDeviceDelete(streamVideoClient: StreamVideo) {
         try {
-            android.util.Log.d("StreamCallPlugin", "Starting magicDeviceDelete reflection operation")
-            
-            // Get the streamNotificationManager field from StreamVideo
-            val streamVideoClass = streamVideoClient.javaClass
-            val notificationManagerField = streamVideoClass.getDeclaredField("streamNotificationManager")
-            notificationManagerField.isAccessible = true
-            val notificationManager = notificationManagerField.get(streamVideoClient)
-            
-            if (notificationManager == null) {
-                android.util.Log.e("StreamCallPlugin", "streamNotificationManager is null")
-                return
-            }
-            
-            android.util.Log.d("StreamCallPlugin", "Successfully accessed streamNotificationManager")
-            
-            // Get deviceTokenStorage from notification manager
-            val notificationManagerClass = notificationManager.javaClass
-            val deviceTokenStorageField = notificationManagerClass.getDeclaredField("deviceTokenStorage")
-            deviceTokenStorageField.isAccessible = true
-            val deviceTokenStorage = deviceTokenStorageField.get(notificationManager)
-            
-            if (deviceTokenStorage == null) {
-                android.util.Log.e("StreamCallPlugin", "deviceTokenStorage is null")
-                return
-            }
-            
-            android.util.Log.d("StreamCallPlugin", "Successfully accessed deviceTokenStorage")
-            
-            // Access the DeviceTokenStorage object dynamically without hardcoding class
-            val deviceTokenStorageClass = deviceTokenStorage.javaClass
-            
-            // Get the userDevice Flow from deviceTokenStorage
-            val userDeviceField = deviceTokenStorageClass.getDeclaredField("userDevice")
-            userDeviceField.isAccessible = true
-            val userDeviceFlow = userDeviceField.get(deviceTokenStorage)
-            
-            if (userDeviceFlow == null) {
-                android.util.Log.e("StreamCallPlugin", "userDevice Flow is null")
-                return
-            }
-            
-            android.util.Log.d("StreamCallPlugin", "Successfully accessed userDevice Flow: $userDeviceFlow")
+            android.util.Log.d("StreamCallPlugin", "Starting magicDeviceDelete operation")
 
-            val castedUserDeviceFlow = userDeviceFlow as Flow<Device?>
-            try {
-                castedUserDeviceFlow.first {
-                    if (it == null) {
-                        android.util.Log.d("StreamCallPlugin", "Device is null. Nothing to remove")
-                        return@first true;
-                    }
-                    streamVideoClient.deleteDevice(it)
-                    return@first true;
-                }
-            } catch (e: Throwable) {
-                android.util.Log.e("StreamCallPlugin", "Cannot collect flow in magicDeviceDelete", e)
+            FirebaseMessaging.getInstance().token.await()?.let {
+                android.util.Log.d("StreamCallPlugin", "Found firebase token")
+                val device = Device(
+                    id = it,
+                    pushProvider = PushProvider.FIREBASE.key,
+                    pushProviderName = "firebase",
+                )
+
+                streamVideoClient.deleteDevice(device)
             }
         } catch (e: Exception) {
             android.util.Log.e("StreamCallPlugin", "Error in magicDeviceDelete", e)
