@@ -2,8 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>CAPACITOR_STREAM_VIDEO_APIKEY</key>
-  <string>n8wv8vjmucdw</string>
+	<key>CAPACITOR_STREAM_VIDEO_APIKEY</key>
+	<string>vq4zdsazqxd7</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
@@ -33,7 +33,7 @@
 		<string>voip</string>
 		<string>remote-notification</string>
 		<string>processing</string>
-    <string>audio</string>
+		<string>audio</string>
 	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>

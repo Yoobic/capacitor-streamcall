@@ -566,7 +566,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
     if (this.client.streamClient.userID && !options.userIds.includes(this.client.streamClient.userID)) {
       members.push({ user_id: this.client.streamClient.userID });
     }
-    await call.getOrCreate({ data: { members } });
+    await call.getOrCreate({ data: { members, team: options.team } });
     
     // Store the expected member count for this call
     // -1, because we don't count the caller themselves

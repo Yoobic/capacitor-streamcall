@@ -33,15 +33,10 @@ const apiSecret = process.env.STREAM_API_SECRET;
 const vailidity = 60 * 60 * 6; // Six hours in seconds
 const client = new StreamClient(apiKey, apiSecret);
 
-app.get('/', (c) => {
-  console.log('apiKey', apiKey);
-  console.log('apiSecret', apiSecret);
-  return c.text(`${apiKey} ${apiSecret}`);
-});
-
 app.get('/user', async (c) => {
   try {
     const userId = c.req.query('user_id');
+    const team = c.req.query('team');
 
     if (!userId) {
       return c.json({ error: 'user_id query parameter is required' }, 400);
@@ -56,21 +51,41 @@ app.get('/user', async (c) => {
       name: userName,
       image: imageURL,
     };
+
+    if (team) {
+      newUser.teams = [team];
+    }
+
     console.log('upsertUsers', newUser);
     await client.upsertUsers([newUser]);
     const token = client.generateUserToken({ user_id: userId, validity_in_seconds: vailidity });
-
+    
     console.log('token', token);
     return c.json({
       token,
       userId,
       name: userName,
       imageURL,
+      teams: newUser.teams,
     });
   } catch (error) {
     console.error('Error fetching user:', error);
     return c.json({ error: 'Failed to fetch user' }, 500);
   }
+});
+
+app.get('/members', async (c) => {
+  const team = c.req.query('team');
+  const members = await client.queryUsers({
+    payload: {
+      filter_conditions: {
+        teams: {
+          $in: [team],
+        },
+      },
+    },
+  });
+  return c.json(members);
 });
 
 const port = 3763;

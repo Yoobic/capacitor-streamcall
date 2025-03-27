@@ -37,6 +37,8 @@ export interface CallOptions {
   type?: string;
   /** Whether to ring the other user, defaults to true */
   ring?: boolean;
+  /** Team name to call */
+  team?: string;
 }
 
 /**

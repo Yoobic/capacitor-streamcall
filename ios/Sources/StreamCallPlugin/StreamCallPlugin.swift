@@ -629,6 +629,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
             let callType = call.getString("type") ?? "default"
             let shouldRing = call.getBool("ring") ?? true
+            let team = call.getString("team")
 
             // Generate a unique call ID
             let callId = UUID().uuidString
@@ -640,6 +641,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     print("- Call Type: \(callType)")
                     print("- Users: \(members)")
                     print("- Should Ring: \(shouldRing)")
+                    print("- Team: \(team)")
 
                     // Create the call object
                     let streamCall = streamVideo?.call(callType: callType, callId: callId)
@@ -649,7 +651,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     try await streamCall?.create(
                         memberIds: members,
                         custom: [:],
-                        ring: shouldRing
+                        team: team, ring: shouldRing
                     )
 
                     // Join the call

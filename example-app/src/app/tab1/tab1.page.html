@@ -22,10 +22,16 @@
   <div class="magicDiv">
     <div class="login-buttons">
       <ng-container *ngIf="!currentUser">
-        <ion-button (click)="login('user1')">Login as User 1</ion-button>
-        <ion-button (click)="login('user2')">Login as User 2</ion-button>
-        <ion-button (click)="login('user3')">Login as User 3</ion-button>
-        <ion-button (click)="login('user4')">Login as User 4</ion-button>
+        <ion-button (click)="login('user1')" color="success">Login as User 1</ion-button>
+        <ion-button (click)="login('user2')" color="success">Login as User 2</ion-button>
+        <ion-button (click)="login('user3')" color="success">Login as User 3</ion-button>
+        <ion-button (click)="login('user4')" color="success">Login as User 4</ion-button>
+        <ion-button (click)="login('user_red_1', 'red')" color="danger">Login as User_red_1</ion-button>
+        <ion-button (click)="login('user_red_2', 'red')" color="danger">Login as User_red_2</ion-button>
+        <ion-button (click)="login('user_red_3', 'red')" color="danger">Login as User_red_3</ion-button>
+        <ion-button (click)="login('user_blue_1', 'blue')" color="primary">Login as User_blue_1</ion-button>
+        <ion-button (click)="login('user_blue_2', 'blue')" color="primary">Login as User_blue_2</ion-button>
+        <ion-button (click)="login('user_blue_3', 'blue')" color="primary">Login as User_blue_3</ion-button>
       </ng-container>
       <ion-button *ngIf="currentUser" (click)="logout()" color="danger">Logout</ion-button>
     </div>
@@ -64,6 +70,14 @@
       <ion-button (click)="callUser(['user2', 'user3'])" color="success">
         <ion-icon name="call"></ion-icon>
         Call User 2 and 3
+      </ion-button>
+      <ion-button (click)="callUserWithTeam(['user_red_2'], 'red')" color="danger">
+        <ion-icon name="call"></ion-icon>
+        Call Red Team for User 2
+      </ion-button>
+      <ion-button (click)="callUserWithTeam(['user_blue_2'], 'blue')" color="primary">
+        <ion-icon name="call"></ion-icon>
+        Call Blue Team for User 2
       </ion-button>
     </div>
   </div> 

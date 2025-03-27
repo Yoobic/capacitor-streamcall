@@ -13,12 +13,13 @@ import { ToastController } from '@ionic/angular';
 export class Tab1Page {
   private readonly STYLE_ID = 'magic_transparent_background';
   private readonly API_URL = 'https://magic-login-srvv2-21.localcan.dev';
-  private readonly API_KEY = 'n8wv8vjmucdw';
+  private readonly API_KEY = 'vq4zdsazqxd7';
   transparent = false;
   currentUser: {
     userId: string;
     name: string;
     imageURL: string;
+    teams: string[];
   } | null = null;
 
   constructor(
@@ -33,19 +34,24 @@ export class Tab1Page {
     if (storedUser) {
       this.currentUser = JSON.parse(storedUser);
       if (this.currentUser) {
-        await this.login(this.currentUser.userId);
+        if (this.currentUser.teams && this.currentUser.teams.length > 0) {
+          await this.login(this.currentUser.userId, this.currentUser.teams[0]);
+        } else {
+          await this.login(this.currentUser.userId);
+        }
       }
     }
   }
 
-  async login(userId: string) {
+  async login(userId: string, team?: string) {
     try {
       const response = await firstValueFrom(this.http.get<{
         token: string;
         userId: string;
         name: string;
         imageURL: string;
-      }>(`${this.API_URL}/user?user_id=${userId}`));
+        teams: string[];
+      }>(`${this.API_URL}/user?user_id=${userId}${!!team ? `&team=${team}` : ''}`));
 
       if (!response) {
         throw new Error('No response from server');
@@ -70,6 +76,7 @@ export class Tab1Page {
         userId: response.userId,
         name: response.name,
         imageURL: response.imageURL,
+        teams: response.teams,
       };
       localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
       await this.presentToast('Login successful', 'success');
@@ -91,6 +98,35 @@ export class Tab1Page {
     } catch (error) {
       console.error(`Failed to call ${userIds}:`, error);
       await this.presentToast(`Failed to call ${userIds}`, 'danger');
+    }
+  }
+
+  // async callTeam(team: string) {
+  //   try {
+  //     await StreamCall.call({
+  //       type: 'default',
+  //       team: team,
+  //       ring: true
+  //     });
+  //     await this.presentToast(`Calling team ${team}...`, 'success');
+  //   } catch (error) {
+  //     console.error(`Failed to call team ${team}:`, error);
+  //     await this.presentToast(`Failed to call team ${team}`, 'danger');
+  //   }
+  // }
+
+  async callUserWithTeam(userIds: string[], team: string) {
+    try {
+      await StreamCall.call({
+        userIds: userIds,
+        type: 'default',
+        team: team, 
+        ring: true
+      });
+      await this.presentToast(`Calling team ${team} for ${JSON.stringify(userIds)}...`, 'success');
+    } catch (error) {
+      console.error(`Failed to call team ${team} for ${JSON.stringify(userIds)}:`, error);
+      await this.presentToast(`Failed to call team ${team} for ${JSON.stringify(userIds)}`, 'danger');
     }
   }
 

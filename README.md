@@ -328,6 +328,7 @@ isCameraEnabled() => Promise<CameraEnabledResponse>
 | **`userIds`** | <code>string[]</code> | User ID of the person to call                    |
 | **`type`**    | <code>string</code>   | Type of call, defaults to 'default'              |
 | **`ring`**    | <code>boolean</code>  | Whether to ring the other user, defaults to true |
+| **`team`**    | <code>string</code>   | Team name to call                                |
 
 
 #### CallEvent

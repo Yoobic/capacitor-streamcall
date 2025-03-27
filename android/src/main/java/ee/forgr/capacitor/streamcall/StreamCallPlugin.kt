@@ -1079,7 +1079,7 @@ public class StreamCallPlugin : Plugin() {
             val callType = call.getString("type") ?: "default"
             val shouldRing = call.getBoolean("ring") ?: true
             val callId = java.util.UUID.randomUUID().toString()
-            val callCid = "$callType:$callId"
+            val team = call.getString("team");
 
             android.util.Log.d("StreamCallPlugin", "Creating call:")
             android.util.Log.d("StreamCallPlugin", "- Call ID: $callId")
@@ -1101,7 +1101,8 @@ public class StreamCallPlugin : Plugin() {
                     streamCall?.create(
                         memberIds = userIds + selfUserId,
                         custom = emptyMap(),
-                        ring = shouldRing
+                        ring = shouldRing,
+                        team = team
                     )
 
                     android.util.Log.d("StreamCallPlugin", "Setting overlay visible for outgoing call $callId")
