@@ -26,7 +26,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "isCameraEnabled", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getCallStatus", returnType: CAPPluginReturnPromise)
     ]
-    
+
     private enum State {
         case notInitialized
         case initializing
@@ -38,7 +38,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     private static let tokenRefreshSemaphore = DispatchSemaphore(value: 1)
     private var currentToken: String?
     private var tokenWaitSemaphore: DispatchSemaphore?
-    
+
     private var overlayView: UIView?
     private var hostingController: UIHostingController<CallOverlayView>?
     private var overlayViewModel: CallOverlayViewModel?
@@ -46,19 +46,19 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     private var activeCallSubscription: AnyCancellable?
     private var lastVoIPToken: String?
     private var touchInterceptView: TouchInterceptView?
-    
+
     private var streamVideo: StreamVideo?
-    
+
     // Track the current active call ID
     private var currentActiveCallId: String?
-    
+
     @Injected(\.callKitAdapter) var callKitAdapter
     @Injected(\.callKitPushNotificationAdapter) var callKitPushNotificationAdapter
     private var webviewDelegate: WebviewNavigationDelegate?
-    
+
     // Add class property to store call states
     private var callStates: [String: (members: [MemberResponse], participantResponses: [String: String], createdAt: Date, timer: Timer?)] = [:]
-    
+
     override public func load() {
         // Read API key from Info.plist
         if let apiKey = Bundle.main.object(forInfoDictionaryKey: "CAPACITOR_STREAM_VIDEO_APIKEY") as? String {
@@ -67,7 +67,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         if self.apiKey == nil {
             fatalError("Cannot get apikey")
         }
-        
+
         // Check if we have a logged in user for handling incoming calls
         if let credentials = SecureUserRepository.shared.loadCurrentUser() {
             print("Loading user for StreamCallPlugin: \(credentials.user.name)")
@@ -75,21 +75,21 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                 self.initializeStreamVideo()
             }
         }
-        
+
         // Create and set the navigation delegate
         self.webviewDelegate = WebviewNavigationDelegate(
             wrappedDelegate: self.webView?.navigationDelegate,
             onSetupOverlay: { [weak self] in
                 guard let self = self else { return }
                 print("Attempting to setup call view")
-                
+
                 self.setupViews()
             }
         )
-        
+
         self.webView?.navigationDelegate = self.webviewDelegate
     }
-    
+
     //    private func cleanupStreamVideo() {
     //        // Cancel subscriptions
     //        tokenSubscription?.cancel()
@@ -115,7 +115,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     //
     //        state = .notInitialized
     //    }
-    
+
     private func requireInitialized() throws {
         guard state == .initialized else {
             throw NSError(domain: "StreamCallPlugin", code: -1, userInfo: [NSLocalizedDescriptionKey: "StreamVideo not initialized"])
@@ -126,17 +126,17 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             call.reject("Missing token parameter")
             return
         }
-        
+
         print("loginMagicToken received token")
         currentToken = token
         tokenWaitSemaphore?.signal()
         call.resolve()
     }
-    
+
     private func setupTokenSubscription() {
         // Cancel existing subscription if any
         tokenSubscription?.cancel()
-        
+
         // Create new subscription
         tokenSubscription = callKitPushNotificationAdapter.$deviceToken.sink { [weak self] (updatedDeviceToken: String) in
             guard let self = self else { return }
@@ -162,7 +162,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             }
         }
     }
-    
+
     private func setupActiveCallSubscription() {
         if let streamVideo = streamVideo {
             Task {
@@ -175,13 +175,13 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         ])
                         continue
                     }
-                    
+
                     if let callCreatedEvent = event.rawValue as? CallCreatedEvent {
                         print("CallCreatedEvent \(String(describing: userId))")
-                        
+
                         let callCid = callCreatedEvent.callCid
                         let members = callCreatedEvent.members
-                        
+
                         // Create timer on main thread
                         await MainActor.run {
                             // Store in the combined callStates map
@@ -191,20 +191,20 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                                 createdAt: Date(),
                                 timer: nil
                             )
-                            
+
                             // Start timer to check for timeout every second
                             // Use @objc method as timer target to avoid sendable closure issues
                             let timer = Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(self.checkCallTimeoutTimer(_:)), userInfo: callCid, repeats: true)
-                            
+
                             // Update timer in callStates
                             self.callStates[callCid]?.timer = timer
                         }
                     }
-                    
+
                     if let rejectedEvent = event.rawValue as? CallRejectedEvent {
                         let userId = rejectedEvent.user.id
                         let callCid = rejectedEvent.callCid
-                        
+
                         // Operate on callStates on the main thread
                         await MainActor.run {
                             // Update the combined callStates map
@@ -213,22 +213,22 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                                 self.callStates[callCid] = callState
                             }
                         }
-                        
+
                         print("CallRejectedEvent \(userId)")
                         notifyListeners("callEvent", data: [
                             "callId": callCid,
                             "state": "rejected",
                             "userId": userId
                         ])
-                        
+
                         await checkAllParticipantsResponded(callCid: callCid)
                         continue
                     }
-                    
+
                     if let missedEvent = event.rawValue as? CallMissedEvent {
                         let userId = missedEvent.user.id
                         let callCid = missedEvent.callCid
-                        
+
                         // Operate on callStates on the main thread
                         await MainActor.run {
                             // Update the combined callStates map
@@ -237,34 +237,33 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                                 self.callStates[callCid] = callState
                             }
                         }
-                        
+
                         print("CallMissedEvent \(userId)")
                         notifyListeners("callEvent", data: [
                             "callId": callCid,
                             "state": "missed",
                             "userId": userId
                         ])
-                        
+
                         await checkAllParticipantsResponded(callCid: callCid)
                         continue
                     }
-                    
+
                     if let participantLeftEvent = event.rawValue as? CallSessionParticipantLeftEvent {
                         let callIdSplit = participantLeftEvent.callCid.split(separator: ":")
-                        if (callIdSplit.count != 2) {
+                        if callIdSplit.count != 2 {
                             print("CallSessionParticipantLeftEvent invalid cID \(participantLeftEvent.callCid)")
                             continue
                         }
-                        
+
                         let callType = callIdSplit[0]
                         let callId = callIdSplit[1]
-                        
+
                         let call = streamVideo.call(callType: String(callType), callId: String(callId))
                         if await MainActor.run(body: { (call.state.session?.participants.count ?? 1) - 1 <= 1 }) {
-                            
-                            
+
                             print("We are left solo in a call. Ending. cID: \(participantLeftEvent.callCid)")
-                            
+
                             Task {
                                 if let activeCall = streamVideo.state.activeCall {
                                     activeCall.leave()
@@ -272,25 +271,25 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                             }
                         }
                     }
-                    
+
                     if let acceptedEvent = event.rawValue as? CallAcceptedEvent {
                         let userId = acceptedEvent.user.id
                         let callCid = acceptedEvent.callCid
-                        
+
                         // Operate on callStates on the main thread
                         await MainActor.run {
                             // Update the combined callStates map
                             if var callState = self.callStates[callCid] {
                                 callState.participantResponses[userId] = "accepted"
-                                
+
                                 // If someone accepted, invalidate the timer as we don't need to check anymore
                                 callState.timer?.invalidate()
                                 callState.timer = nil
-                                
+
                                 self.callStates[callCid] = callState
                             }
                         }
-                        
+
                         print("CallAcceptedEvent \(userId)")
                         notifyListeners("callEvent", data: [
                             "callId": callCid,
@@ -299,7 +298,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         ])
                         continue
                     }
-                    
+
                     notifyListeners("callEvent", data: [
                         "callId": streamVideo.state.activeCall?.callId ?? "",
                         "state": event.type
@@ -312,28 +311,28 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         // Create new subscription
         activeCallSubscription = streamVideo?.state.$activeCall.sink { [weak self] newState in
             guard let self = self else { return }
-            
+
             Task { @MainActor in
                 do {
                     try self.requireInitialized()
                     print("Call State Update:")
                     print("- Call is nil: \(newState == nil)")
-                    
+
                     if let state = newState?.state {
                         print("- state: \(state)")
                         print("- Session ID: \(state.sessionId)")
                         print("- All participants: \(String(describing: state.participants))")
                         print("- Remote participants: \(String(describing: state.remoteParticipants))")
-                        
+
                         // Store the active call ID when a call becomes active
                         self.currentActiveCallId = newState?.cId
                         print("Updated current active call ID: \(String(describing: self.currentActiveCallId))")
-                        
+
                         // Update overlay and make visible when there's an active call
                         self.overlayViewModel?.updateCall(newState)
                         self.overlayView?.isHidden = false
                         self.webView?.isOpaque = false
-                        
+
                         // Notify that a call has started
                         self.notifyListeners("callEvent", data: [
                             "callId": newState?.cId ?? "",
@@ -343,29 +342,29 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         // Get the call ID that was active before the state changed to nil
                         let endingCallId = self.currentActiveCallId
                         print("Call ending: \(String(describing: endingCallId))")
-                        
+
                         // If newState is nil, hide overlay and clear call
                         self.overlayViewModel?.updateCall(nil)
                         self.overlayView?.isHidden = true
                         self.webView?.isOpaque = true
-                        
+
                         // Notify that call has ended - use the properly tracked call ID
                         self.notifyListeners("callEvent", data: [
                             "callId": endingCallId ?? "",
                             "state": "left"
                         ])
-                        
+
                         // Clean up any resources for this call
                         if let callCid = endingCallId {
                             // Invalidate and remove the timer
                             self.callStates[callCid]?.timer?.invalidate()
-                            
+
                             // Remove call from callStates
                             self.callStates.removeValue(forKey: callCid)
-                            
+
                             print("Cleaned up resources for ended call: \(callCid)")
                         }
-                        
+
                         // Clear the active call ID
                         self.currentActiveCallId = nil
                     }
@@ -375,45 +374,45 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             }
         }
     }
-    
+
     @objc private func checkCallTimeoutTimer(_ timer: Timer) {
         guard let callCid = timer.userInfo as? String else { return }
-        
+
         Task { [weak self] in
             guard let self = self else { return }
             await self.checkCallTimeout(callCid: callCid)
         }
     }
-    
+
     private func checkCallTimeout(callCid: String) async {
         // Get a local copy of the call state from the main thread
         let callState: (members: [MemberResponse], participantResponses: [String: String], createdAt: Date, timer: Timer?)? = await MainActor.run {
             return self.callStates[callCid]
         }
-        
+
         guard let callState = callState else { return }
-        
+
         // Calculate time elapsed since call creation
         let now = Date()
         let elapsedSeconds = now.timeIntervalSince(callState.createdAt)
-        
+
         // Check if 30 seconds have passed
         if elapsedSeconds >= 30.0 {
 
             // Check if anyone has accepted
             let hasAccepted = callState.participantResponses.values.contains { $0 == "accepted" }
-            
+
             if !hasAccepted {
                 print("Call \(callCid) has timed out after \(elapsedSeconds) seconds")
                 print("No one accepted call \(callCid), marking all non-responders as missed")
-                
+
                 // Mark all members who haven't responded as "missed"
                 for member in callState.members {
                     let memberId = member.userId
                     let needsToBeMarkedAsMissed = await MainActor.run {
                         return self.callStates[callCid]?.participantResponses[memberId] == nil
                     }
-                    
+
                     if needsToBeMarkedAsMissed {
                         // Update callStates map on main thread
                         await MainActor.run {
@@ -423,7 +422,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                                 self.callStates[callCid] = updatedCallState
                             }
                         }
-                        
+
                         // Notify listeners
                         await MainActor.run {
                             self.notifyListeners("callEvent", data: [
@@ -434,12 +433,12 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         }
                     }
                 }
-                
+
                 // End the call
                 if let call = streamVideo?.state.activeCall, call.cId == callCid {
                     call.leave()
                 }
-                
+
                 // Clean up timer on main thread
                 await MainActor.run {
                     self.callStates[callCid]?.timer?.invalidate()
@@ -448,11 +447,11 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     if let updatedCallState = updatedCallState {
                         self.callStates[callCid] = updatedCallState
                     }
-                    
+
                     // Remove from callStates
                     self.callStates.removeValue(forKey: callCid)
                 }
-                
+
                 // Update UI
                 await MainActor.run {
                     self.overlayViewModel?.updateCall(nil)
@@ -467,43 +466,43 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             }
         }
     }
-    
+
     private func checkAllParticipantsResponded(callCid: String) async {
         // Get a local copy of the call state from the main thread
         let callState: (members: [MemberResponse], participantResponses: [String: String], createdAt: Date, timer: Timer?)? = await MainActor.run {
             return self.callStates[callCid]
         }
-        
+
         guard let callState = callState else {
             print("Call state not found for cId: \(callCid)")
             return
         }
-        
+
         let totalParticipants = callState.members.count
         let responseCount = callState.participantResponses.count
-        
+
         print("Total participants: \(totalParticipants), Responses: \(responseCount)")
-        
+
         let allResponded = responseCount >= totalParticipants
-        let allRejectedOrMissed = allResponded && 
+        let allRejectedOrMissed = allResponded &&
             callState.participantResponses.values.allSatisfy { $0 == "rejected" || $0 == "missed" }
-        
+
         if allResponded && allRejectedOrMissed {
             print("All participants have rejected or missed the call")
-            
+
             // End the call
             if let call = streamVideo?.state.activeCall, call.cId == callCid {
                 call.leave()
             }
-            
+
             // Clean up timer and remove from callStates on main thread
             await MainActor.run {
                 // Clean up timer
                 self.callStates[callCid]?.timer?.invalidate()
-                
+
                 // Remove from callStates
                 self.callStates.removeValue(forKey: callCid)
-                
+
                 self.overlayViewModel?.updateCall(nil)
                 self.overlayView?.isHidden = true
                 self.webView?.isOpaque = true
@@ -515,7 +514,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             }
         }
     }
-    
+
     @objc func login(_ call: CAPPluginCall) {
         guard let token = call.getString("token"),
               let userId = call.getString("userId"),
@@ -523,7 +522,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             call.reject("Missing required parameters")
             return
         }
-        
+
         let imageURL = call.getString("imageURL")
         let user = User(
             id: userId,
@@ -531,31 +530,31 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             imageURL: imageURL.flatMap { URL(string: $0) },
             customData: [:]
         )
-        
+
         let credentials = UserCredentials(user: user, tokenValue: token)
         SecureUserRepository.shared.save(user: credentials)
         // Initialize Stream Video with new credentials
         initializeStreamVideo()
-        
+
         if state != .initialized {
             call.reject("Failed to initialize StreamVideo")
             return
         }
-        
+
         // Update the CallOverlayView with new StreamVideo instance
         Task { @MainActor in
             self.overlayViewModel?.updateStreamVideo(self.streamVideo)
         }
-        
+
         call.resolve([
             "success": true
         ])
     }
-    
+
     @objc func logout(_ call: CAPPluginCall) {
         // Remove VOIP token from repository
         SecureUserRepository.shared.save(voipPushToken: nil)
-        
+
         // Try to delete the device from Stream if we have the last token
         if let lastVoIPToken = lastVoIPToken {
             Task {
@@ -566,16 +565,16 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                 }
             }
         }
-        
+
         // Cancel subscriptions
         tokenSubscription?.cancel()
         tokenSubscription = nil
         activeCallSubscription?.cancel()
         activeCallSubscription = nil
         lastVoIPToken = nil
-        
+
         SecureUserRepository.shared.removeCurrentUser()
-        
+
         // Update the CallOverlayView with nil StreamVideo instance
         Task { @MainActor in
             self.overlayViewModel?.updateCall(nil)
@@ -583,19 +582,19 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             self.overlayView?.isHidden = true
             self.webView?.isOpaque = true
         }
-        
+
         call.resolve([
             "success": true
         ])
     }
-    
+
     @objc func isCameraEnabled(_ call: CAPPluginCall) {
         do {
             try requireInitialized()
         } catch {
             call.reject("SDK not initialized")
         }
-        
+
         if let activeCall = streamVideo?.state.activeCall {
             call.resolve([
                 "enabled": activeCall.camera.status == .enabled

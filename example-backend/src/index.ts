@@ -59,7 +59,7 @@ app.get('/user', async (c) => {
     console.log('upsertUsers', newUser);
     await client.upsertUsers([newUser]);
     const token = client.generateUserToken({ user_id: userId, validity_in_seconds: vailidity });
-    
+
     console.log('token', token);
     return c.json({
       token,

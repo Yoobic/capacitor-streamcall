@@ -107,7 +107,7 @@ export interface CallEvent {
   /** Current state of the call */
   state: string;
   /** User ID of the participant in the call who triggered the event */
-  userId?: string
+  userId?: string;
   /** Reason for the call state change */
   reason?: string;
 }

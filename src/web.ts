@@ -27,7 +27,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
   private participantLeftListener?: (event: { participant?: { sessionId: string } }) => void;
   private participantResponses: Map<string, string> = new Map();
   private callMembersExpected: Map<string, number> = new Map();
-//  private currentActiveCallId?: string;
+  //  private currentActiveCallId?: string;
 
   private setupCallRingListener() {
     this.client?.off('call.ring', this.ringCallback);
@@ -41,7 +41,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
     // Clear previous listeners if any
     this.client?.off('call.rejected', this.callRejectedCallback);
     this.client?.off('call.accepted', this.callAcceptedCallback);
-    this.client?.off('call.missed', this.callMissedCallback);  
+    this.client?.off('call.missed', this.callMissedCallback);
     // Register event listeners
     this.client?.on('call.rejected', this.callRejectedCallback);
     this.client?.on('call.accepted', this.callAcceptedCallback);
@@ -134,45 +134,45 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
           audioEl.remove();
         }
       }
-      
+
       // Check if we're the only participant left in the call
       if (this.currentCall?.state.session) {
         // Get the remaining participants count (we need to subtract 1 as we haven't been removed from the list yet)
         const remainingParticipants = this.currentCall.state.session.participants.length - 1;
-        
+
         // If we're the only one left, end the call
         if (remainingParticipants <= 1) {
           console.log(`We are left solo in a call. Ending. cID: ${this.currentCall.cid}`);
-          
+
           // End the call
           this.currentCall.leave();
-          
+
           // Clean up resources
           const callCid = this.currentCall.cid;
-          
+
           // Invalidate and remove timer
           const callState = this.callStates?.get(callCid);
           if (callState?.timer) {
             clearInterval(callState.timer);
           }
-          
+
           // Remove from callStates
           this.callStates?.delete(callCid);
-          
+
           // Reset the current call
           this.currentCall = undefined;
           // this.currentActiveCallId = undefined;
-          
+
           // Clean up
           this.cleanupCall();
-          
+
           console.log(`Cleaned up resources for ended call: ${callCid}`);
-          
+
           // Notify that the call has ended
-          this.notifyListeners('callEvent', { 
-            callId: callCid, 
+          this.notifyListeners('callEvent', {
+            callId: callCid,
             state: 'left',
-            reason: 'participant_left'
+            reason: 'participant_left',
           });
         }
       }
@@ -233,18 +233,18 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
       const memberCount = event.call.session.participants.length;
       console.log(`Call ${callCid} created with ${memberCount} members`);
       this.callMembersExpected.set(callCid, memberCount);
-      
+
       // Store call members in callStates
       this.callStates.set(callCid, {
-        members: event.call.session.participants.map(p => ({ user_id: p.user?.id || '' })),
+        members: event.call.session.participants.map((p) => ({ user_id: p.user?.id || '' })),
         participantResponses: new Map(),
         expectedMemberCount: memberCount,
         createdAt: new Date(),
       });
-      
+
       // Start a timeout task that runs every second
       const timeoutTask = setInterval(() => this.checkCallTimeout(callCid), 1000);
-      
+
       // Update the callState with the timeout task
       const callState = this.callStates.get(callCid);
       if (callState) {
@@ -258,20 +258,20 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
     console.log('Call rejected', event);
     if (event.user?.id) {
       this.participantResponses.set(event.user.id, 'rejected');
-      
+
       // Update the combined callStates map
       const callState = this.callStates.get(event.call_cid);
       if (callState) {
         callState.participantResponses.set(event.user.id, 'rejected');
         this.callStates.set(event.call_cid, callState);
       }
-      
-      this.notifyListeners('callEvent', { 
-        callId: event.call_cid, 
+
+      this.notifyListeners('callEvent', {
+        callId: event.call_cid,
         state: 'rejected',
-        userId: event.user.id
+        userId: event.user.id,
       });
-      
+
       this.checkAllParticipantsResponded();
     }
   };
@@ -280,25 +280,25 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
     console.log('Call accepted', event);
     if (event.user?.id) {
       this.participantResponses.set(event.user.id, 'accepted');
-      
+
       // Update the combined callStates map
       const callState = this.callStates.get(event.call_cid);
       if (callState) {
         callState.participantResponses.set(event.user.id, 'accepted');
-        
+
         // If someone accepted, clear the timer as we don't need to check anymore
         if (callState.timer) {
           clearInterval(callState.timer);
           callState.timer = undefined;
         }
-        
+
         this.callStates.set(event.call_cid, callState);
       }
-      
-      this.notifyListeners('callEvent', { 
-        callId: event.call_cid, 
+
+      this.notifyListeners('callEvent', {
+        callId: event.call_cid,
         state: 'accepted',
-        userId: event.user.id
+        userId: event.user.id,
       });
     }
   };
@@ -307,88 +307,92 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
     console.log('Call missed', event);
     if (event.user?.id) {
       this.participantResponses.set(event.user.id, 'missed');
-      
+
       // Update the combined callStates map
       const callState = this.callStates.get(event.call_cid);
       if (callState) {
         callState.participantResponses.set(event.user.id, 'missed');
         this.callStates.set(event.call_cid, callState);
       }
-      
-      this.notifyListeners('callEvent', { 
-        callId: event.call_cid, 
+
+      this.notifyListeners('callEvent', {
+        callId: event.call_cid,
         state: 'missed',
-        userId: event.user.id
+        userId: event.user.id,
       });
-      
+
       this.checkAllParticipantsResponded();
     }
   };
-  
+
   // Add a combined map for call states, mirroring the iOS implementation
-  private callStates: Map<string, {
-    members: { user_id: string }[],
-    participantResponses: Map<string, string>,
-    expectedMemberCount: number,
-    createdAt: Date,
-    timer?: ReturnType<typeof setInterval>
-  }> = new Map();
-  
+  private callStates: Map<
+    string,
+    {
+      members: { user_id: string }[];
+      participantResponses: Map<string, string>;
+      expectedMemberCount: number;
+      createdAt: Date;
+      timer?: ReturnType<typeof setInterval>;
+    }
+  > = new Map();
+
   private checkCallTimeout(callCid: string) {
     const callState = this.callStates.get(callCid);
     if (!callState) return;
-    
+
     // Calculate time elapsed since call creation
     const now = new Date();
     const elapsedSeconds = (now.getTime() - callState.createdAt.getTime()) / 1000;
-    
+
     // Check if 30 seconds have passed
     if (elapsedSeconds >= 30) {
       console.log(`Call ${callCid} has timed out after ${elapsedSeconds} seconds`);
-      
+
       // Check if anyone has accepted
-      const hasAccepted = Array.from(callState.participantResponses.values())
-        .some(response => response === 'accepted');
-      
+      const hasAccepted = Array.from(callState.participantResponses.values()).some(
+        (response) => response === 'accepted',
+      );
+
       if (!hasAccepted) {
         console.log(`No one accepted call ${callCid}, marking all non-responders as missed`);
-        
+
         // Mark all members who haven't responded as "missed"
-        callState.members.forEach(member => {
+        callState.members.forEach((member) => {
           if (!callState.participantResponses.has(member.user_id)) {
             callState.participantResponses.set(member.user_id, 'missed');
             this.participantResponses.set(member.user_id, 'missed');
-            
-            this.notifyListeners('callEvent', { 
-              callId: callCid, 
+
+            this.notifyListeners('callEvent', {
+              callId: callCid,
               state: 'missed',
-              userId: member.user_id
+              userId: member.user_id,
             });
           }
         });
-        
+
         // End the call
         if (this.currentCall && this.currentCall.cid === callCid) {
           this.currentCall.leave();
         }
-        
+
         // Clear the timeout task
         if (callState.timer) {
           clearInterval(callState.timer);
           callState.timer = undefined;
         }
-        
+
         // Remove from callStates
         this.callStates.delete(callCid);
-        
+
         // Clean up
         this.cleanupCall();
-        
+
         // Notify that the call has ended
-        this.notifyListeners('callEvent', { 
-          callId: callCid, 
+        this.notifyListeners('callEvent', {
+          callId: callCid,
           state: 'ended',
-          reason: 'timeout'
+          reason: 'timeout',
         });
       }
     }
@@ -396,61 +400,62 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
 
   private checkAllParticipantsResponded() {
     if (!this.currentCall) return;
-    
+
     const callCid = this.currentCall.cid;
     const totalParticipants = this.callMembersExpected.get(callCid);
-    
+
     if (!totalParticipants) {
       console.log(`No expected participant count found for call: ${callCid}`);
       return;
     }
-    
+
     console.log(`Total expected participants: ${totalParticipants}`);
-    
+
     // Count rejections and misses
     let rejectedOrMissedCount = 0;
-    this.participantResponses.forEach(response => {
+    this.participantResponses.forEach((response) => {
       if (response === 'rejected' || response === 'missed') {
         rejectedOrMissedCount++;
       }
     });
-    
+
     console.log(`Participants responded: ${this.participantResponses.size}/${totalParticipants}`);
     console.log(`Rejected or missed: ${rejectedOrMissedCount}`);
-    
+
     const allResponded = this.participantResponses.size >= totalParticipants;
-    const allRejectedOrMissed = allResponded && 
-      Array.from(this.participantResponses.values()).every(response => 
-        response === 'rejected' || response === 'missed'
+    const allRejectedOrMissed =
+      allResponded &&
+      Array.from(this.participantResponses.values()).every(
+        (response) => response === 'rejected' || response === 'missed',
       );
-    
+
     // If all participants have rejected or missed the call
     if (allResponded && allRejectedOrMissed) {
       console.log('All participants have rejected or missed the call');
-      
+
       // End the call
       this.currentCall.leave();
-      
+
       // Clean up the timer if exists in callStates
       const callState = this.callStates.get(callCid);
       if (callState?.timer) {
         clearInterval(callState.timer);
       }
-      
+
       // Remove from callStates
       this.callStates.delete(callCid);
-      
+
       // Clear the responses
       this.participantResponses.clear();
-      
+
       // Clean up
       this.cleanupCall();
-      
+
       // Notify that the call has ended
-      this.notifyListeners('callEvent', { 
-        callId: callCid, 
+      this.notifyListeners('callEvent', {
+        callId: callCid,
         state: 'ended',
-        reason: 'all_rejected_or_missed'
+        reason: 'all_rejected_or_missed',
       });
     }
   }
@@ -571,12 +576,12 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
       members.push({ user_id: this.client.streamClient.userID });
     }
     await call.getOrCreate({ data: { members, team: options.team } });
-    
+
     // Store the expected member count for this call
     // -1, because we don't count the caller themselves
     this.callMembersExpected.set(call.cid, members.length);
     console.log(`Setting expected members for call ${call.cid}: ${members.length}`);
-    
+
     this.currentCall = call;
     if (options.ring) {
       this.outgoingCall = call.cid;
@@ -704,8 +709,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
     }
 
     // Determine call direction based on whether it matches the tracked incoming call
-    const callDirection: CallDirection =
-      this.incomingCall?.id === this.currentCall.id ? 'incoming' : 'outgoing';
+    const callDirection: CallDirection = this.incomingCall?.id === this.currentCall.id ? 'incoming' : 'outgoing';
 
     const callType = this.currentCall.type as CallType;
 

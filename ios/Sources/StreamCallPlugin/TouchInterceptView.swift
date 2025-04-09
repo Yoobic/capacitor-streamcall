@@ -132,8 +132,8 @@ class TouchInterceptView: UIView {
         // Convert point to global coordinates for labeled frame checking
         let globalPoint = convert(point, to: nil)
 
-        //print("TouchInterceptView - Hit test at global point: \(globalPoint)")
-        //print("Current labeled frames: \(labeledFrames.map { "\($0.label): \($0.frame)" }.joined(separator: ", "))")
+        // print("TouchInterceptView - Hit test at global point: \(globalPoint)")
+        // print("Current labeled frames: \(labeledFrames.map { "\($0.label): \($0.frame)" }.joined(separator: ", "))")
 
         // Convert point for both views
         let webViewPoint = convert(point, to: webView)
@@ -142,7 +142,7 @@ class TouchInterceptView: UIView {
         // First check if the point is inside any labeled frame
         for labeledFrame in labeledFrames {
             if labeledFrame.frame.contains(globalPoint) {
-                //print("Hit labeled frame: \(labeledFrame.label)")
+                // print("Hit labeled frame: \(labeledFrame.label)")
                 // If it's in a labeled frame, let the overlay handle it
                 if overlayView.point(inside: overlayPoint, with: event),
                    let overlayHitView = overlayView.hitTest(overlayPoint, with: event) {
