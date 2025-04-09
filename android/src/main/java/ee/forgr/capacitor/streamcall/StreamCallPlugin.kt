@@ -795,7 +795,8 @@ public class StreamCallPlugin : Plugin() {
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    private fun acceptCall(call: Call) {
+    @PluginMethod
+    fun acceptCall(call: Call) {
         kotlinx.coroutines.GlobalScope.launch {
             try {
                 // Stop ringtone
