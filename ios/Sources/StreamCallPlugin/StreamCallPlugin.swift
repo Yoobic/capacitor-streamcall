@@ -23,7 +23,8 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "setMicrophoneEnabled", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setCameraEnabled", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "acceptCall", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "isCameraEnabled", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "isCameraEnabled", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getCallStatus", returnType: CAPPluginReturnPromise)
     ]
     
     private enum State {
@@ -901,5 +902,41 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                 overlayView.trailingAnchor.constraint(equalTo: safeGuide.trailingAnchor)
             ])
         }
+    }
+
+    @objc func getCallStatus(_ call: CAPPluginCall) {
+        guard let streamCall = self.streamVideo?.state.activeCall else {
+            call.reject("Not in a call")
+            return
+        }
+
+        var status: String
+        switch streamCall.state.callingState {
+        case .idle:
+            status = "idle"
+        case .ringing:
+            status = "ringing"
+        case .joining:
+            status = "joining"
+        case .reconnecting:
+            status = "reconnecting"
+        case .joined:
+            status = "joined"
+        case .leaving:
+            status = "leaving"
+        case .left:
+            status = "left"
+        case .unknown:
+            status = "unknown"
+        @unknown default:
+            status = "unknown"
+        }
+
+        call.resolve([
+            "status": status,
+            "callId": streamCall.callId,
+            "callType": streamCall.callType.id,
+            "callDirection": streamCall.state.callDirection == .outgoing ? "outgoing" : "incoming"
+        ])
     }
 }

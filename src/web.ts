@@ -8,6 +8,10 @@ import type {
   SuccessResponse,
   LoginOptions,
   CameraEnabledResponse,
+  CallStatusResponse,
+  CallStatus,
+  CallDirection,
+  CallType,
 } from './definitions';
 
 export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
@@ -132,7 +136,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
       }
       
       // Check if we're the only participant left in the call
-      if (this.currentCall && this.currentCall.state.session) {
+      if (this.currentCall?.state.session) {
         // Get the remaining participants count (we need to subtract 1 as we haven't been removed from the list yet)
         const remainingParticipants = this.currentCall.state.session.participants.length - 1;
         
@@ -223,7 +227,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
 
   private callSessionStartedCallback = (event: AllClientEvents['call.session_started']) => {
     console.log('Call created (session started)', event);
-    if (event.call && event.call.session && event.call.session.participants) {
+    if (event.call?.session?.participants) {
       // Store the number of expected participants for this call
       const callCid = event.call.cid;
       const memberCount = event.call.session.participants.length;
@@ -252,7 +256,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
 
   private callRejectedCallback = (event: AllClientEvents['call.rejected']) => {
     console.log('Call rejected', event);
-    if (event.user && event.user.id) {
+    if (event.user?.id) {
       this.participantResponses.set(event.user.id, 'rejected');
       
       // Update the combined callStates map
@@ -274,7 +278,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
 
   private callAcceptedCallback = (event: AllClientEvents['call.accepted']) => {
     console.log('Call accepted', event);
-    if (event.user && event.user.id) {
+    if (event.user?.id) {
       this.participantResponses.set(event.user.id, 'accepted');
       
       // Update the combined callStates map
@@ -301,7 +305,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
 
   private callMissedCallback = (event: AllClientEvents['call.missed']) => {
     console.log('Call missed', event);
-    if (event.user && event.user.id) {
+    if (event.user?.id) {
       this.participantResponses.set(event.user.id, 'missed');
       
       // Update the combined callStates map
@@ -666,5 +670,50 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
     }
     const enabled = await this.currentCall.camera.enabled;
     return { enabled };
+  }
+
+  async getCallStatus(): Promise<CallStatusResponse> {
+    if (!this.currentCall) {
+      throw new Error('No active call');
+    }
+
+    const callingState = this.currentCall.state.callingState;
+    let status: CallStatus;
+
+    switch (callingState) {
+      case CallingState.IDLE:
+        status = 'idle';
+        break;
+      case CallingState.RINGING:
+        status = 'ringing';
+        break;
+      case CallingState.JOINING:
+        status = 'joining';
+        break;
+      case CallingState.RECONNECTING:
+        status = 'reconnecting';
+        break;
+      case CallingState.JOINED:
+        status = 'joined';
+        break;
+      case CallingState.LEFT:
+        status = 'left';
+        break;
+      default:
+        status = 'unknown';
+    }
+
+    // Determine call direction based on whether it matches the tracked incoming call
+    const callDirection: CallDirection =
+      this.incomingCall?.id === this.currentCall.id ? 'incoming' : 'outgoing';
+
+    const callType = this.currentCall.type as CallType;
+
+    return {
+      status,
+      callId: this.currentCall.id,
+      callType: callType,
+      callDirection: callDirection,
+    };
   }
 }

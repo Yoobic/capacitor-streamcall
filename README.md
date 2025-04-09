@@ -132,7 +132,9 @@ The SDK will automatically use the system language and these translations.
 * [`acceptCall()`](#acceptcall)
 * [`rejectCall()`](#rejectcall)
 * [`isCameraEnabled()`](#iscameraenabled)
+* [`getCallStatus()`](#getcallstatus)
 * [Interfaces](#interfaces)
+* [Type Aliases](#type-aliases)
 
 </docgen-index>
 
@@ -294,7 +296,22 @@ Reject an incoming call
 isCameraEnabled() => Promise<CameraEnabledResponse>
 ```
 
+Check if camera is enabled
+
 **Returns:** <code>Promise&lt;<a href="#cameraenabledresponse">CameraEnabledResponse</a>&gt;</code>
+
+--------------------
+
+
+### getCallStatus()
+
+```typescript
+getCallStatus() => Promise<CallStatusResponse>
+```
+
+Get the current call status
+
+**Returns:** <code>Promise&lt;<a href="#callstatusresponse">CallStatusResponse</a>&gt;</code>
 
 --------------------
 
@@ -323,12 +340,12 @@ isCameraEnabled() => Promise<CameraEnabledResponse>
 
 #### CallOptions
 
-| Prop          | Type                  | Description                                      |
-| ------------- | --------------------- | ------------------------------------------------ |
-| **`userIds`** | <code>string[]</code> | User ID of the person to call                    |
-| **`type`**    | <code>string</code>   | Type of call, defaults to 'default'              |
-| **`ring`**    | <code>boolean</code>  | Whether to ring the other user, defaults to true |
-| **`team`**    | <code>string</code>   | Team name to call                                |
+| Prop          | Type                                          | Description                                      |
+| ------------- | --------------------------------------------- | ------------------------------------------------ |
+| **`userIds`** | <code>string[]</code>                         | User ID of the person to call                    |
+| **`type`**    | <code><a href="#calltype">CallType</a></code> | Type of call, defaults to 'default'              |
+| **`ring`**    | <code>boolean</code>                          | Whether to ring the other user, defaults to true |
+| **`team`**    | <code>string</code>                           | Team name to call                                |
 
 
 #### CallEvent
@@ -346,5 +363,33 @@ isCameraEnabled() => Promise<CameraEnabledResponse>
 | Prop          | Type                 |
 | ------------- | -------------------- |
 | **`enabled`** | <code>boolean</code> |
+
+
+#### CallStatusResponse
+
+| Prop                | Type                                                    | Description         |
+| ------------------- | ------------------------------------------------------- | ------------------- |
+| **`status`**        | <code><a href="#callstatus">CallStatus</a></code>       | Current call status |
+| **`callId`**        | <code>string</code>                                     | Call ID             |
+| **`callType`**      | <code><a href="#calltype">CallType</a></code>           | Call type           |
+| **`callDirection`** | <code><a href="#calldirection">CallDirection</a></code> | Call direction      |
+
+
+### Type Aliases
+
+
+#### CallType
+
+<code>'default' | 'audio_room' | 'livestream' | 'development'</code>
+
+
+#### CallStatus
+
+<code>'idle' | 'ringing' | 'joining' | 'reconnecting' | 'joined' | 'leaving' | 'left' | 'unknown'</code>
+
+
+#### CallDirection
+
+<code>'outgoing' | 'incoming'</code>
 
 </docgen-api>

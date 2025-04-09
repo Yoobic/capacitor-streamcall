@@ -1310,6 +1310,37 @@ public class StreamCallPlugin : Plugin() {
         }
     }
 
+    @PluginMethod
+    fun getCallStatus(call: PluginCall) {
+        val activeCall = streamVideoClient?.state?.activeCall.value
+        if (activeCall == null) {
+            call.reject("Not in a call")
+            return
+        }
+
+        val status = when (activeCall.state().callingState.value) {
+            is CallingState.Idle -> "idle"
+            is CallingState.Joining -> "joining"
+            is CallingState.Ringing -> "ringing"
+            is CallingState.Joined -> "joined"
+            is CallingState.Reconnecting -> "reconnecting"
+            is CallingState.Leaving -> "leaving"
+            is CallingState.Left -> "left"
+        }
+
+        val callDirection = when (activeCall.state().callDirection.value) {
+            is CallDirection.Outgoing -> "outgoing"
+            is CallDirection.Incoming -> "incoming"
+        }
+
+        val result = JSObject()
+        result.put("status", status)
+        result.put("callId", activeCall.callId)
+        result.put("callType", activeCall.callType)
+        result.put("callDirection", callDirection)
+        call.resolve(result)
+    }
+
     data class CallState(
         val members: List<String>,
         val participantResponses: MutableMap<String, String> = mutableMapOf(),
