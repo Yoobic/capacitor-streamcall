@@ -37,6 +37,8 @@ import kotlinx.coroutines.launch
 import io.getstream.video.android.model.Device
 import kotlinx.coroutines.tasks.await
 import com.google.firebase.messaging.FirebaseMessaging
+import io.getstream.android.push.PushProvider
+import io.getstream.android.push.firebase.FirebasePushDeviceGenerator
 import io.getstream.android.video.generated.models.CallAcceptedEvent
 import io.getstream.android.video.generated.models.CallCreatedEvent
 import io.getstream.android.video.generated.models.CallEndedEvent
@@ -44,7 +46,6 @@ import io.getstream.android.video.generated.models.CallMissedEvent
 import io.getstream.android.video.generated.models.CallRejectedEvent
 import io.getstream.android.video.generated.models.CallSessionEndedEvent
 import io.getstream.android.video.generated.models.CallSessionStartedEvent
-import io.getstream.android.video.generated.models.CreateDeviceRequest
 import io.getstream.android.video.generated.models.VideoEvent
 
 // I am not a religious pearson, but at this point, I am not sure even god himself would understand this code
@@ -463,10 +464,12 @@ public class StreamCallPlugin : Plugin() {
             )
 
             val notificationConfig = NotificationConfig(
-                pushDeviceGenerators = listOf(FirebasePushDeviceGenerator(
+                pushDeviceGenerators = listOf(
+                    FirebasePushDeviceGenerator(
                     providerName = "firebase",
                     context = contextToUse
-                )),
+                )
+                ),
                 requestPermissionOnAppLaunch = { true },
                 notificationHandler = notificationHandler,
             )
@@ -1221,7 +1224,7 @@ public class StreamCallPlugin : Plugin() {
                 android.util.Log.d("StreamCallPlugin", "Found firebase token")
                 val device = Device(
                     id = it,
-                    pushProvider = CreateDeviceRequest.PushProvider.FIREBASE.key,
+                    pushProvider = PushProvider.FIREBASE.key,
                     pushProviderName = "firebase",
                 )
 
