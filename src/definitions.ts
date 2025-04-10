@@ -27,19 +27,19 @@ export interface LoginOptions {
  * @typedef CallState
  * @description Represents all possible call states from API and UI
  */
-export type CallState = 
+export type CallState =
   // User-facing states
-  | 'idle' 
-  | 'ringing' 
-  | 'joining' 
-  | 'reconnecting' 
+  | 'idle'
+  | 'ringing'
+  | 'joining'
+  | 'reconnecting'
   | 'joined'
-  | 'leaving' 
+  | 'leaving'
   | 'left'
   // Event-specific states
   | 'created'
   | 'session_started'
-  | 'rejected' 
+  | 'rejected'
   | 'missed'
   | 'accepted'
   | 'ended'
@@ -227,7 +227,7 @@ export interface StreamCallPlugin {
    * console.log(isCameraEnabled);
    */
   isCameraEnabled(): Promise<CameraEnabledResponse>;
-  
+
   /**
    * Get the current call status
    * @returns {Promise<CallEvent>} Current call status as a CallEvent
