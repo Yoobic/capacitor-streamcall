@@ -46,13 +46,6 @@ export type CallState =
   | 'unknown';
 
 /**
- * @typedef CallDirection
- * @description Represents the direction of a call.
- * Can be 'outgoing' or 'incoming'.
- */
-export type CallDirection = 'outgoing' | 'incoming' | 'unknown';
-
-/**
  * @typedef CallType
  * @description Represents the pre-defined types of a call.
  * - `default`: Simple 1-1 or group video calling with sensible defaults. Video/audio enabled, backstage disabled. Admins/hosts have elevated permissions.

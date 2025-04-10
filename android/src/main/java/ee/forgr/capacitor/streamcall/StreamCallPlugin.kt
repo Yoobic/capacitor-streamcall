@@ -71,7 +71,6 @@ public class StreamCallPlugin : Plugin() {
     private var currentCallId: String = ""
     private var currentCallType: String = ""
     private var currentCallState: String = ""
-    private var currentCallDirection: String = "unknown"
 
     private enum class State {
         NOT_INITIALIZED,

@@ -8,10 +8,8 @@ import type {
   SuccessResponse,
   LoginOptions,
   CameraEnabledResponse,
-  CallStatusResponse,
-  CallStatus,
-  CallDirection,
-  CallType,
+  CallEvent,
+  CallState,
 } from './definitions';
 
 export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
@@ -677,47 +675,40 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
     return { enabled };
   }
 
-  async getCallStatus(): Promise<CallStatusResponse> {
+  async getCallStatus(): Promise<CallEvent> {
     if (!this.currentCall) {
       throw new Error('No active call');
     }
 
     const callingState = this.currentCall.state.callingState;
-    let status: CallStatus;
+    let state: CallState;
 
     switch (callingState) {
       case CallingState.IDLE:
-        status = 'idle';
+        state = 'idle';
         break;
       case CallingState.RINGING:
-        status = 'ringing';
+        state = 'ringing';
         break;
       case CallingState.JOINING:
-        status = 'joining';
+        state = 'joining';
         break;
       case CallingState.RECONNECTING:
-        status = 'reconnecting';
+        state = 'reconnecting';
         break;
       case CallingState.JOINED:
-        status = 'joined';
+        state = 'joined';
         break;
       case CallingState.LEFT:
-        status = 'left';
+        state = 'left';
         break;
       default:
-        status = 'unknown';
+        state = 'unknown';
     }
 
-    // Determine call direction based on whether it matches the tracked incoming call
-    const callDirection: CallDirection = this.incomingCall?.id === this.currentCall.id ? 'incoming' : 'outgoing';
-
-    const callType = this.currentCall.type as CallType;
-
     return {
-      status,
       callId: this.currentCall.id,
-      callType: callType,
-      callDirection: callDirection,
+      state
     };
   }
 }
