@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.10](https://github.com/Cap-go/StreamCall/compare/0.0.9...0.0.10) (2025-04-10)
+
+
+### Bug Fixes
+
+* update dependencies and improve call status handling ([0d7814a](https://github.com/Cap-go/StreamCall/commit/0d7814aa3fca44a90539d7eb36174e2e546d50f9))
+
 ### [0.0.9](https://github.com/Cap-go/StreamCall/compare/0.0.8...0.0.9) (2025-04-09)
 
 
