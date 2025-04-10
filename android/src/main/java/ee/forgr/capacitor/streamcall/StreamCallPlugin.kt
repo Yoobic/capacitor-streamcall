@@ -20,15 +20,11 @@ import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
-import com.google.firebase.messaging.FirebaseMessaging
-import io.getstream.android.push.PushProvider
-import io.getstream.android.push.firebase.FirebasePushDeviceGenerator
 import io.getstream.android.push.permissions.ActivityLifecycleCallbacks
 import io.getstream.video.android.core.Call
 import io.getstream.video.android.core.GEO
 import io.getstream.video.android.core.StreamVideo
 import io.getstream.video.android.core.StreamVideoBuilder
-import io.getstream.video.android.core.model.RejectReason
 import io.getstream.video.android.core.notifications.NotificationConfig
 import io.getstream.video.android.core.notifications.NotificationHandler
 import io.getstream.video.android.core.sounds.emptyRingingConfig
@@ -37,17 +33,19 @@ import io.getstream.video.android.model.StreamCallId
 import io.getstream.video.android.model.User
 import io.getstream.video.android.model.streamCallId
 import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
-import org.openapitools.client.models.CallAcceptedEvent
-import org.openapitools.client.models.CallEndedEvent
-import org.openapitools.client.models.CallMissedEvent
-import org.openapitools.client.models.CallRejectedEvent
-import org.openapitools.client.models.CallSessionEndedEvent
-import org.openapitools.client.models.VideoEvent
 import io.getstream.video.android.model.Device
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.tasks.await
+import com.google.firebase.messaging.FirebaseMessaging
+import io.getstream.android.video.generated.models.CallAcceptedEvent
+import io.getstream.android.video.generated.models.CallCreatedEvent
+import io.getstream.android.video.generated.models.CallEndedEvent
+import io.getstream.android.video.generated.models.CallMissedEvent
+import io.getstream.android.video.generated.models.CallRejectedEvent
+import io.getstream.android.video.generated.models.CallSessionEndedEvent
+import io.getstream.android.video.generated.models.CallSessionStartedEvent
+import io.getstream.android.video.generated.models.CreateDeviceRequest
+import io.getstream.android.video.generated.models.VideoEvent
 
 // I am not a religious pearson, but at this point, I am not sure even god himself would understand this code
 // It's a spaghetti-like, tangled, unreadable mess and frankly, I am deeply sorry for the code crimes commited in the Android impl
@@ -66,7 +64,13 @@ public class StreamCallPlugin : Plugin() {
     private var savedActivity: Activity? = null
     private var savedActivityPaused = false
     private var savedCallsToEndOnResume = mutableListOf<Call>()
-    private val callStates: MutableMap<String, CallState> = mutableMapOf()
+    private val callStates: MutableMap<String, LocalCallState> = mutableMapOf()
+    
+    // Store current call info
+    private var currentCallId: String = ""
+    private var currentCallType: String = ""
+    private var currentCallState: String = ""
+    private var currentCallDirection: String = "unknown"
 
     private enum class State {
         NOT_INITIALIZED,
@@ -214,12 +218,8 @@ public class StreamCallPlugin : Plugin() {
                 // Stop ringtone
                 ringtonePlayer?.stopRinging()
                 
-                // Notify that call has ended
-                val data = JSObject().apply {
-                    put("callId", call.id)
-                    put("state", "rejected")
-                }
-                notifyListeners("callEvent", data)
+                // Notify that call has ended using our helper
+                updateCallStatusAndNotify(call.id, "rejected")
                 
                 hideIncomingCall()
             } catch (e: Exception) {
@@ -252,14 +252,6 @@ public class StreamCallPlugin : Plugin() {
             barrierView?.isVisible = false
         }
     }
-
-//    private fun remoteIncomingCallNotif() {
-//        CallService.removeIncomingCall(
-//            context,
-//            StreamCallId.fromCallCid(call.cid),
-//            StreamVideo.instance().state.callConfigRegistry.get(call.type),
-//        )
-//    }
 
     private fun setupViews() {
         val context = context
@@ -565,61 +557,37 @@ public class StreamCallPlugin : Plugin() {
                 android.util.Log.v("StreamCallPlugin", "Received an event ${event.getEventType()} $event")
                 when (event) {
                     // Handle CallCreatedEvent differently - only log it but don't try to access members yet
-                    is org.openapitools.client.models.CallCreatedEvent -> {
-                        val callCid = event.call.cid
+                    is CallCreatedEvent -> {
+                        val callCid = event.callCid
                         android.util.Log.d("StreamCallPlugin", "Call created: $callCid")
 
                         // let's get the members
-                        val callParticipants = event.members.filter{ it.user.id != this@StreamCallPlugin.streamVideoClient?.userId } .map { it.user.id }
+                        val callParticipants = event.members.filter{ it.user.id != this@StreamCallPlugin.streamVideoClient?.userId }.map { it.user.id }
                         android.util.Log.d("StreamCallPlugin", "Call created for $callCid with ${callParticipants.size} participants")
 
                         // Start tracking this call now that we have the member list
                         startCallTimeoutMonitor(callCid, callParticipants)
                         
-                        val data = JSObject().apply {
-                            put("callId", callCid)
-                            put("state", "created")
-                        }
-                        notifyListeners("callEvent", data)
+                        // Use direction from event if available
+                        val callType = callCid.split(":").firstOrNull() ?: "default"
+                        updateCallStatusAndNotify(callCid, "created")
                     }
                     // Add handler for CallSessionStartedEvent which contains participant information
-                    is org.openapitools.client.models.CallSessionStartedEvent -> {
-                        val callCid = event.call.cid
-                        
-                        val data = JSObject().apply {
-                            put("callId", callCid)
-                            put("state", "session_started")
-                        }
-                        notifyListeners("callEvent", data)
+                    is CallSessionStartedEvent -> {
+                        val callCid = event.callCid
+                        updateCallStatusAndNotify(callCid, "session_started")
                     }
                     
                     is CallRejectedEvent -> {
                         val userId = event.user.id
-                        val callCid = event.call.cid
+                        val callCid = event.callCid
                         
                         // Update call state
                         callStates[callCid]?.let { callState ->
                             callState.participantResponses[userId] = "rejected"
                         }
                         
-//                        runOnMainThread {
-//                            android.util.Log.d("StreamCallPlugin", "Setting overlay invisible due to CallRejectedEvent for call ${event.call.cid}")
-//                            overlayView?.setContent {
-//                                CallOverlayView(
-//                                    context = context,
-//                                    streamVideo = streamVideoClient,
-//                                    call = null
-//                                )
-//                            }
-//                            overlayView?.isVisible = false
-//                        }
-                        
-                        val data = JSObject().apply {
-                            put("callId", event.call.cid)
-                            put("state", "rejected")
-                            put("userId", userId)
-                        }
-                        notifyListeners("callEvent", data)
+                        updateCallStatusAndNotify(callCid, "rejected", userId)
                         
                         // Check if all participants have responded
                         checkAllParticipantsResponded(callCid)
@@ -627,7 +595,7 @@ public class StreamCallPlugin : Plugin() {
                     
                     is CallMissedEvent -> {
                         val userId = event.user.id
-                        val callCid = event.call.cid
+                        val callCid = event.callCid
                         
                         // Update call state
                         callStates[callCid]?.let { callState ->
@@ -641,12 +609,7 @@ public class StreamCallPlugin : Plugin() {
                             moveAllActivitiesToBackgroundOrKill(context)
                         }
                         
-                        val data = JSObject().apply {
-                            put("callId", callCid)
-                            put("state", "missed")
-                            put("userId", userId)
-                        }
-                        notifyListeners("callEvent", data)
+                        updateCallStatusAndNotify(callCid, "missed", userId)
                         
                         // Check if all participants have responded
                         checkAllParticipantsResponded(callCid)
@@ -654,7 +617,7 @@ public class StreamCallPlugin : Plugin() {
                     
                     is CallAcceptedEvent -> {
                         val userId = event.user.id
-                        val callCid = event.call.cid
+                        val callCid = event.callCid
                         
                         // Update call state
                         callStates[callCid]?.let { callState ->
@@ -666,48 +629,34 @@ public class StreamCallPlugin : Plugin() {
                             callState.timer = null
                         }
                         
-                        val data = JSObject().apply {
-                            put("callId", callCid)
-                            put("state", "accepted")
-                            put("userId", userId)
-                        }
-                        notifyListeners("callEvent", data)
+                        updateCallStatusAndNotify(callCid, "accepted", userId)
                     }
                     
                     is CallEndedEvent -> {
                         runOnMainThread {
-                            android.util.Log.d("StreamCallPlugin", "Setting overlay invisible due to CallEndedEvent for call ${event.call.cid}")
+                            android.util.Log.d("StreamCallPlugin", "Setting overlay invisible due to CallEndedEvent for call ${event.callCid}")
                             // Clean up call resources
-                            val callCid = event.call.cid
+                            val callCid = event.callCid
                             cleanupCall(callCid)
                         }
-                        val data = JSObject().apply {
-                            put("callId", event.call.cid)
-                            put("state", "left")
-                        }
-                        notifyListeners("callEvent", data)
+                        updateCallStatusAndNotify(event.callCid, "left")
                     }
                     
                     is CallSessionEndedEvent -> {
                         runOnMainThread {
-                            android.util.Log.d("StreamCallPlugin", "Setting overlay invisible due to CallSessionEndedEvent for call ${event.call.cid}")
+                            android.util.Log.d("StreamCallPlugin", "Setting overlay invisible due to CallSessionEndedEvent for call ${event.callCid}")
                             // Clean up call resources
-                            val callCid = event.call.cid
+                            val callCid = event.callCid
                             cleanupCall(callCid)
                         }
-                        val data = JSObject().apply {
-                            put("callId", event.call.cid)
-                            put("state", "left")
-                        }
-                        notifyListeners("callEvent", data)
+                        updateCallStatusAndNotify(event.callCid, "left")
                     }
                     
                     else -> {
-                        val data = JSObject().apply {
-                            put("callId", streamVideoClient?.state?.activeCall?.value?.cid)
-                            put("state", event.getEventType())
-                        }
-                        notifyListeners("callEvent", data)
+                        updateCallStatusAndNotify(
+                            streamVideoClient?.state?.activeCall?.value?.cid ?: "",
+                            event.getEventType()
+                        )
                     }
                 }
             }
@@ -724,19 +673,11 @@ public class StreamCallPlugin : Plugin() {
                         android.util.Log.d("StreamCallPlugin", "- All participants: ${state.participants}")
                         android.util.Log.d("StreamCallPlugin", "- Remote participants: ${state.remoteParticipants}")
 
-                        // Notify that a call has started
-                        val data = JSObject().apply {
-                            put("callId", call.cid)
-                            put("state", "joined")
-                        }
-                        notifyListeners("callEvent", data)
+                        // Notify that a call has started using our helper
+                        updateCallStatusAndNotify(call.cid, "joined")
                     } ?: run {
-                        // Notify that call has ended
-                        val data = JSObject().apply {
-                            put("callId", "")
-                            put("state", "left")
-                        }
-                        notifyListeners("callEvent", data)
+                        // Notify that call has ended using our helper
+                        updateCallStatusAndNotify("", "left")
                     }
                 }
             }
@@ -809,14 +750,10 @@ public class StreamCallPlugin : Plugin() {
                 }
 
                 // Join the call without affecting others
-                call.accept()
+                call.join()
 
-                // Notify that call has started
-                val data = JSObject().apply {
-                    put("callId", call.id)
-                    put("state", "joined")
-                }
-                notifyListeners("callEvent", data)
+                // Notify that call has started using helper
+                updateCallStatusAndNotify(call.id, "joined")
 
                 // Show overlay view with the active call
                 runOnMainThread {
@@ -939,7 +876,6 @@ public class StreamCallPlugin : Plugin() {
         val callId = call.id
         android.util.Log.d("StreamCallPlugin", "Attempting to end call $callId")
         call.leave()
-        call.reject(reason = RejectReason.Cancel)
         
         // Capture context from the overlayView
         val currentContext = overlayView?.context ?: this.savedContext
@@ -992,12 +928,8 @@ public class StreamCallPlugin : Plugin() {
             incomingCallView?.isVisible = false
         }
         
-        // Notify that call has ended
-        val data = JSObject().apply {
-            put("callId", callId)
-            put("state", "left")
-        }
-        notifyListeners("callEvent", data)
+        // Notify that call has ended using helper
+        updateCallStatusAndNotify(callId, "left")
     }
 
     @OptIn(DelicateCoroutinesApi::class)
@@ -1102,12 +1034,16 @@ public class StreamCallPlugin : Plugin() {
                     
                     android.util.Log.d("StreamCallPlugin", "Creating call with members...")
                     // Create the call with all members
-                    streamCall?.create(
+                    val createResult = streamCall?.create(
                         memberIds = userIds + selfUserId,
                         custom = emptyMap(),
                         ring = shouldRing,
-                        team = team
+                        notify = true
                     )
+                    
+                    if (createResult?.isFailure == true) {
+                       throw (createResult.errorOrNull() ?: RuntimeException("Unknown error creating call")) as Throwable
+                    }
 
                     android.util.Log.d("StreamCallPlugin", "Setting overlay visible for outgoing call $callId")
                     // Show overlay view
@@ -1137,7 +1073,7 @@ public class StreamCallPlugin : Plugin() {
     }
 
     private fun startCallTimeoutMonitor(callCid: String, memberIds: List<String>) {
-        val callState = CallState(members = memberIds)
+        val callState = LocalCallState(members = memberIds)
         
         val handler = Handler(Looper.getMainLooper())
         val timeoutRunnable = object : Runnable {
@@ -1177,12 +1113,7 @@ public class StreamCallPlugin : Plugin() {
                     if (memberId !in callState.participantResponses) {
                         callState.participantResponses[memberId] = "missed"
                         
-                        val data = JSObject().apply {
-                            put("callId", callCid)
-                            put("state", "missed")
-                            put("userId", memberId)
-                        }
-                        notifyListeners("callEvent", data)
+                        updateCallStatusAndNotify(callCid, "missed", memberId)
                     }
                 }
                 
@@ -1200,13 +1131,8 @@ public class StreamCallPlugin : Plugin() {
                                 // Clean up state - we don't need to do this in endCallRaw because we already did it here
                                 callStates.remove(callCid)
                                 
-                                // Notify that call has ended
-                                val data = JSObject().apply {
-                                    put("callId", callCid)
-                                    put("state", "ended")
-                                    put("reason", "timeout")
-                                }
-                                notifyListeners("callEvent", data)
+                                // Notify that call has ended using helper
+                                updateCallStatusAndNotify(callCid, "ended", null, "timeout")
                             } catch (e: Exception) {
                                 android.util.Log.e("StreamCallPlugin", "Error ending timed out call", e)
                             }
@@ -1276,13 +1202,8 @@ public class StreamCallPlugin : Plugin() {
                             // Clean up state - we don't need to do this in endCallRaw because we already did it here
                             callStates.remove(callCid)
                             
-                            // Notify that call has ended
-                            val data = JSObject().apply {
-                                put("callId", callCid)
-                                put("state", "ended")
-                                put("reason", "all_rejected_or_missed")
-                            }
-                            notifyListeners("callEvent", data)
+                            // Notify that call has ended using helper
+                            updateCallStatusAndNotify(callCid, "ended", null, "all_rejected_or_missed")
                         } catch (e: Exception) {
                             android.util.Log.e("StreamCallPlugin", "Error ending call after all rejected/missed", e)
                         }
@@ -1300,7 +1221,7 @@ public class StreamCallPlugin : Plugin() {
                 android.util.Log.d("StreamCallPlugin", "Found firebase token")
                 val device = Device(
                     id = it,
-                    pushProvider = PushProvider.FIREBASE.key,
+                    pushProvider = CreateDeviceRequest.PushProvider.FIREBASE.key,
                     pushProviderName = "firebase",
                 )
 
@@ -1313,36 +1234,49 @@ public class StreamCallPlugin : Plugin() {
 
     @PluginMethod
     fun getCallStatus(call: PluginCall) {
-        val activeCall = streamVideoClient?.state?.activeCall.value
-        if (activeCall == null) {
+        // If not in a call, reject
+        if (currentCallId.isEmpty() || currentCallState == "left") {
             call.reject("Not in a call")
             return
         }
 
-        val status = when (activeCall.state().callingState.value) {
-            is CallingState.Idle -> "idle"
-            is CallingState.Joining -> "joining"
-            is CallingState.Ringing -> "ringing"
-            is CallingState.Joined -> "joined"
-            is CallingState.Reconnecting -> "reconnecting"
-            is CallingState.Leaving -> "leaving"
-            is CallingState.Left -> "left"
-        }
-
-        val callDirection = when (activeCall.state().callDirection.value) {
-            is CallDirection.Outgoing -> "outgoing"
-            is CallDirection.Incoming -> "incoming"
-        }
-
         val result = JSObject()
-        result.put("status", status)
-        result.put("callId", activeCall.callId)
-        result.put("callType", activeCall.callType)
-        result.put("callDirection", callDirection)
+        result.put("callId", currentCallId)
+        result.put("state", currentCallState)
+        
+        // No additional fields to ensure compatibility with CallEvent interface
+        
         call.resolve(result)
     }
 
-    data class CallState(
+    // Helper method to update call status and notify listeners
+    private fun updateCallStatusAndNotify(callId: String, state: String, userId: String? = null, reason: String? = null) {
+        // Update stored call info
+        currentCallId = callId
+        currentCallState = state
+        
+        // Get call type from call ID if available
+        if (callId.contains(":")) {
+            currentCallType = callId.split(":").firstOrNull() ?: ""
+        }
+        
+        // Create data object with only the fields in the CallEvent interface
+        val data = JSObject().apply {
+            put("callId", callId)
+            put("state", state)
+            userId?.let {
+                put("userId", it)
+            }
+            reason?.let {
+                put("reason", it)
+            }
+        }
+        
+        // Notify listeners
+        notifyListeners("callEvent", data)
+    }
+
+    data class LocalCallState(
         val members: List<String>,
         val participantResponses: MutableMap<String, String> = mutableMapOf(),
         val createdAt: Long = System.currentTimeMillis(),

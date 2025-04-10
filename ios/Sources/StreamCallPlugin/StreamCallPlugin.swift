@@ -51,6 +51,10 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
     // Track the current active call ID
     private var currentActiveCallId: String?
+    
+    // Store current call info for getCallStatus
+    private var currentCallId: String = ""
+    private var currentCallState: String = ""
 
     @Injected(\.callKitAdapter) var callKitAdapter
     @Injected(\.callKitPushNotificationAdapter) var callKitPushNotificationAdapter
@@ -58,6 +62,30 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
     // Add class property to store call states
     private var callStates: [String: (members: [MemberResponse], participantResponses: [String: String], createdAt: Date, timer: Timer?)] = [:]
+
+    // Helper method to update call status and notify listeners
+    private func updateCallStatusAndNotify(callId: String, state: String, userId: String? = nil, reason: String? = nil) {
+        // Update stored call info
+        currentCallId = callId
+        currentCallState = state
+        
+        // Create data dictionary with only the fields in the CallEvent interface
+        var data: [String: Any] = [
+            "callId": callId,
+            "state": state
+        ]
+        
+        if let userId = userId {
+            data["userId"] = userId
+        }
+        
+        if let reason = reason {
+            data["reason"] = reason
+        }
+        
+        // Notify listeners
+        notifyListeners("callEvent", data: data)
+    }
 
     override public func load() {
         // Read API key from Info.plist
@@ -169,10 +197,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                 for await event in streamVideo.subscribe() {
                     // print("Event", event)
                     if let ringingEvent = event.rawValue as? CallRingEvent {
-                        notifyListeners("callEvent", data: [
-                            "callId": ringingEvent.callCid,
-                            "state": "ringing"
-                        ])
+                        updateCallStatusAndNotify(callId: ringingEvent.callCid, state: "ringing")
                         continue
                     }
 
@@ -199,6 +224,8 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                             // Update timer in callStates
                             self.callStates[callCid]?.timer = timer
                         }
+                        
+                        updateCallStatusAndNotify(callId: callCid, state: "created")
                     }
 
                     if let rejectedEvent = event.rawValue as? CallRejectedEvent {
@@ -215,11 +242,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         }
 
                         print("CallRejectedEvent \(userId)")
-                        notifyListeners("callEvent", data: [
-                            "callId": callCid,
-                            "state": "rejected",
-                            "userId": userId
-                        ])
+                        updateCallStatusAndNotify(callId: callCid, state: "rejected", userId: userId)
 
                         await checkAllParticipantsResponded(callCid: callCid)
                         continue
@@ -239,11 +262,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         }
 
                         print("CallMissedEvent \(userId)")
-                        notifyListeners("callEvent", data: [
-                            "callId": callCid,
-                            "state": "missed",
-                            "userId": userId
-                        ])
+                        updateCallStatusAndNotify(callId: callCid, state: "missed", userId: userId)
 
                         await checkAllParticipantsResponded(callCid: callCid)
                         continue
@@ -291,18 +310,11 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         }
 
                         print("CallAcceptedEvent \(userId)")
-                        notifyListeners("callEvent", data: [
-                            "callId": callCid,
-                            "state": "accepted",
-                            "userId": userId
-                        ])
+                        updateCallStatusAndNotify(callId: callCid, state: "accepted", userId: userId)
                         continue
                     }
 
-                    notifyListeners("callEvent", data: [
-                        "callId": streamVideo.state.activeCall?.callId ?? "",
-                        "state": event.type
-                    ])
+                    updateCallStatusAndNotify(callId: streamVideo.state.activeCall?.callId ?? "", state: event.type)
                 }
             }
         }
@@ -334,10 +346,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         self.webView?.isOpaque = false
 
                         // Notify that a call has started
-                        self.notifyListeners("callEvent", data: [
-                            "callId": newState?.cId ?? "",
-                            "state": "joined"
-                        ])
+                        self.updateCallStatusAndNotify(callId: newState?.cId ?? "", state: "joined")
                     } else {
                         // Get the call ID that was active before the state changed to nil
                         let endingCallId = self.currentActiveCallId
@@ -349,10 +358,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         self.webView?.isOpaque = true
 
                         // Notify that call has ended - use the properly tracked call ID
-                        self.notifyListeners("callEvent", data: [
-                            "callId": endingCallId ?? "",
-                            "state": "left"
-                        ])
+                        self.updateCallStatusAndNotify(callId: endingCallId ?? "", state: "left")
 
                         // Clean up any resources for this call
                         if let callCid = endingCallId {
@@ -425,11 +431,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
                         // Notify listeners
                         await MainActor.run {
-                            self.notifyListeners("callEvent", data: [
-                                "callId": callCid,
-                                "state": "missed",
-                                "userId": memberId
-                            ])
+                            self.updateCallStatusAndNotify(callId: callCid, state: "missed", userId: memberId)
                         }
                     }
                 }
@@ -457,11 +459,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     self.overlayViewModel?.updateCall(nil)
                     self.overlayView?.isHidden = true
                     self.webView?.isOpaque = true
-                    self.notifyListeners("callEvent", data: [
-                        "callId": callCid,
-                        "state": "ended",
-                        "reason": "timeout"
-                    ])
+                    self.updateCallStatusAndNotify(callId: callCid, state: "ended", reason: "timeout")
                 }
             }
         }
@@ -506,11 +504,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                 self.overlayViewModel?.updateCall(nil)
                 self.overlayView?.isHidden = true
                 self.webView?.isOpaque = true
-                self.notifyListeners("callEvent", data: [
-                    "callId": callCid,
-                    "state": "ended",
-                    "reason": "all_rejected_or_missed"
-                ])
+                self.updateCallStatusAndNotify(callId: callCid, state: "ended", reason: "all_rejected_or_missed")
             }
         }
     }
@@ -904,38 +898,15 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func getCallStatus(_ call: CAPPluginCall) {
-        guard let streamCall = self.streamVideo?.state.activeCall else {
+        // Use stored state rather than accessing SDK state directly
+        if currentCallId.isEmpty || currentCallState == "left" {
             call.reject("Not in a call")
             return
         }
 
-        var status: String
-        switch streamCall.state.callingState {
-        case .idle:
-            status = "idle"
-        case .ringing:
-            status = "ringing"
-        case .joining:
-            status = "joining"
-        case .reconnecting:
-            status = "reconnecting"
-        case .joined:
-            status = "joined"
-        case .leaving:
-            status = "leaving"
-        case .left:
-            status = "left"
-        case .unknown:
-            status = "unknown"
-        @unknown default:
-            status = "unknown"
-        }
-
         call.resolve([
-            "status": status,
-            "callId": streamCall.callId,
-            "callType": streamCall.callType.id,
-            "callDirection": streamCall.state.callDirection == .outgoing ? "outgoing" : "incoming"
+            "callId": currentCallId,
+            "state": currentCallState
         ])
     }
 }

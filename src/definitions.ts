@@ -24,18 +24,33 @@ export interface LoginOptions {
 }
 
 /**
- * @typedef CallStatus
- * @description Represents the possible states of a call.
- * Can be one of: 'idle', 'ringing', 'joining', 'reconnecting', 'joined', 'leaving', 'left', 'unknown'
+ * @typedef CallState
+ * @description Represents all possible call states from API and UI
  */
-export type CallStatus = 'idle' | 'ringing' | 'joining' | 'reconnecting' | 'joined' | 'leaving' | 'left' | 'unknown';
+export type CallState = 
+  // User-facing states
+  | 'idle' 
+  | 'ringing' 
+  | 'joining' 
+  | 'reconnecting' 
+  | 'joined'
+  | 'leaving' 
+  | 'left'
+  // Event-specific states
+  | 'created'
+  | 'session_started'
+  | 'rejected' 
+  | 'missed'
+  | 'accepted'
+  | 'ended'
+  | 'unknown';
 
 /**
  * @typedef CallDirection
  * @description Represents the direction of a call.
  * Can be 'outgoing' or 'incoming'.
  */
-export type CallDirection = 'outgoing' | 'incoming';
+export type CallDirection = 'outgoing' | 'incoming' | 'unknown';
 
 /**
  * @typedef CallType
@@ -48,22 +63,36 @@ export type CallDirection = 'outgoing' | 'incoming';
 export type CallType = 'default' | 'audio_room' | 'livestream' | 'development';
 
 /**
- * @interface CallStatusResponse
- * @description Response indicating the current call status
- * @property {CallStatus} status - Current call status
- * @property {string} callId - The unique identifier for the call.
- * @property {CallType} callType - The type of the call.
- * @property {CallDirection} callDirection - The direction of the call relative to the current user.
+ * @interface CallEvent
+ * @description Event emitted when call state changes
+ * @property {string} callId - Unique identifier of the call
+ * @property {CallState} state - Current state of the call
+ * @property {string} [userId] - User ID of the participant who triggered the event
+ * @property {string} [reason] - Reason for the call state change
  */
-export interface CallStatusResponse {
-  /** Current call status */
-  status: CallStatus;
-  /** Call ID */
+export interface CallEvent {
+  /** ID of the call */
   callId: string;
-  /** Call type */
-  callType: CallType;
-  /** Call direction */
-  callDirection: CallDirection;
+  /** Current state of the call */
+  state: CallState;
+  /** User ID of the participant in the call who triggered the event */
+  userId?: string;
+  /** Reason for the call state change, if applicable */
+  reason?: string;
+}
+
+export interface CameraEnabledResponse {
+  enabled: boolean;
+}
+
+/**
+ * @interface SuccessResponse
+ * @description Standard response indicating operation success/failure
+ * @property {boolean} success - Whether the operation succeeded
+ */
+export interface SuccessResponse {
+  /** Whether the operation was successful */
+  success: boolean;
 }
 
 /**
@@ -83,37 +112,6 @@ export interface CallOptions {
   ring?: boolean;
   /** Team name to call */
   team?: string;
-}
-
-/**
- * @interface SuccessResponse
- * @description Standard response indicating operation success/failure
- * @property {boolean} success - Whether the operation succeeded
- */
-export interface SuccessResponse {
-  /** Whether the operation was successful */
-  success: boolean;
-}
-
-/**
- * @interface CallEvent
- * @description Event emitted when call state changes
- * @property {string} callId - Unique identifier of the call
- * @property {string} state - Current state of the call (joined, left, ringing, etc)
- */
-export interface CallEvent {
-  /** ID of the call */
-  callId: string;
-  /** Current state of the call */
-  state: string;
-  /** User ID of the participant in the call who triggered the event */
-  userId?: string;
-  /** Reason for the call state change */
-  reason?: string;
-}
-
-export interface CameraEnabledResponse {
-  enabled: boolean;
 }
 
 /**
@@ -229,12 +227,13 @@ export interface StreamCallPlugin {
    * console.log(isCameraEnabled);
    */
   isCameraEnabled(): Promise<CameraEnabledResponse>;
+  
   /**
    * Get the current call status
-   * @returns {Promise<CallStatusResponse>} Current call status
+   * @returns {Promise<CallEvent>} Current call status as a CallEvent
    * @example
    * const callStatus = await StreamCall.getCallStatus();
    * console.log(callStatus);
    */
-  getCallStatus(): Promise<CallStatusResponse>;
+  getCallStatus(): Promise<CallEvent>;
 }
