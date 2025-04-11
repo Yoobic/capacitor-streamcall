@@ -22,11 +22,24 @@ export class Tab1Page {
     teams: string[];
   } | null = null;
 
+  callStatus: string = 'waiting for response from SDK';
+
   constructor(
     private http: HttpClient,
     private toastController: ToastController
   ) {
     void this.loadStoredUser();
+    this.getCallStatus();
+  }
+
+  private async getCallStatus() {
+    StreamCall.addListener('callEvent', (event) => {
+      console.log('callEvent', event);
+      if (event.callId) {
+        this.callStatus = JSON.stringify(event, null, 2);
+      }
+    });
+    this.callStatus = JSON.stringify(await StreamCall.getCallStatus(), null, 2);
   }
 
   private async loadStoredUser() {
@@ -155,7 +168,7 @@ export class Tab1Page {
       message,
       duration: 2000,
       color,
-      position: 'top'
+      position: 'bottom'
     });
     await toast.present();
   }
