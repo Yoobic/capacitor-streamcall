@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.16](https://github.com/Cap-go/StreamCall/compare/0.0.15...0.0.16) (2025-04-12)
+
+
+### Bug Fixes
+
+* bugs ([501729b](https://github.com/Cap-go/StreamCall/commit/501729b3821d2608cdd6a8ba822d7f7f6a7c389d))
+
 ### [0.0.15](https://github.com/Cap-go/StreamCall/compare/0.0.14...0.0.15) (2025-04-11)
 
 
