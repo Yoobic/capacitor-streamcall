@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.19](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.18...0.0.19) (2025-04-12)
+
+
+### Features
+
+* join/reject call from JS -> nativ ([e74b8dd](https://github.com/Cap-go/capacitor-streamcall/commit/e74b8dd0e285772d4bd8daacc9bbbdbc75358773))
+
 ### [0.0.18](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.17...0.0.18) (2025-04-12)
 
 
