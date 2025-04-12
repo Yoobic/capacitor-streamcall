@@ -280,7 +280,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
                         let call = streamVideo.call(callType: String(callType), callId: String(callId))
                         guard let participantsCount = await MainActor.run(body: {
-                            if (call.id == streamVideo.state.activeCall?.id) {
+                            if call.id == streamVideo.state.activeCall?.id {
                                 return (call.state.session?.participants.count) ?? streamVideo.state.activeCall?.state.participants.count
                             } else {
                                 return (call.state.session?.participants.count)
@@ -289,8 +289,8 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                             print("CallSessionParticipantLeftEvent no participantsCount")
                             continue
                         }
-                        
-                        if (participantsCount - 1 <= 1 ) {
+
+                        if participantsCount - 1 <= 1 {
 
                             print("We are left solo in a call. Ending. cID: \(participantLeftEvent.callCid). participantsCount: \(participantsCount)")
 
