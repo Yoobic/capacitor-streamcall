@@ -19,7 +19,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Cap-go/StreamCall.git"
+    "url": "https://github.com/Cap-go/capacitor-streamcall"
   },
   "bugs": {
     "url": "https://github.com/Cap-go/StreamCall/issues"
