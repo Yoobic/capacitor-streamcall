@@ -6,6 +6,8 @@ import android.app.Application
 import android.app.KeyguardManager
 import android.content.Context
 import android.graphics.Color
+import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -47,6 +49,7 @@ import io.getstream.android.video.generated.models.CallRejectedEvent
 import io.getstream.android.video.generated.models.CallSessionEndedEvent
 import io.getstream.android.video.generated.models.CallSessionStartedEvent
 import io.getstream.android.video.generated.models.VideoEvent
+import io.getstream.video.android.core.sounds.RingingConfig
 
 // I am not a religious pearson, but at this point, I am not sure even god himself would understand this code
 // It's a spaghetti-like, tangled, unreadable mess and frankly, I am deeply sorry for the code crimes commited in the Android impl
@@ -76,6 +79,11 @@ public class StreamCallPlugin : Plugin() {
         NOT_INITIALIZED,
         INITIALIZING,
         INITIALIZED
+    }
+
+    public fun incomingOnlyRingingConfig(): RingingConfig = object : RingingConfig {
+        override val incomingCallSoundUri: Uri? = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+        override val outgoingCallSoundUri: Uri? = null
     }
 
     private fun runOnMainThread(action: () -> Unit) {
@@ -473,8 +481,7 @@ public class StreamCallPlugin : Plugin() {
                 notificationHandler = notificationHandler,
             )
 
-            val soundsConfig = emptyRingingConfig()
-            soundsConfig.incomingCallSoundUri
+            val soundsConfig = incomingOnlyRingingConfig()
             // Initialize StreamVideo client
             streamVideoClient = StreamVideoBuilder(
                 context = contextToUse,
@@ -646,7 +653,7 @@ public class StreamCallPlugin : Plugin() {
                     
                     is CallSessionEndedEvent -> {
                         runOnMainThread {
-                            android.util.Log.d("StreamCallPlugin", "Setting overlay invisible due to CallSessionEndedEvent for call ${event.callCid}")
+                            android.util.Log.d("StreamCallPlugin", "Setting overlay invisible due to CallSessionEndedEvent for call ${event.callCid}. Test session: ${event.call.session?.endedAt}")
                             // Clean up call resources
                             val callCid = event.callCid
                             cleanupCall(callCid)
@@ -738,8 +745,7 @@ public class StreamCallPlugin : Plugin() {
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    @PluginMethod
-    fun acceptCall(call: Call) {
+    private fun acceptCall(call: Call) {
         kotlinx.coroutines.GlobalScope.launch {
             try {
                 // Stop ringtone
@@ -752,7 +758,7 @@ public class StreamCallPlugin : Plugin() {
                 }
 
                 // Join the call without affecting others
-                call.join()
+                call.accept()
 
                 // Notify that call has started using helper
                 updateCallStatusAndNotify(call.id, "joined")
@@ -1040,7 +1046,7 @@ public class StreamCallPlugin : Plugin() {
                         memberIds = userIds + selfUserId,
                         custom = emptyMap(),
                         ring = shouldRing,
-                        notify = true
+                        team = team,
                     )
                     
                     if (createResult?.isFailure == true) {
@@ -1050,6 +1056,9 @@ public class StreamCallPlugin : Plugin() {
                     android.util.Log.d("StreamCallPlugin", "Setting overlay visible for outgoing call $callId")
                     // Show overlay view
                     activity?.runOnUiThread {
+                        streamCall?.microphone?.setEnabled(true)
+                        streamCall?.camera?.setEnabled(true)
+
                         overlayView?.setContent {
                             CallOverlayView(
                                 context = context,

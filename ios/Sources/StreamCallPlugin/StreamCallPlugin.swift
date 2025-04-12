@@ -51,7 +51,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
     // Track the current active call ID
     private var currentActiveCallId: String?
-    
+
     // Store current call info for getCallStatus
     private var currentCallId: String = ""
     private var currentCallState: String = ""
@@ -68,21 +68,21 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         // Update stored call info
         currentCallId = callId
         currentCallState = state
-        
+
         // Create data dictionary with only the fields in the CallEvent interface
         var data: [String: Any] = [
             "callId": callId,
             "state": state
         ]
-        
+
         if let userId = userId {
             data["userId"] = userId
         }
-        
+
         if let reason = reason {
             data["reason"] = reason
         }
-        
+
         // Notify listeners
         notifyListeners("callEvent", data: data)
     }
@@ -224,7 +224,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                             // Update timer in callStates
                             self.callStates[callCid]?.timer = timer
                         }
-                        
+
                         updateCallStatusAndNotify(callId: callCid, state: "created")
                     }
 
@@ -488,7 +488,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         if allResponded && allRejectedOrMissed {
             print("All participants have rejected or missed the call")
 
-            // End the call
+            // End the  call
             if let call = streamVideo?.state.activeCall, call.cId == callCid {
                 call.leave()
             }

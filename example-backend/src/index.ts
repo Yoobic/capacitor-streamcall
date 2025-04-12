@@ -31,7 +31,9 @@ if (!process.env.STREAM_API_KEY || !process.env.STREAM_API_SECRET) {
 const apiKey = process.env.STREAM_API_KEY;
 const apiSecret = process.env.STREAM_API_SECRET;
 const vailidity = 60 * 60 * 6; // Six hours in seconds
-const client = new StreamClient(apiKey, apiSecret);
+const client = new StreamClient(apiKey, apiSecret, {
+  timeout: 10000,
+});
 
 app.get('/user', async (c) => {
   try {

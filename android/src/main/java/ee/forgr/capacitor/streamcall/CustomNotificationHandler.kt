@@ -24,7 +24,7 @@ class CustomNotificationHandler(
         private const val PREFS_NAME = "StreamCallPrefs"
         private const val KEY_NOTIFICATION_TIME = "notification_creation_time"
     }
-    var allowSound = true;
+    private var allowSound = true;
 
     override fun getIncomingCallNotification(
         fullScreenPendingIntent: PendingIntent,
@@ -76,7 +76,7 @@ class CustomNotificationHandler(
                 setDefaults(NotificationCompat.DEFAULT_VIBRATE or NotificationCompat.DEFAULT_LIGHTS)
             }
             
-            setVibrate(longArrayOf(0, 1000, 500, 1000))
+            // setVibrate(longArrayOf(0, 1000, 500, 1000))
             setLights(0xFF0000FF.toInt(), 1000, 1000)
             setFullScreenIntent(fullScreenPendingIntent, true)
             if (shouldHaveContentIntent) {
