@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.18](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.17...0.0.18) (2025-04-12)
+
+
+### Bug Fixes
+
+* NPM release ([c0eabf2](https://github.com/Cap-go/capacitor-streamcall/commit/c0eabf23ccd573a23de850561b3e0e927cce9b47))
+
 ### [0.0.17](https://github.com/Cap-go/StreamCall/compare/0.0.16...0.0.17) (2025-04-12)
 
 ### [0.0.16](https://github.com/Cap-go/StreamCall/compare/0.0.15...0.0.16) (2025-04-12)
