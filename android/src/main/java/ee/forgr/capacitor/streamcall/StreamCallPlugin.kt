@@ -29,7 +29,6 @@ import io.getstream.video.android.core.StreamVideo
 import io.getstream.video.android.core.StreamVideoBuilder
 import io.getstream.video.android.core.notifications.NotificationConfig
 import io.getstream.video.android.core.notifications.NotificationHandler
-import io.getstream.video.android.core.sounds.emptyRingingConfig
 import io.getstream.video.android.core.sounds.toSounds
 import io.getstream.video.android.model.StreamCallId
 import io.getstream.video.android.model.User
@@ -46,6 +45,7 @@ import io.getstream.android.video.generated.models.CallCreatedEvent
 import io.getstream.android.video.generated.models.CallEndedEvent
 import io.getstream.android.video.generated.models.CallMissedEvent
 import io.getstream.android.video.generated.models.CallRejectedEvent
+import io.getstream.android.video.generated.models.CallRingEvent
 import io.getstream.android.video.generated.models.CallSessionEndedEvent
 import io.getstream.android.video.generated.models.CallSessionStartedEvent
 import io.getstream.android.video.generated.models.VideoEvent
@@ -185,7 +185,7 @@ public class StreamCallPlugin : Plugin() {
                                         declineCall(declinedCall)
                                     },
                                     onAcceptCall = { acceptedCall ->
-                                        acceptCall(acceptedCall)
+                                        internalAcceptCall(acceptedCall)
                                     },
                                     onHideIncomingCall = {
                                         hideIncomingCall()
@@ -207,7 +207,7 @@ public class StreamCallPlugin : Plugin() {
                 val call = streamVideoClient?.call(id = cid.id, type = cid.type)
                 kotlinx.coroutines.GlobalScope.launch {
                     call?.get()
-                    call?.let { acceptCall(it) }
+                    call?.let { internalAcceptCall(it) }
                 }
             }
         }
@@ -565,6 +565,9 @@ public class StreamCallPlugin : Plugin() {
             client.subscribe { event: VideoEvent ->
                 android.util.Log.v("StreamCallPlugin", "Received an event ${event.getEventType()} $event")
                 when (event) {
+                    is CallRingEvent -> {
+                        updateCallStatusAndNotify(event.callCid, "ringing")
+                    }
                     // Handle CallCreatedEvent differently - only log it but don't try to access members yet
                     is CallCreatedEvent -> {
                         val callCid = event.callCid
@@ -744,8 +747,42 @@ public class StreamCallPlugin : Plugin() {
         })
     }
 
+    @PluginMethod
+    public fun acceptCall(call: PluginCall) {
+        try {
+            val streamVideoCall = streamVideoClient?.state?.ringingCall?.value
+            if (streamVideoCall == null) {
+                call.reject("Ringing call is null")
+                return
+            }
+            kotlinx.coroutines.GlobalScope.launch {
+                internalAcceptCall(streamVideoCall)
+            }
+        } catch (t: Throwable) {
+            android.util.Log.d("StreamCallPlugin", "JS -> acceptCall fail", t);
+            call.reject("Cannot acceptCall")
+        }
+    }
+
+    @PluginMethod
+    public fun rejectCall(call: PluginCall) {
+        try {
+            val streamVideoCall = streamVideoClient?.state?.ringingCall?.value
+            if (streamVideoCall == null) {
+                call.reject("Ringing call is null")
+                return
+            }
+            kotlinx.coroutines.GlobalScope.launch {
+                declineCall(streamVideoCall)
+            }
+        } catch (t: Throwable) {
+            android.util.Log.d("StreamCallPlugin", "JS -> rejectCall fail", t);
+            call.reject("Cannot rejectCall")
+        }
+    }
+
     @OptIn(DelicateCoroutinesApi::class)
-    private fun acceptCall(call: Call) {
+    private fun internalAcceptCall(call: Call) {
         kotlinx.coroutines.GlobalScope.launch {
             try {
                 // Stop ringtone

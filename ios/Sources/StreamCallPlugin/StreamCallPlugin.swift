@@ -279,13 +279,26 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         let callId = callIdSplit[1]
 
                         let call = streamVideo.call(callType: String(callType), callId: String(callId))
-                        if await MainActor.run(body: { (call.state.session?.participants.count ?? 1) - 1 <= 1 }) {
+                        guard let participantsCount = await MainActor.run(body: {
+                            if (call.id == streamVideo.state.activeCall?.id) {
+                                return (call.state.session?.participants.count) ?? streamVideo.state.activeCall?.state.participants.count
+                            } else {
+                                return (call.state.session?.participants.count)
+                            }
+                        }) else {
+                            print("CallSessionParticipantLeftEvent no participantsCount")
+                            continue
+                        }
+                        
+                        if (participantsCount - 1 <= 1 ) {
 
-                            print("We are left solo in a call. Ending. cID: \(participantLeftEvent.callCid)")
+                            print("We are left solo in a call. Ending. cID: \(participantLeftEvent.callCid). participantsCount: \(participantsCount)")
 
                             Task {
                                 if let activeCall = streamVideo.state.activeCall {
                                     activeCall.leave()
+                                } else {
+                                    print("Active call isn't the one?")
                                 }
                             }
                         }
@@ -784,6 +797,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     print("Accepting and joining call \(streamCall!.cId)...")
                     try await streamCall?.accept()
                     try await streamCall?.join(create: false)
+                    try await streamCall?.get()
                     print("Successfully joined call")
 
                     // Update the CallOverlayView with the active call

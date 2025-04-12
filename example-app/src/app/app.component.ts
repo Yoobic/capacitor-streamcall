@@ -145,19 +145,21 @@ export class AppComponent {
         await this.presentToast('Call rejected', 'success');
         this.cdr.detectChanges();
       } else if (event.state === 'ringing') {
-        if (Capacitor.getPlatform() === 'web') {
-          this.incomingCallId = event.callId;
-          await this.presentIncomingCallToast();
-          this.cdr.detectChanges();
-        }
+        //if (Capacitor.getPlatform() === 'web') {
+        this.incomingCallId = event.callId;
+        await this.presentIncomingCallToast();
+        this.cdr.detectChanges();
+        // }
       } else if (event.state === 'ended' && event.reason === 'all_rejected_or_missed' && Capacitor.getPlatform() === 'web') {
         await this.presentToast('Call rejected or missed by all participants', 'success');
         this.isInCall = false;
         this.cdr.detectChanges();
       } else {
-        console.log('Call event', event);
-        await this.presentToast(`Call event: ${event.state}`, 'success');
-        this.cdr.detectChanges();
+        if (Capacitor.getPlatform() !== 'ios') {
+          console.log('Call event', event);
+          await this.presentToast(`Call event: ${event.state}`, 'success');
+          this.cdr.detectChanges();
+        }
       }
     });
   }
