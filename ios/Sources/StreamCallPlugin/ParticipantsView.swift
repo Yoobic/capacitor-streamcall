@@ -50,18 +50,6 @@ struct ParticipantsView: View {
     var localParticipant: CallParticipant
     @State private var labeledFrames: [ViewFramePreferenceData] = []
 
-    private func findTouchInterceptView() -> TouchInterceptView? {
-        // Find the TouchInterceptView by traversing up the view hierarchy
-        var currentView = UIApplication.shared.windows.first?.rootViewController?.view
-        while let view = currentView {
-            if let touchInterceptView = view as? TouchInterceptView {
-                return touchInterceptView
-            }
-            currentView = view.superview
-        }
-        return nil
-    }
-
     var body: some View {
         GeometryReader { proxy in
             if !participants.isEmpty {
@@ -168,20 +156,6 @@ struct ParticipantsView: View {
                                 }
                             }
                         }
-                    }
-                }
-                .onPreferenceChange(ViewFramePreferenceKey.self) { frames in
-                    print("ParticipantsView - Received frame updates:")
-                    print("Number of frames: \(frames.count)")
-                    frames.forEach { frame in
-                        print("Label: \(frame.label), Frame: \(frame.frame)")
-                    }
-                    self.labeledFrames = frames
-                    if let touchInterceptView = findTouchInterceptView() {
-                        print("ParticipantsView - Found TouchInterceptView, updating frames")
-                        touchInterceptView.updateLabeledFrames(frames)
-                    } else {
-                        print("ParticipantsView - Failed to find TouchInterceptView!")
                     }
                 }
             } else {

@@ -41,11 +41,9 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
     private var overlayView: UIView?
     private var hostingController: UIHostingController<CallOverlayView>?
-    private var overlayViewModel: CallOverlayViewModel?
     private var tokenSubscription: AnyCancellable?
     private var activeCallSubscription: AnyCancellable?
     private var lastVoIPToken: String?
-    private var touchInterceptView: TouchInterceptView?
 
     private var streamVideo: StreamVideo?
 
@@ -62,6 +60,9 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
     // Add class property to store call states
     private var callStates: [String: (members: [MemberResponse], participantResponses: [String: String], createdAt: Date, timer: Timer?)] = [:]
+
+    // Declare as optional and initialize in load() method
+    private var callViewModel: CallViewModel?
 
     // Helper method to update call status and notify listeners
     private func updateCallStatusAndNotify(callId: String, state: String, userId: String? = nil, reason: String? = nil) {
@@ -95,7 +96,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         if self.apiKey == nil {
             fatalError("Cannot get apikey")
         }
-
+        
         // Check if we have a logged in user for handling incoming calls
         if let credentials = SecureUserRepository.shared.loadCurrentUser() {
             print("Loading user for StreamCallPlugin: \(credentials.user.name)")
@@ -117,32 +118,6 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
         self.webView?.navigationDelegate = self.webviewDelegate
     }
-
-    //    private func cleanupStreamVideo() {
-    //        // Cancel subscriptions
-    //        tokenSubscription?.cancel()
-    //        tokenSubscription = nil
-    //        activeCallSubscription?.cancel()
-    //        activeCallSubscription = nil
-    //        lastVoIPToken = nil
-    //
-    //        // Cleanup UI
-    //        Task { @MainActor in
-    //            self.overlayViewModel?.updateCall(nil)
-    //            self.overlayViewModel?.updateStreamVideo(nil)
-    //            self.overlayView?.removeFromSuperview()
-    //            self.overlayView = nil
-    //            self.hostingController = nil
-    //            self.overlayViewModel = nil
-    //
-    //            // Reset webview
-    //            self.webView?.isOpaque = true
-    //            self.webView?.backgroundColor = .white
-    //            self.webView?.scrollView.backgroundColor = .white
-    //        }
-    //
-    //        state = .notInitialized
-    //    }
 
     private func requireInitialized() throws {
         guard state == .initialized else {
@@ -193,197 +168,197 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
     private func setupActiveCallSubscription() {
         if let streamVideo = streamVideo {
-            Task {
-                for await event in streamVideo.subscribe() {
-                    // print("Event", event)
-                    if let ringingEvent = event.rawValue as? CallRingEvent {
-                        updateCallStatusAndNotify(callId: ringingEvent.callCid, state: "ringing")
-                        continue
-                    }
-
-                    if let callCreatedEvent = event.rawValue as? CallCreatedEvent {
-                        print("CallCreatedEvent \(String(describing: userId))")
-
-                        let callCid = callCreatedEvent.callCid
-                        let members = callCreatedEvent.members
-
-                        // Create timer on main thread
-                        await MainActor.run {
-                            // Store in the combined callStates map
-                            self.callStates[callCid] = (
-                                members: members,
-                                participantResponses: [:],
-                                createdAt: Date(),
-                                timer: nil
-                            )
-
-                            // Start timer to check for timeout every second
-                            // Use @objc method as timer target to avoid sendable closure issues
-                            let timer = Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(self.checkCallTimeoutTimer(_:)), userInfo: callCid, repeats: true)
-
-                            // Update timer in callStates
-                            self.callStates[callCid]?.timer = timer
-                        }
-
-                        updateCallStatusAndNotify(callId: callCid, state: "created")
-                    }
-
-                    if let rejectedEvent = event.rawValue as? CallRejectedEvent {
-                        let userId = rejectedEvent.user.id
-                        let callCid = rejectedEvent.callCid
-
-                        // Operate on callStates on the main thread
-                        await MainActor.run {
-                            // Update the combined callStates map
-                            if var callState = self.callStates[callCid] {
-                                callState.participantResponses[userId] = "rejected"
-                                self.callStates[callCid] = callState
-                            }
-                        }
-
-                        print("CallRejectedEvent \(userId)")
-                        updateCallStatusAndNotify(callId: callCid, state: "rejected", userId: userId)
-
-                        await checkAllParticipantsResponded(callCid: callCid)
-                        continue
-                    }
-
-                    if let missedEvent = event.rawValue as? CallMissedEvent {
-                        let userId = missedEvent.user.id
-                        let callCid = missedEvent.callCid
-
-                        // Operate on callStates on the main thread
-                        await MainActor.run {
-                            // Update the combined callStates map
-                            if var callState = self.callStates[callCid] {
-                                callState.participantResponses[userId] = "missed"
-                                self.callStates[callCid] = callState
-                            }
-                        }
-
-                        print("CallMissedEvent \(userId)")
-                        updateCallStatusAndNotify(callId: callCid, state: "missed", userId: userId)
-
-                        await checkAllParticipantsResponded(callCid: callCid)
-                        continue
-                    }
-
-                    if let participantLeftEvent = event.rawValue as? CallSessionParticipantLeftEvent {
-                        let callIdSplit = participantLeftEvent.callCid.split(separator: ":")
-                        if callIdSplit.count != 2 {
-                            print("CallSessionParticipantLeftEvent invalid cID \(participantLeftEvent.callCid)")
-                            continue
-                        }
-
-                        let callType = callIdSplit[0]
-                        let callId = callIdSplit[1]
-
-                        let call = streamVideo.call(callType: String(callType), callId: String(callId))
-                        guard let participantsCount = await MainActor.run(body: {
-                            if call.id == streamVideo.state.activeCall?.id {
-                                return (call.state.session?.participants.count) ?? streamVideo.state.activeCall?.state.participants.count
-                            } else {
-                                return (call.state.session?.participants.count)
-                            }
-                        }) else {
-                            print("CallSessionParticipantLeftEvent no participantsCount")
-                            continue
-                        }
-
-                        if participantsCount - 1 <= 1 {
-
-                            print("We are left solo in a call. Ending. cID: \(participantLeftEvent.callCid). participantsCount: \(participantsCount)")
-
-                            Task {
-                                if let activeCall = streamVideo.state.activeCall {
-                                    activeCall.leave()
-                                } else {
-                                    print("Active call isn't the one?")
-                                }
-                            }
-                        }
-                    }
-
-                    if let acceptedEvent = event.rawValue as? CallAcceptedEvent {
-                        let userId = acceptedEvent.user.id
-                        let callCid = acceptedEvent.callCid
-
-                        // Operate on callStates on the main thread
-                        await MainActor.run {
-                            // Update the combined callStates map
-                            if var callState = self.callStates[callCid] {
-                                callState.participantResponses[userId] = "accepted"
-
-                                // If someone accepted, invalidate the timer as we don't need to check anymore
-                                callState.timer?.invalidate()
-                                callState.timer = nil
-
-                                self.callStates[callCid] = callState
-                            }
-                        }
-
-                        print("CallAcceptedEvent \(userId)")
-                        updateCallStatusAndNotify(callId: callCid, state: "accepted", userId: userId)
-                        continue
-                    }
-
-                    updateCallStatusAndNotify(callId: streamVideo.state.activeCall?.callId ?? "", state: event.type)
-                }
-            }
+//            Task {
+//                for await event in streamVideo.subscribe() {
+//                    // print("Event", event)
+//                    if let ringingEvent = event.rawValue as? CallRingEvent {
+//                        updateCallStatusAndNotify(callId: ringingEvent.callCid, state: "ringing")
+//                        continue
+//                    }
+//
+//                    if let callCreatedEvent = event.rawValue as? CallCreatedEvent {
+//                        print("CallCreatedEvent \(String(describing: userId))")
+//
+//                        let callCid = callCreatedEvent.callCid
+//                        let members = callCreatedEvent.members
+//
+//                        // Create timer on main thread
+//                        await MainActor.run {
+//                            // Store in the combined callStates map
+//                            self.callStates[callCid] = (
+//                                members: members,
+//                                participantResponses: [:],
+//                                createdAt: Date(),
+//                                timer: nil
+//                            )
+//
+//                            // Start timer to check for timeout every second
+//                            // Use @objc method as timer target to avoid sendable closure issues
+//                            let timer = Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(self.checkCallTimeoutTimer(_:)), userInfo: callCid, repeats: true)
+//
+//                            // Update timer in callStates
+//                            self.callStates[callCid]?.timer = timer
+//                        }
+//
+//                        updateCallStatusAndNotify(callId: callCid, state: "created")
+//                    }
+//
+//                    if let rejectedEvent = event.rawValue as? CallRejectedEvent {
+//                        let userId = rejectedEvent.user.id
+//                        let callCid = rejectedEvent.callCid
+//
+//                        // Operate on callStates on the main thread
+//                        await MainActor.run {
+//                            // Update the combined callStates map
+//                            if var callState = self.callStates[callCid] {
+//                                callState.participantResponses[userId] = "rejected"
+//                                self.callStates[callCid] = callState
+//                            }
+//                        }
+//
+//                        print("CallRejectedEvent \(userId)")
+//                        updateCallStatusAndNotify(callId: callCid, state: "rejected", userId: userId)
+//
+//                        await checkAllParticipantsResponded(callCid: callCid)
+//                        continue
+//                    }
+//
+//                    if let missedEvent = event.rawValue as? CallMissedEvent {
+//                        let userId = missedEvent.user.id
+//                        let callCid = missedEvent.callCid
+//
+//                        // Operate on callStates on the main thread
+//                        await MainActor.run {
+//                            // Update the combined callStates map
+//                            if var callState = self.callStates[callCid] {
+//                                callState.participantResponses[userId] = "missed"
+//                                self.callStates[callCid] = callState
+//                            }
+//                        }
+//
+//                        print("CallMissedEvent \(userId)")
+//                        updateCallStatusAndNotify(callId: callCid, state: "missed", userId: userId)
+//
+//                        await checkAllParticipantsResponded(callCid: callCid)
+//                        continue
+//                    }
+//
+//                    if let participantLeftEvent = event.rawValue as? CallSessionParticipantLeftEvent {
+//                        let callIdSplit = participantLeftEvent.callCid.split(separator: ":")
+//                        if callIdSplit.count != 2 {
+//                            print("CallSessionParticipantLeftEvent invalid cID \(participantLeftEvent.callCid)")
+//                            continue
+//                        }
+//
+//                        let callType = callIdSplit[0]
+//                        let callId = callIdSplit[1]
+//
+//                        let call = streamVideo.call(callType: String(callType), callId: String(callId))
+//                        guard let participantsCount = await MainActor.run(body: {
+//                            if call.id == streamVideo.state.activeCall?.id {
+//                                return (call.state.session?.participants.count) ?? streamVideo.state.activeCall?.state.participants.count
+//                            } else {
+//                                return (call.state.session?.participants.count)
+//                            }
+//                        }) else {
+//                            print("CallSessionParticipantLeftEvent no participantsCount")
+//                            continue
+//                        }
+//
+//                        if participantsCount - 1 <= 1 {
+//
+//                            print("We are left solo in a call. Ending. cID: \(participantLeftEvent.callCid). participantsCount: \(participantsCount)")
+//
+//                            Task {
+//                                if let activeCall = streamVideo.state.activeCall {
+//                                    activeCall.leave()
+//                                } else {
+//                                    print("Active call isn't the one?")
+//                                }
+//                            }
+//                        }
+//                    }
+//
+//                    if let acceptedEvent = event.rawValue as? CallAcceptedEvent {
+//                        let userId = acceptedEvent.user.id
+//                        let callCid = acceptedEvent.callCid
+//
+//                        // Operate on callStates on the main thread
+//                        await MainActor.run {
+//                            // Update the combined callStates map
+//                            if var callState = self.callStates[callCid] {
+//                                callState.participantResponses[userId] = "accepted"
+//
+//                                // If someone accepted, invalidate the timer as we don't need to check anymore
+//                                callState.timer?.invalidate()
+//                                callState.timer = nil
+//
+//                                self.callStates[callCid] = callState
+//                            }
+//                        }
+//
+//                        print("CallAcceptedEvent \(userId)")
+//                        updateCallStatusAndNotify(callId: callCid, state: "accepted", userId: userId)
+//                        continue
+//                    }
+//
+//                    updateCallStatusAndNotify(callId: streamVideo.state.activeCall?.callId ?? "", state: event.type)
+//                }
+//            }
         }
-        // Cancel existing subscription if any
-        activeCallSubscription?.cancel()
         // Create new subscription
-        activeCallSubscription = streamVideo?.state.$activeCall.sink { [weak self] newState in
-            guard let self = self else { return }
-
-            Task { @MainActor in
+        DispatchQueue.main.async { @MainActor in
+            // Cancel existing subscription if any
+            self.activeCallSubscription?.cancel()
+            
+            self.activeCallSubscription = self.callViewModel?.$callingState.sink { [weak self] newState in
+                guard let self = self else { return }
+                
                 do {
                     try self.requireInitialized()
                     print("Call State Update:")
-                    print("- Call is nil: \(newState == nil)")
-
-                    if let state = newState?.state {
-                        print("- state: \(state)")
-                        print("- Session ID: \(state.sessionId)")
-                        print("- All participants: \(String(describing: state.participants))")
-                        print("- Remote participants: \(String(describing: state.remoteParticipants))")
-
+                    print("- Call is nil: \(newState)")
+                    
+                    if newState == .inCall {
+                        print("- state: \(newState)")
+                        // print("- Session ID: \(state.self ids)")
+                        print("- All participants: \(String(describing: self.callViewModel?.participants))")
+                        // print("- Remote participants: \(String(describing: self.callViewModel?.remoteParticipants))")
+                        
                         // Store the active call ID when a call becomes active
-                        self.currentActiveCallId = newState?.cId
-                        print("Updated current active call ID: \(String(describing: self.currentActiveCallId))")
-
+                        // self.currentActiveCallId = newState?.cId
+                        // print("Updated current active call ID: \(String(describing: self.currentActiveCallId))")
+                        
                         // Update overlay and make visible when there's an active call
-                        self.overlayViewModel?.updateCall(newState)
-                        self.overlayView?.isHidden = false
-                        self.webView?.isOpaque = false
-
+                        self.createCallOverlayView()
+                        
                         // Notify that a call has started
-                        self.updateCallStatusAndNotify(callId: newState?.cId ?? "", state: "joined")
+                       //  self.updateCallStatusAndNotify(callId: newState?.cId ?? "", state: "joined")
                     } else {
                         // Get the call ID that was active before the state changed to nil
                         let endingCallId = self.currentActiveCallId
                         print("Call ending: \(String(describing: endingCallId))")
-
+                        
                         // If newState is nil, hide overlay and clear call
-                        self.overlayViewModel?.updateCall(nil)
-                        self.overlayView?.isHidden = true
-                        self.webView?.isOpaque = true
-
+                        // TODO
+//                            self.overlayViewModel?.updateCall(nil)
+//                            self.overlayView?.isHidden = true
+//                            self.webView?.isOpaque = true
+                        
                         // Notify that call has ended - use the properly tracked call ID
                         self.updateCallStatusAndNotify(callId: endingCallId ?? "", state: "left")
-
+                        
                         // Clean up any resources for this call
                         if let callCid = endingCallId {
                             // Invalidate and remove the timer
                             self.callStates[callCid]?.timer?.invalidate()
-
+                            
                             // Remove call from callStates
                             self.callStates.removeValue(forKey: callCid)
-
+                            
                             print("Cleaned up resources for ended call: \(callCid)")
                         }
-
+                        
                         // Clear the active call ID
                         self.currentActiveCallId = nil
                     }
@@ -469,7 +444,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
                 // Update UI
                 await MainActor.run {
-                    self.overlayViewModel?.updateCall(nil)
+                    // self.overlayViewModel?.updateCall(nil)
                     self.overlayView?.isHidden = true
                     self.webView?.isOpaque = true
                     self.updateCallStatusAndNotify(callId: callCid, state: "ended", reason: "timeout")
@@ -514,7 +489,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                 // Remove from callStates
                 self.callStates.removeValue(forKey: callCid)
 
-                self.overlayViewModel?.updateCall(nil)
+                // self.overlayViewModel?.updateCall(nil)
                 self.overlayView?.isHidden = true
                 self.webView?.isOpaque = true
                 self.updateCallStatusAndNotify(callId: callCid, state: "ended", reason: "all_rejected_or_missed")
@@ -550,7 +525,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
         // Update the CallOverlayView with new StreamVideo instance
         Task { @MainActor in
-            self.overlayViewModel?.updateStreamVideo(self.streamVideo)
+            // self.overlayViewModel?.updateStreamVideo(self.streamVideo)
         }
 
         call.resolve([
@@ -584,8 +559,8 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
         // Update the CallOverlayView with nil StreamVideo instance
         Task { @MainActor in
-            self.overlayViewModel?.updateCall(nil)
-            self.overlayViewModel?.updateStreamVideo(nil)
+            // self.overlayViewModel?.updateCall(nil)
+            // self.overlayViewModel?.updateStreamVideo(nil)
             self.overlayView?.isHidden = true
             self.webView?.isOpaque = true
         }
@@ -668,7 +643,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
                     // Update the CallOverlayView with the active call
                     await MainActor.run {
-                        self.overlayViewModel?.updateCall(streamCall)
+                        // self.overlayViewModel?.updateCall(streamCall)
                         self.overlayView?.isHidden = false
                         self.webView?.isOpaque = false
                     }
@@ -696,7 +671,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
                     // Update view state instead of cleaning up
                     await MainActor.run {
-                        self.overlayViewModel?.updateCall(nil)
+                        // self.overlayViewModel?.updateCall(nil)
                         self.overlayView?.isHidden = true
                         self.webView?.isOpaque = true
                     }
@@ -795,14 +770,17 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
                     // Join the call
                     print("Accepting and joining call \(streamCall!.cId)...")
-                    try await streamCall?.accept()
-                    try await streamCall?.join(create: false)
-                    try await streamCall?.get()
+                    guard let callVideo = await self.callViewModel?.call else {
+                        call.reject("Failed to accept call as there is no call ID")
+                        return
+                    }
+                    
+                    try await callVideo.accept()
                     print("Successfully joined call")
 
                     // Update the CallOverlayView with the active call
                     await MainActor.run {
-                        self.overlayViewModel?.updateCall(streamCall)
+                        // self.overlayViewModel?.updateCall(streamCall)
                         self.overlayView?.isHidden = false
                         self.webView?.isOpaque = false
                     }
@@ -821,6 +799,21 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func initializeStreamVideo() {
+        if (state == .initialized) {
+            print("initializeStreamVideo already initialized")
+            // Try to get user credentials from repository
+            guard let savedCredentials = SecureUserRepository.shared.loadCurrentUser() else {
+                print("Save credentials not found, skipping initialization")
+                return
+            }
+            if (savedCredentials.user.id == streamVideo?.user.id) {
+                print("Skipping initializeStreamVideo as user is already logged in")
+                return
+            }
+        } else if (state == .initializing) {
+            print("initializeStreamVideo rejected - already initializing")
+            return
+        }
         state = .initializing
 
         // Try to get user credentials from repository
@@ -832,11 +825,30 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         }
         print("Initializing with saved credentials for user: \(savedCredentials.user.name)")
 
+        LogConfig.level = .debug
         self.streamVideo = StreamVideo(
             apiKey: apiKey,
             user: savedCredentials.user,
-            token: UserToken(stringLiteral: savedCredentials.tokenValue)
+            token: UserToken(stringLiteral: savedCredentials.tokenValue),
+            tokenProvider: {completion in
+                guard let savedCredentials = SecureUserRepository.shared.loadCurrentUser() else {
+                    print("No saved credentials or API key found, cannot refresh token")
+                    
+                    completion(.failure(NSError(domain: "No saved credentials or API key found, cannot refresh token", code: 0, userInfo: nil)))
+                    return
+                }
+                completion(.success(UserToken(stringLiteral: savedCredentials.tokenValue)))
+            }
         )
+        
+        if (self.callViewModel == nil) {
+            // Initialize on main thread with proper MainActor isolation
+            DispatchQueue.main.async {
+                Task { @MainActor in
+                    self.callViewModel = CallViewModel()
+                }
+            }
+        }
 
         state = .initialized
         callKitAdapter.streamVideo = self.streamVideo
@@ -851,64 +863,64 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func setupViews() {
+
+
+//        // Create SwiftUI view with view model
+//        let (hostingController, viewModel) = CallOverlayView.create(streamVideo: self.streamVideo)
+//        hostingController.view.backgroundColor = .clear
+//        hostingController.view.translatesAutoresizingMaskIntoConstraints = false
+//
+//        self.hostingController = hostingController
+//        self.overlayViewModel = viewModel
+//        self.overlayView = hostingController.view
+//
+//        if let overlayView = self.overlayView {
+//            // Setup the views in TouchInterceptView
+//            touchInterceptView.setupWithWebView(webView, overlayView: overlayView)
+//
+//            // Setup constraints for webView
+//            NSLayoutConstraint.activate([
+//                webView.topAnchor.constraint(equalTo: touchInterceptView.topAnchor),
+//                webView.bottomAnchor.constraint(equalTo: touchInterceptView.bottomAnchor),
+//                webView.leadingAnchor.constraint(equalTo: touchInterceptView.leadingAnchor),
+//                webView.trailingAnchor.constraint(equalTo: touchInterceptView.trailingAnchor)
+//            ])
+//
+//            // Setup constraints for overlayView
+//            let safeGuide = touchInterceptView.safeAreaLayoutGuide
+//            NSLayoutConstraint.activate([
+//                overlayView.topAnchor.constraint(equalTo: safeGuide.topAnchor),
+//                overlayView.bottomAnchor.constraint(equalTo: safeGuide.bottomAnchor),
+//                overlayView.leadingAnchor.constraint(equalTo: safeGuide.leadingAnchor),
+//                overlayView.trailingAnchor.constraint(equalTo: safeGuide.trailingAnchor)
+//            ])
+//        }
+    }
+    
+    private func createCallOverlayView() {
         guard let webView = self.webView,
-              let parent = webView.superview else { return }
-
-        // Create TouchInterceptView
-        let touchInterceptView = TouchInterceptView(frame: parent.bounds)
-        touchInterceptView.translatesAutoresizingMaskIntoConstraints = false
-        self.touchInterceptView = touchInterceptView
-
-        // Remove webView from its parent
-        webView.removeFromSuperview()
-
-        // Add TouchInterceptView to the parent
-        parent.addSubview(touchInterceptView)
-
-        // Setup TouchInterceptView constraints
-        NSLayoutConstraint.activate([
-            touchInterceptView.topAnchor.constraint(equalTo: parent.topAnchor),
-            touchInterceptView.bottomAnchor.constraint(equalTo: parent.bottomAnchor),
-            touchInterceptView.leadingAnchor.constraint(equalTo: parent.leadingAnchor),
-            touchInterceptView.trailingAnchor.constraint(equalTo: parent.trailingAnchor)
-        ])
+              let parent = webView.superview,
+                let callOverlayView = self.callViewModel else { return }
+        
 
         // Configure webview for transparency
         webView.isOpaque = true
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
         webView.translatesAutoresizingMaskIntoConstraints = false
-
-        // Create SwiftUI view with view model
-        let (hostingController, viewModel) = CallOverlayView.create(streamVideo: self.streamVideo)
-        hostingController.view.backgroundColor = .clear
-        hostingController.view.translatesAutoresizingMaskIntoConstraints = false
-
-        self.hostingController = hostingController
-        self.overlayViewModel = viewModel
-        self.overlayView = hostingController.view
-
-        if let overlayView = self.overlayView {
-            // Setup the views in TouchInterceptView
-            touchInterceptView.setupWithWebView(webView, overlayView: overlayView)
-
-            // Setup constraints for webView
-            NSLayoutConstraint.activate([
-                webView.topAnchor.constraint(equalTo: touchInterceptView.topAnchor),
-                webView.bottomAnchor.constraint(equalTo: touchInterceptView.bottomAnchor),
-                webView.leadingAnchor.constraint(equalTo: touchInterceptView.leadingAnchor),
-                webView.trailingAnchor.constraint(equalTo: touchInterceptView.trailingAnchor)
-            ])
-
-            // Setup constraints for overlayView
-            let safeGuide = touchInterceptView.safeAreaLayoutGuide
-            NSLayoutConstraint.activate([
-                overlayView.topAnchor.constraint(equalTo: safeGuide.topAnchor),
-                overlayView.bottomAnchor.constraint(equalTo: safeGuide.bottomAnchor),
-                overlayView.leadingAnchor.constraint(equalTo: safeGuide.leadingAnchor),
-                overlayView.trailingAnchor.constraint(equalTo: safeGuide.trailingAnchor)
-            ])
-        }
+        
+        let overlayView = CallOverlayView.create(callViewModel: callOverlayView)
+        let safeGuide = webView.safeAreaLayoutGuide
+        
+        NSLayoutConstraint.activate([
+            overlayView.view.topAnchor.constraint(equalTo: safeGuide.topAnchor),
+            overlayView.view.bottomAnchor.constraint(equalTo: safeGuide.bottomAnchor),
+            overlayView.view.leadingAnchor.constraint(equalTo: safeGuide.leadingAnchor),
+            overlayView.view.trailingAnchor.constraint(equalTo: safeGuide.trailingAnchor)
+        ])
+        
+        self.webView?.superview?.addSubview(overlayView.view)
+        self.webView?.superview?.bringSubviewToFront(self.webView!)
     }
 
     @objc func getCallStatus(_ call: CAPPluginCall) {
