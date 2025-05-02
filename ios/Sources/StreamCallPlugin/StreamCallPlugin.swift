@@ -773,6 +773,9 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                 Task { @MainActor in
                     self.callViewModel = CallViewModel(participantsLayout: .grid)
                     self.callViewModel?.participantAutoLeavePolicy = LastParticipantAutoLeavePolicy()
+                    
+                    // Setup subscriptions for new StreamVideo instance
+                    self.setupActiveCallSubscription()
                 }
             }
         }
@@ -780,9 +783,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         state = .initialized
         callKitAdapter.streamVideo = self.streamVideo
         callKitAdapter.availabilityPolicy = .always
-
-        // Setup subscriptions for new StreamVideo instance
-        setupActiveCallSubscription()
+        
         setupTokenSubscription()
 
         // Register for incoming calls
