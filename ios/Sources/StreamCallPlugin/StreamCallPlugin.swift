@@ -306,65 +306,108 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 //                }
 //            }
         }
-        // Create new subscription
-        DispatchQueue.main.async { @MainActor in
+        
+        // Ensure this method is called on the main thread and properly establishes the subscription
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
             // Cancel existing subscription if any
             self.activeCallSubscription?.cancel()
+            self.activeCallSubscription = nil
             
-            self.activeCallSubscription = self.callViewModel?.$callingState.sink { [weak self] newState in
-                guard let self = self else { return }
-                
-                do {
-                    try self.requireInitialized()
-                    print("Call State Update:")
-                    print("- Call is nil: \(newState)")
-                    
-                    if newState == .inCall {
-                        print("- state: \(newState)")
-                        // print("- Session ID: \(state.self ids)")
-                        print("- All participants: \(String(describing: self.callViewModel?.participants))")
-                        // print("- Remote participants: \(String(describing: self.callViewModel?.remoteParticipants))")
-                        
-                        // Store the active call ID when a call becomes active
-                        // self.currentActiveCallId = newState?.cId
-                        // print("Updated current active call ID: \(String(describing: self.currentActiveCallId))")
-                        
-                        // Update overlay and make visible when there's an active call
-                        self.createCallOverlayView()
-                        
-                        // Notify that a call has started
-                       //  self.updateCallStatusAndNotify(callId: newState?.cId ?? "", state: "joined")
-                    } else {
-                        // Get the call ID that was active before the state changed to nil
-                        let endingCallId = self.currentActiveCallId
-                        print("Call ending: \(String(describing: endingCallId))")
-                        
-                        // If newState is nil, hide overlay and clear call
-                        // TODO
-//                            self.overlayViewModel?.updateCall(nil)
-//                            self.overlayView?.isHidden = true
-//                            self.webView?.isOpaque = true
-                        
-                        // Notify that call has ended - use the properly tracked call ID
-                        self.updateCallStatusAndNotify(callId: endingCallId ?? "", state: "left")
-                        
-                        // Clean up any resources for this call
-                        if let callCid = endingCallId {
-                            // Invalidate and remove the timer
-                            self.callStates[callCid]?.timer?.invalidate()
-                            
-                            // Remove call from callStates
-                            self.callStates.removeValue(forKey: callCid)
-                            
-                            print("Cleaned up resources for ended call: \(callCid)")
-                        }
-                        
-                        // Clear the active call ID
-                        self.currentActiveCallId = nil
-                    }
-                } catch {
-                    log.error("Error handling call state update: \(String(describing: error))")
+            // Verify callViewModel exists
+            guard let callViewModel = self.callViewModel else {
+                print("Warning: setupActiveCallSubscription called but callViewModel is nil")
+                // Schedule a retry after a short delay if callViewModel is nil
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                    self?.setupActiveCallSubscription()
                 }
+                return
+            }
+            
+            print("Setting up active call subscription")
+            
+            // Create a strong reference to callViewModel to ensure it's not deallocated
+            // while the subscription is active
+            let viewModel = callViewModel
+            
+            // Store the subscription
+            self.activeCallSubscription = viewModel.$callingState
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self, weak viewModel] newState in
+                    guard let self = self, let viewModel = viewModel else {
+                        print("Warning: Call state update received but self or viewModel is nil")
+                        return
+                    }
+                    
+                    do {
+                        try self.requireInitialized()
+                        print("Call State Update: \(newState)")
+                        
+                        if newState == .inCall {
+                            print("- In call state detected")
+                            print("- All participants: \(String(describing: viewModel.participants))")
+                            
+                            // Store the active call ID when a call becomes active
+                            // self.currentActiveCallId = newState?.cId
+                            
+                            // Update overlay and make visible when there's an active call
+                            self.createCallOverlayView()
+                            
+                            // Notify that a call has started
+                            self.updateCallStatusAndNotify(callId: self.callViewModel?.call?.cId ?? "", state: "joined")
+                        } else if case .incoming(let incomingCall) = newState {
+                            updateCallStatusAndNotify(callId: incomingCall.id, state: "ringing")
+                        } else {
+                            // Get the call ID that was active before the state changed
+                            let endingCallId = self.currentActiveCallId
+                            print("Call ending: \(String(describing: endingCallId))")
+                            
+                            // Notify that call has ended - use the properly tracked call ID
+                            self.updateCallStatusAndNotify(callId: endingCallId ?? "", state: "left")
+                            
+                            // Clean up any resources for this call
+                            if let callCid = endingCallId {
+                                // Invalidate and remove the timer
+                                self.callStates[callCid]?.timer?.invalidate()
+                                
+                                // Remove call from callStates
+                                self.callStates.removeValue(forKey: callCid)
+                                
+                                print("Cleaned up resources for ended call: \(callCid)")
+                            }
+                            
+                            // Clear the active call ID
+                            self.currentActiveCallId = nil
+                            
+                            // Remove the call overlay view when not in a call
+                            self.ensureViewRemoved()
+                        }
+                    } catch {
+                        log.error("Error handling call state update: \(String(describing: error))")
+                    }
+                }
+            
+            print("Active call subscription setup completed")
+            
+            // Schedule a periodic check to ensure subscription is active
+            self.scheduleSubscriptionCheck()
+        }
+    }
+    
+    // Add a new method to periodically check and restore the subscription if needed
+    private func scheduleSubscriptionCheck() {
+        // Create a timer that checks the subscription every 5 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) { [weak self] in
+            guard let self = self else { return }
+            
+            // Check if we're in a state where we need the subscription but it's not active
+            if self.state == .initialized && self.activeCallSubscription == nil && self.callViewModel != nil {
+                print("Subscription check: Restoring lost activeCallSubscription")
+                self.setupActiveCallSubscription()
+            } else {
+                // Schedule the next check
+                self.scheduleSubscriptionCheck()
             }
         }
     }
@@ -770,12 +813,12 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
                     // Join the call
                     print("Accepting and joining call \(streamCall!.cId)...")
-                    guard let callVideo = await self.callViewModel?.call else {
+                    guard case .incoming(let incomingCall) = await self.callViewModel?.callingState else {
                         call.reject("Failed to accept call as there is no call ID")
                         return
                     }
-                    
-                    try await callVideo.accept()
+
+                    await self.callViewModel?.acceptCall(callType: incomingCall.type, callId: incomingCall.id)
                     print("Successfully joined call")
 
                     // Update the CallOverlayView with the active call
@@ -845,7 +888,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             // Initialize on main thread with proper MainActor isolation
             DispatchQueue.main.async {
                 Task { @MainActor in
-                    self.callViewModel = CallViewModel()
+                    self.callViewModel = CallViewModel(participantsLayout: .grid)
                 }
             }
         }
@@ -900,17 +943,25 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     private func createCallOverlayView() {
         guard let webView = self.webView,
               let parent = webView.superview,
-                let callOverlayView = self.callViewModel else { return }
+              let callOverlayView = self.callViewModel else { return }
         
-
-        // Configure webview for transparency
-        webView.isOpaque = true
-        webView.backgroundColor = .clear
-        webView.scrollView.backgroundColor = .clear
-        webView.translatesAutoresizingMaskIntoConstraints = false
+        // Check if we already have an overlay view - do nothing if it exists
+        if let existingOverlayView = self.overlayView, existingOverlayView.superview != nil {
+            print("Call overlay view already exists, doing nothing")
+            return
+        }
         
+        print("Creating new call overlay view")
+        
+        // First, create the overlay view
         let overlayView = CallOverlayView.create(callViewModel: callOverlayView)
-        let safeGuide = webView.safeAreaLayoutGuide
+        overlayView.view.translatesAutoresizingMaskIntoConstraints = false
+        
+        // Important: Insert the overlay view BELOW the webView in the view hierarchy
+        parent.insertSubview(overlayView.view, belowSubview: webView)
+        
+        // Set constraints to fill the parent's safe area
+        let safeGuide = parent.safeAreaLayoutGuide
         
         NSLayoutConstraint.activate([
             overlayView.view.topAnchor.constraint(equalTo: safeGuide.topAnchor),
@@ -919,8 +970,35 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             overlayView.view.trailingAnchor.constraint(equalTo: safeGuide.trailingAnchor)
         ])
         
-        self.webView?.superview?.addSubview(overlayView.view)
-        self.webView?.superview?.bringSubviewToFront(self.webView!)
+        // Set opacity for visual effect - make webView transparent to see overlay
+        webView.isOpaque = false
+        webView.backgroundColor = .clear
+        webView.scrollView.backgroundColor = .clear
+        
+        // Store reference to the hosting controller
+        self.hostingController = overlayView
+        self.overlayView = overlayView.view
+    }
+
+    private func ensureViewRemoved() {
+        // Check if we have an overlay view
+        if let existingOverlayView = self.overlayView {
+            print("Removing call overlay view")
+            
+            // Remove the view from its superview
+            existingOverlayView.removeFromSuperview()
+            
+            // Reset opacity for webView
+            self.webView?.isOpaque = true
+            self.webView?.backgroundColor = nil
+            self.webView?.scrollView.backgroundColor = nil
+            
+            // Clear references
+            self.overlayView = nil
+            self.hostingController = nil
+        } else {
+            print("No call overlay view to remove")
+        }
     }
 
     @objc func getCallStatus(_ call: CAPPluginCall) {
