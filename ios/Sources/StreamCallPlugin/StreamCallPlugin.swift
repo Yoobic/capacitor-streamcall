@@ -47,12 +47,10 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
     private var streamVideo: StreamVideo?
 
-    // Track the current active call ID
-    private var currentActiveCallId: String?
-
     // Store current call info for getCallStatus
     private var currentCallId: String = ""
     private var currentCallState: String = ""
+    private var hasNotifiedCallJoined: Bool = false
 
     @Injected(\.callKitAdapter) var callKitAdapter
     @Injected(\.callKitPushNotificationAdapter) var callKitPushNotificationAdapter
@@ -167,146 +165,6 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func setupActiveCallSubscription() {
-        if let streamVideo = streamVideo {
-//            Task {
-//                for await event in streamVideo.subscribe() {
-//                    // print("Event", event)
-//                    if let ringingEvent = event.rawValue as? CallRingEvent {
-//                        updateCallStatusAndNotify(callId: ringingEvent.callCid, state: "ringing")
-//                        continue
-//                    }
-//
-//                    if let callCreatedEvent = event.rawValue as? CallCreatedEvent {
-//                        print("CallCreatedEvent \(String(describing: userId))")
-//
-//                        let callCid = callCreatedEvent.callCid
-//                        let members = callCreatedEvent.members
-//
-//                        // Create timer on main thread
-//                        await MainActor.run {
-//                            // Store in the combined callStates map
-//                            self.callStates[callCid] = (
-//                                members: members,
-//                                participantResponses: [:],
-//                                createdAt: Date(),
-//                                timer: nil
-//                            )
-//
-//                            // Start timer to check for timeout every second
-//                            // Use @objc method as timer target to avoid sendable closure issues
-//                            let timer = Timer.scheduledTimer(timeInterval: 1.0, target: self, selector: #selector(self.checkCallTimeoutTimer(_:)), userInfo: callCid, repeats: true)
-//
-//                            // Update timer in callStates
-//                            self.callStates[callCid]?.timer = timer
-//                        }
-//
-//                        updateCallStatusAndNotify(callId: callCid, state: "created")
-//                    }
-//
-//                    if let rejectedEvent = event.rawValue as? CallRejectedEvent {
-//                        let userId = rejectedEvent.user.id
-//                        let callCid = rejectedEvent.callCid
-//
-//                        // Operate on callStates on the main thread
-//                        await MainActor.run {
-//                            // Update the combined callStates map
-//                            if var callState = self.callStates[callCid] {
-//                                callState.participantResponses[userId] = "rejected"
-//                                self.callStates[callCid] = callState
-//                            }
-//                        }
-//
-//                        print("CallRejectedEvent \(userId)")
-//                        updateCallStatusAndNotify(callId: callCid, state: "rejected", userId: userId)
-//
-//                        await checkAllParticipantsResponded(callCid: callCid)
-//                        continue
-//                    }
-//
-//                    if let missedEvent = event.rawValue as? CallMissedEvent {
-//                        let userId = missedEvent.user.id
-//                        let callCid = missedEvent.callCid
-//
-//                        // Operate on callStates on the main thread
-//                        await MainActor.run {
-//                            // Update the combined callStates map
-//                            if var callState = self.callStates[callCid] {
-//                                callState.participantResponses[userId] = "missed"
-//                                self.callStates[callCid] = callState
-//                            }
-//                        }
-//
-//                        print("CallMissedEvent \(userId)")
-//                        updateCallStatusAndNotify(callId: callCid, state: "missed", userId: userId)
-//
-//                        await checkAllParticipantsResponded(callCid: callCid)
-//                        continue
-//                    }
-//
-//                    if let participantLeftEvent = event.rawValue as? CallSessionParticipantLeftEvent {
-//                        let callIdSplit = participantLeftEvent.callCid.split(separator: ":")
-//                        if callIdSplit.count != 2 {
-//                            print("CallSessionParticipantLeftEvent invalid cID \(participantLeftEvent.callCid)")
-//                            continue
-//                        }
-//
-//                        let callType = callIdSplit[0]
-//                        let callId = callIdSplit[1]
-//
-//                        let call = streamVideo.call(callType: String(callType), callId: String(callId))
-//                        guard let participantsCount = await MainActor.run(body: {
-//                            if call.id == streamVideo.state.activeCall?.id {
-//                                return (call.state.session?.participants.count) ?? streamVideo.state.activeCall?.state.participants.count
-//                            } else {
-//                                return (call.state.session?.participants.count)
-//                            }
-//                        }) else {
-//                            print("CallSessionParticipantLeftEvent no participantsCount")
-//                            continue
-//                        }
-//
-//                        if participantsCount - 1 <= 1 {
-//
-//                            print("We are left solo in a call. Ending. cID: \(participantLeftEvent.callCid). participantsCount: \(participantsCount)")
-//
-//                            Task {
-//                                if let activeCall = streamVideo.state.activeCall {
-//                                    activeCall.leave()
-//                                } else {
-//                                    print("Active call isn't the one?")
-//                                }
-//                            }
-//                        }
-//                    }
-//
-//                    if let acceptedEvent = event.rawValue as? CallAcceptedEvent {
-//                        let userId = acceptedEvent.user.id
-//                        let callCid = acceptedEvent.callCid
-//
-//                        // Operate on callStates on the main thread
-//                        await MainActor.run {
-//                            // Update the combined callStates map
-//                            if var callState = self.callStates[callCid] {
-//                                callState.participantResponses[userId] = "accepted"
-//
-//                                // If someone accepted, invalidate the timer as we don't need to check anymore
-//                                callState.timer?.invalidate()
-//                                callState.timer = nil
-//
-//                                self.callStates[callCid] = callState
-//                            }
-//                        }
-//
-//                        print("CallAcceptedEvent \(userId)")
-//                        updateCallStatusAndNotify(callId: callCid, state: "accepted", userId: userId)
-//                        continue
-//                    }
-//
-//                    updateCallStatusAndNotify(callId: streamVideo.state.activeCall?.callId ?? "", state: event.type)
-//                }
-//            }
-        }
-        
         // Ensure this method is called on the main thread and properly establishes the subscription
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
@@ -316,8 +174,8 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             self.activeCallSubscription = nil
             
             // Verify callViewModel exists
-            guard let callViewModel = self.callViewModel else {
-                print("Warning: setupActiveCallSubscription called but callViewModel is nil")
+            guard let callViewModel = self.callViewModel, let streamVideo = self.streamVideo else {
+                print("Warning: setupActiveCallSubscription called but callViewModel or streamVideo is nil")
                 // Schedule a retry after a short delay if callViewModel is nil
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
                     self?.setupActiveCallSubscription()
@@ -331,8 +189,26 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             // while the subscription is active
             let viewModel = callViewModel
             
-            // Store the subscription
-            self.activeCallSubscription = viewModel.$callingState
+            // Subscribe to streamVideo.state.$activeCall to handle CallKit integration
+            let callPublisher = streamVideo.state.$activeCall
+                .receive(on: DispatchQueue.main)
+                .sink { [weak self, weak viewModel] activeCall in
+                    guard let self = self, let viewModel = viewModel else { return }
+                    
+                    print("Active call update from streamVideo: \(String(describing: activeCall?.cId))")
+                    
+                    if let activeCall = activeCall {
+                        // Sync callViewModel with activeCall from streamVideo state
+                        // This ensures CallKit integration works properly
+                        viewModel.setActiveCall(activeCall)
+                    }
+                }
+            
+            // Store the subscription for activeCall updates
+            self.activeCallSubscription = callPublisher
+            
+            // Additionally, subscribe to callingState for other call state changes
+            let statePublisher = viewModel.$callingState
                 .receive(on: DispatchQueue.main)
                 .sink { [weak self, weak viewModel] newState in
                     guard let self = self, let viewModel = viewModel else {
@@ -348,23 +224,27 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                             print("- In call state detected")
                             print("- All participants: \(String(describing: viewModel.participants))")
                             
-                            // Store the active call ID when a call becomes active
-                            // self.currentActiveCallId = newState?.cId
-                            
-                            // Update overlay and make visible when there's an active call
+                            // Create/update overlay and make visible when there's an active call
                             self.createCallOverlayView()
                             
-                            // Notify that a call has started
-                            self.updateCallStatusAndNotify(callId: self.callViewModel?.call?.cId ?? "", state: "joined")
+                            // Notify that a call has started - but only if we haven't notified for this call yet
+                            if let callId = viewModel.call?.cId, !self.hasNotifiedCallJoined || callId != self.currentCallId {
+                                print("Notifying call joined: \(callId)")
+                                self.updateCallStatusAndNotify(callId: callId, state: "joined")
+                                self.hasNotifiedCallJoined = true
+                            }
                         } else if case .incoming(let incomingCall) = newState {
-                            updateCallStatusAndNotify(callId: incomingCall.id, state: "ringing")
-                        } else {
+                            self.updateCallStatusAndNotify(callId: incomingCall.id, state: "ringing")
+                        } else if newState == .idle && self.streamVideo?.state.activeCall == nil {
                             // Get the call ID that was active before the state changed
-                            let endingCallId = self.currentActiveCallId
+                            let endingCallId = viewModel.call?.cId
                             print("Call ending: \(String(describing: endingCallId))")
                             
                             // Notify that call has ended - use the properly tracked call ID
                             self.updateCallStatusAndNotify(callId: endingCallId ?? "", state: "left")
+                            
+                            // Reset notification flag when call ends
+                            self.hasNotifiedCallJoined = false
                             
                             // Clean up any resources for this call
                             if let callCid = endingCallId {
@@ -377,9 +257,6 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                                 print("Cleaned up resources for ended call: \(callCid)")
                             }
                             
-                            // Clear the active call ID
-                            self.currentActiveCallId = nil
-                            
                             // Remove the call overlay view when not in a call
                             self.ensureViewRemoved()
                         }
@@ -387,6 +264,12 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         log.error("Error handling call state update: \(String(describing: error))")
                     }
                 }
+            
+            // Combine both publishers
+            self.activeCallSubscription = AnyCancellable {
+                callPublisher.cancel()
+                statePublisher.cancel()
+            }
             
             print("Active call subscription setup completed")
             
@@ -889,6 +772,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             DispatchQueue.main.async {
                 Task { @MainActor in
                     self.callViewModel = CallViewModel(participantsLayout: .grid)
+                    self.callViewModel?.participantAutoLeavePolicy = LastParticipantAutoLeavePolicy()
                 }
             }
         }
