@@ -11,7 +11,7 @@ class TouchInterceptView: UIView {
         // Ensure this view is transparent and doesn't interfere with display
         self.backgroundColor = .clear
         self.isOpaque = false
-        print("TouchInterceptView setup with webView: \(webView) and overlayView: \(overlayView)")
+        // print("TouchInterceptView setup with webView: \(webView) and overlayView: \(overlayView)")
     }
     
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
