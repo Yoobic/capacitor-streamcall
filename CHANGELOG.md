@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.23](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.22...0.0.23) (2025-05-07)
+
+
+### Bug Fixes
+
+* move camera issue ([bc486d3](https://github.com/Cap-go/capacitor-streamcall/commit/bc486d371c634a4aedaab883c88f72e3cd029cd1))
+
 ### [0.0.22](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.21...0.0.22) (2025-05-06)
 
 
