@@ -791,38 +791,57 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func setupViews() {
-
-
-//        // Create SwiftUI view with view model
-//        let (hostingController, viewModel) = CallOverlayView.create(streamVideo: self.streamVideo)
-//        hostingController.view.backgroundColor = .clear
-//        hostingController.view.translatesAutoresizingMaskIntoConstraints = false
-//
-//        self.hostingController = hostingController
-//        self.overlayViewModel = viewModel
-//        self.overlayView = hostingController.view
-//
-//        if let overlayView = self.overlayView {
-//            // Setup the views in TouchInterceptView
-//            touchInterceptView.setupWithWebView(webView, overlayView: overlayView)
-//
-//            // Setup constraints for webView
-//            NSLayoutConstraint.activate([
-//                webView.topAnchor.constraint(equalTo: touchInterceptView.topAnchor),
-//                webView.bottomAnchor.constraint(equalTo: touchInterceptView.bottomAnchor),
-//                webView.leadingAnchor.constraint(equalTo: touchInterceptView.leadingAnchor),
-//                webView.trailingAnchor.constraint(equalTo: touchInterceptView.trailingAnchor)
-//            ])
-//
-//            // Setup constraints for overlayView
-//            let safeGuide = touchInterceptView.safeAreaLayoutGuide
-//            NSLayoutConstraint.activate([
-//                overlayView.topAnchor.constraint(equalTo: safeGuide.topAnchor),
-//                overlayView.bottomAnchor.constraint(equalTo: safeGuide.bottomAnchor),
-//                overlayView.leadingAnchor.constraint(equalTo: safeGuide.leadingAnchor),
-//                overlayView.trailingAnchor.constraint(equalTo: safeGuide.trailingAnchor)
-//            ])
-//        }
+        guard let webView = self.webView, let parent = webView.superview else { return }
+        
+        // Create the touch intercept view as an overlay for touch passthrough
+        let touchInterceptView = TouchInterceptView(frame: parent.bounds)
+        touchInterceptView.translatesAutoresizingMaskIntoConstraints = false
+        touchInterceptView.backgroundColor = .clear
+        touchInterceptView.isOpaque = false
+        
+        // Create SwiftUI view with view model if not already created
+        if self.overlayView == nil, let callViewModel = self.callViewModel {
+            let hostingController = UIHostingController(rootView: CallOverlayView(viewModel: callViewModel))
+            hostingController.view.backgroundColor = .clear
+            hostingController.view.translatesAutoresizingMaskIntoConstraints = false
+            hostingController.view.isHidden = true // Initially hidden until a call is active
+            
+            self.hostingController = hostingController
+            self.overlayView = hostingController.view
+            
+            if let overlayView = self.overlayView {
+                // Insert overlay view below webview
+                parent.insertSubview(overlayView, belowSubview: webView)
+                
+                // Setup constraints for overlayView
+                let safeGuide = parent.safeAreaLayoutGuide
+                NSLayoutConstraint.activate([
+                    overlayView.topAnchor.constraint(equalTo: safeGuide.topAnchor),
+                    overlayView.bottomAnchor.constraint(equalTo: safeGuide.bottomAnchor),
+                    overlayView.leadingAnchor.constraint(equalTo: safeGuide.leadingAnchor),
+                    overlayView.trailingAnchor.constraint(equalTo: safeGuide.trailingAnchor)
+                ])
+            }
+        }
+        
+        // Setup touch intercept view with references to webview and overlay
+        if let overlayView = self.overlayView {
+            touchInterceptView.setupWithWebView(webView, overlayView: overlayView)
+            // Insert touchInterceptView above webView
+            parent.insertSubview(touchInterceptView, aboveSubview: webView)
+        } else {
+            // If overlayView is not present, just add on top of webView
+            touchInterceptView.setupWithWebView(webView, overlayView: webView)
+            parent.insertSubview(touchInterceptView, aboveSubview: webView)
+        }
+        
+        // Setup constraints for touchInterceptView to cover the entire parent
+        NSLayoutConstraint.activate([
+            touchInterceptView.topAnchor.constraint(equalTo: parent.topAnchor),
+            touchInterceptView.bottomAnchor.constraint(equalTo: parent.bottomAnchor),
+            touchInterceptView.leadingAnchor.constraint(equalTo: parent.leadingAnchor),
+            touchInterceptView.trailingAnchor.constraint(equalTo: parent.trailingAnchor)
+        ])
     }
     
     private func createCallOverlayView() {
@@ -832,17 +851,23 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         
         // Check if we already have an overlay view - do nothing if it exists
         if let existingOverlayView = self.overlayView, existingOverlayView.superview != nil {
-            print("Call overlay view already exists, doing nothing")
+            print("Call overlay view already exists, making it visible")
+            existingOverlayView.isHidden = false
+            // Make webview transparent to see StreamCall UI underneath
+            webView.isOpaque = false
+            webView.backgroundColor = .clear
+            webView.scrollView.backgroundColor = .clear
             return
         }
         
         print("Creating new call overlay view")
         
         // First, create the overlay view
-        let overlayView = CallOverlayView.create(callViewModel: callOverlayView)
+        let overlayView = UIHostingController(rootView: CallOverlayView(viewModel: callOverlayView))
         overlayView.view.translatesAutoresizingMaskIntoConstraints = false
+        overlayView.view.isHidden = false // Make visible during a call
         
-        // Important: Insert the overlay view BELOW the webView in the view hierarchy
+        // Insert the overlay view below the webView in the view hierarchy
         parent.insertSubview(overlayView.view, belowSubview: webView)
         
         // Set constraints to fill the parent's safe area
@@ -855,7 +880,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             overlayView.view.trailingAnchor.constraint(equalTo: safeGuide.trailingAnchor)
         ])
         
-        // Set opacity for visual effect - make webView transparent to see overlay
+        // Make webview transparent to see StreamCall UI underneath
         webView.isOpaque = false
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
@@ -863,26 +888,42 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         // Store reference to the hosting controller
         self.hostingController = overlayView
         self.overlayView = overlayView.view
+        
+        // Ensure touch intercept view is on top
+        if let touchInterceptView = parent.subviews.first(where: { $0 is TouchInterceptView }) {
+            parent.bringSubviewToFront(touchInterceptView)
+        } else {
+            // Create touch intercept view if not already created
+            let touchInterceptView = TouchInterceptView(frame: parent.bounds)
+            touchInterceptView.translatesAutoresizingMaskIntoConstraints = false
+            touchInterceptView.backgroundColor = .clear
+            touchInterceptView.isOpaque = false
+            touchInterceptView.setupWithWebView(webView, overlayView: overlayView.view)
+            parent.addSubview(touchInterceptView)
+            
+            NSLayoutConstraint.activate([
+                touchInterceptView.topAnchor.constraint(equalTo: parent.topAnchor),
+                touchInterceptView.bottomAnchor.constraint(equalTo: parent.bottomAnchor),
+                touchInterceptView.leadingAnchor.constraint(equalTo: parent.leadingAnchor),
+                touchInterceptView.trailingAnchor.constraint(equalTo: parent.trailingAnchor)
+            ])
+        }
     }
 
     private func ensureViewRemoved() {
         // Check if we have an overlay view
         if let existingOverlayView = self.overlayView {
-            print("Removing call overlay view")
+            print("Hiding call overlay view")
             
-            // Remove the view from its superview
-            existingOverlayView.removeFromSuperview()
+            // Hide the view instead of removing it
+            existingOverlayView.isHidden = true
             
             // Reset opacity for webView
             self.webView?.isOpaque = true
             self.webView?.backgroundColor = nil
             self.webView?.scrollView.backgroundColor = nil
-            
-            // Clear references
-            self.overlayView = nil
-            self.hostingController = nil
         } else {
-            print("No call overlay view to remove")
+            print("No call overlay view to hide")
         }
     }
 
