@@ -96,7 +96,9 @@ class CustomNotificationHandler(
             val xiaomiAcceptIntent = PendingIntent.getActivity(
                 application,
                 0,
-                launchIntent ?: Intent("io.getstream.video.android.action.ACCEPT_CALL").setPackage(application.packageName).putExtra(NotificationHandler.INTENT_EXTRA_CALL_CID, callId),
+                Intent("io.getstream.video.android.action.ACCEPT_CALL")
+                .setPackage(application.packageName)
+                .putExtra(NotificationHandler.INTENT_EXTRA_CALL_CID, callId),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
             return buildNotification(
