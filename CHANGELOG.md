@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.27](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.26...0.0.27) (2025-05-15)
+
+
+### Bug Fixes
+
+* remove callStates iOS + use callviewmodal for starting calls ([dbc34da](https://github.com/Cap-go/capacitor-streamcall/commit/dbc34daeaadfb79fa33347e90b2f81d4b36428a1))
+
 ### [0.0.26](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.25...0.0.26) (2025-05-08)
 
 
