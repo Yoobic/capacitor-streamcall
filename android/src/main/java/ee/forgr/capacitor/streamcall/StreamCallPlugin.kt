@@ -48,8 +48,21 @@ import io.getstream.android.video.generated.models.CallRejectedEvent
 import io.getstream.android.video.generated.models.CallRingEvent
 import io.getstream.android.video.generated.models.CallSessionEndedEvent
 import io.getstream.android.video.generated.models.CallSessionStartedEvent
-import io.getstream.android.video.generated.models.VideoEvent
 import io.getstream.video.android.core.sounds.RingingConfig
+import androidx.fragment.app.FragmentManager
+import androidx.fragment.app.FragmentTransaction
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import io.getstream.android.video.generated.models.VideoEvent
+import io.getstream.video.android.compose.theme.VideoTheme
+import io.getstream.video.android.compose.ui.components.call.activecall.CallContent
+import androidx.compose.material3.Text
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.sp
 
 // I am not a religious pearson, but at this point, I am not sure even god himself would understand this code
 // It's a spaghetti-like, tangled, unreadable mess and frankly, I am deeply sorry for the code crimes commited in the Android impl
@@ -69,11 +82,16 @@ public class StreamCallPlugin : Plugin() {
     private var savedActivityPaused = false
     private var savedCallsToEndOnResume = mutableListOf<Call>()
     private val callStates: MutableMap<String, LocalCallState> = mutableMapOf()
-    
+
     // Store current call info
     private var currentCallId: String = ""
     private var currentCallType: String = ""
     private var currentCallState: String = ""
+
+    // Add a field for the fragment
+    private var callFragment: StreamCallFragment? = null
+    private var streamVideo: StreamVideo? = null
+    private var touchInterceptWrapper: TouchInterceptWrapper? = null
 
     private enum class State {
         NOT_INITIALIZED,
@@ -118,7 +136,7 @@ public class StreamCallPlugin : Plugin() {
                     val companionField = callServiceClass.getDeclaredField("Companion")
                     companionField.isAccessible = true
                     val companionInstance = companionField.get(null)
-                    
+
                     val removeIncomingCallMethod = companionClass.getDeclaredMethod(
                         "removeIncomingCall",
                         Context::class.java,
@@ -158,7 +176,7 @@ public class StreamCallPlugin : Plugin() {
     @OptIn(DelicateCoroutinesApi::class)
     override fun handleOnNewIntent(intent: android.content.Intent) {
         super.handleOnNewIntent(intent)
-        
+
         val action = intent.action
         val data = intent.data
         val extras = intent.extras
@@ -178,19 +196,9 @@ public class StreamCallPlugin : Plugin() {
                         call?.get()
                         activity?.runOnUiThread {
                             incomingCallView?.setContent {
-                                IncomingCallView(
-                                    streamVideo = streamVideoClient,
-                                    call = call,
-                                    onDeclineCall = { declinedCall ->
-                                        declineCall(declinedCall)
-                                    },
-                                    onAcceptCall = { acceptedCall ->
-                                        internalAcceptCall(acceptedCall)
-                                    },
-                                    onHideIncomingCall = {
-                                        hideIncomingCall()
-                                    }
-                                )
+                                IncomingCallView(context)
+                                // Note: We can't pass the call here directly as IncomingCallView doesn't accept it in constructor
+                                // Additional logic to set the call might be needed post initialization
                             }
                             incomingCallView?.isVisible = true
                             hideBarrier()
@@ -222,13 +230,13 @@ public class StreamCallPlugin : Plugin() {
         kotlinx.coroutines.GlobalScope.launch {
             try {
                 call.reject()
-                
+
                 // Stop ringtone
                 ringtonePlayer?.stopRinging()
-                
+
                 // Notify that call has ended using our helper
                 updateCallStatusAndNotify(call.id, "rejected")
-                
+
                 hideIncomingCall()
             } catch (e: Exception) {
                 android.util.Log.e("StreamCallPlugin", "Error declining call: ${e.message}")
@@ -265,33 +273,36 @@ public class StreamCallPlugin : Plugin() {
         val context = context
         val parent = bridge?.webView?.parent as? ViewGroup ?: return
 
-        // Make WebView transparent
-        bridge?.webView?.setBackgroundColor(Color.TRANSPARENT)
+        // Make WebView initially visible and opaque
+        bridge?.webView?.setBackgroundColor(Color.WHITE) // Or whatever background color suits your app
 
-        // Create and add overlay view below WebView
+        // Create and add overlay view below WebView for calls
         overlayView = ComposeView(context).apply {
-            isVisible = false
+            isVisible = false // Start invisible until a call starts
             layoutParams = FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
             setContent {
-                CallOverlayView(
-                    context = context,
-                    streamVideo = streamVideoClient,
-                    call = null
-                )
+                VideoTheme {
+                    val activeCall = streamVideoClient?.state?.activeCall?.value
+                    if (activeCall != null) {
+                        CallContent(
+                            call = activeCall,
+                            onBackPressed = { /* Handle back press if needed */ }
+                        )
+                    }
+                }
             }
         }
         parent.addView(overlayView, 0)  // Add at index 0 to ensure it's below WebView
 
-        val originalContainer: ViewGroup = getBridge().webView
+        // touchInterceptWrapper = TouchInterceptWrapper(parent).apply {
+        //     setBackgroundColor(android.graphics.Color.TRANSPARENT)
+        // }
+        // No need to add to parent as TouchInterceptWrapper handles its own children
 
-        val wrapper = TouchInterceptWrapper(parent)
-        (parent.parent as ViewGroup).removeView(originalContainer)
-        (parent.parent as ViewGroup).addView(wrapper, 0)
-
-        // Create barrier view
+        // Create barrier view (above webview for blocking interaction during call setup)
         barrierView = View(context).apply {
             isVisible = false
             layoutParams = FrameLayout.LayoutParams(
@@ -302,7 +313,7 @@ public class StreamCallPlugin : Plugin() {
         }
         parent.addView(barrierView, parent.indexOfChild(bridge?.webView) + 1) // Add above WebView
 
-        // Create and add incoming call view
+        // Create and add incoming call view (above webview for incoming call UI)
         incomingCallView = ComposeView(context).apply {
             isVisible = false
             layoutParams = FrameLayout.LayoutParams(
@@ -310,7 +321,7 @@ public class StreamCallPlugin : Plugin() {
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
             setContent {
-                IncomingCallView(streamVideoClient)
+                IncomingCallView(context)
             }
         }
         parent.addView(incomingCallView, parent.indexOfChild(bridge?.webView) + 2)  // Add above WebView
@@ -363,7 +374,7 @@ public class StreamCallPlugin : Plugin() {
         try {
             // Clear stored credentials
             SecureUserRepository.getInstance(context).removeCurrentUser()
-            
+
             // Properly cleanup the client
             kotlinx.coroutines.GlobalScope.launch {
                 streamVideoClient?.let {
@@ -473,9 +484,9 @@ public class StreamCallPlugin : Plugin() {
             val notificationConfig = NotificationConfig(
                 pushDeviceGenerators = listOf(
                     FirebasePushDeviceGenerator(
-                    providerName = "firebase",
-                    context = contextToUse
-                )
+                        providerName = "firebase",
+                        context = contextToUse
+                    )
                 ),
                 requestPermissionOnAppLaunch = { true },
                 notificationHandler = notificationHandler,
@@ -506,7 +517,7 @@ public class StreamCallPlugin : Plugin() {
             }
 
             registerEventHandlers()
-            
+
             android.util.Log.v("StreamCallPlugin", "Initialization finished")
             initializationTime = System.currentTimeMillis()
             state = State.INITIALIZED
@@ -579,7 +590,7 @@ public class StreamCallPlugin : Plugin() {
 
                         // Start tracking this call now that we have the member list
                         startCallTimeoutMonitor(callCid, callParticipants)
-                        
+
                         // Use direction from event if available
                         val callType = callCid.split(":").firstOrNull() ?: "default"
                         updateCallStatusAndNotify(callCid, "created")
@@ -589,61 +600,61 @@ public class StreamCallPlugin : Plugin() {
                         val callCid = event.callCid
                         updateCallStatusAndNotify(callCid, "session_started")
                     }
-                    
+
                     is CallRejectedEvent -> {
                         val userId = event.user.id
                         val callCid = event.callCid
-                        
+
                         // Update call state
                         callStates[callCid]?.let { callState ->
                             callState.participantResponses[userId] = "rejected"
                         }
-                        
+
                         updateCallStatusAndNotify(callCid, "rejected", userId)
-                        
+
                         // Check if all participants have responded
                         checkAllParticipantsResponded(callCid)
                     }
-                    
+
                     is CallMissedEvent -> {
                         val userId = event.user.id
                         val callCid = event.callCid
-                        
+
                         // Update call state
                         callStates[callCid]?.let { callState ->
                             callState.participantResponses[userId] = "missed"
                         }
-                        
+
                         val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
                         if (keyguardManager.isKeyguardLocked) {
                             android.util.Log.d("StreamCallPlugin", "Stop ringing and move to background")
                             this.ringtonePlayer?.stopRinging()
                             moveAllActivitiesToBackgroundOrKill(context)
                         }
-                        
+
                         updateCallStatusAndNotify(callCid, "missed", userId)
-                        
+
                         // Check if all participants have responded
                         checkAllParticipantsResponded(callCid)
                     }
-                    
+
                     is CallAcceptedEvent -> {
                         val userId = event.user.id
                         val callCid = event.callCid
-                        
+
                         // Update call state
                         callStates[callCid]?.let { callState ->
                             callState.participantResponses[userId] = "accepted"
-                            
+
                             // Since someone accepted, cancel the timeout timer
                             android.util.Log.d("StreamCallPlugin", "Call accepted by $userId, canceling timeout timer for $callCid")
                             callState.timer?.removeCallbacksAndMessages(null)
                             callState.timer = null
                         }
-                        
+
                         updateCallStatusAndNotify(callCid, "accepted", userId)
                     }
-                    
+
                     is CallEndedEvent -> {
                         runOnMainThread {
                             android.util.Log.d("StreamCallPlugin", "Setting overlay invisible due to CallEndedEvent for call ${event.callCid}")
@@ -653,7 +664,7 @@ public class StreamCallPlugin : Plugin() {
                         }
                         updateCallStatusAndNotify(event.callCid, "left")
                     }
-                    
+
                     is CallSessionEndedEvent -> {
                         runOnMainThread {
                             android.util.Log.d("StreamCallPlugin", "Setting overlay invisible due to CallSessionEndedEvent for call ${event.callCid}. Test session: ${event.call.session?.endedAt}")
@@ -663,7 +674,7 @@ public class StreamCallPlugin : Plugin() {
                         }
                         updateCallStatusAndNotify(event.callCid, "left")
                     }
-                    
+
                     else -> {
                         updateCallStatusAndNotify(
                             streamVideoClient?.state?.activeCall?.value?.cid ?: "",
@@ -787,11 +798,25 @@ public class StreamCallPlugin : Plugin() {
             try {
                 // Stop ringtone
                 ringtonePlayer?.stopRinging()
-                
+
                 // Hide incoming call view first
                 runOnMainThread {
                     android.util.Log.d("StreamCallPlugin", "Hiding incoming call view for call ${call.id}")
                     incomingCallView?.isVisible = false
+                }
+
+                // Check and request permissions before joining the call
+                if (!checkPermissions()) {
+                    requestPermissions()
+                    // Do not proceed with joining until permissions are granted
+                    runOnMainThread {
+                        android.widget.Toast.makeText(
+                            context,
+                            "Permissions required for call. Please grant them.",
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
+                    }
+                    return@launch
                 }
 
                 // Join the call without affecting others
@@ -800,17 +825,26 @@ public class StreamCallPlugin : Plugin() {
                 // Notify that call has started using helper
                 updateCallStatusAndNotify(call.id, "joined")
 
-                // Show overlay view with the active call
+                // Show overlay view with the active call and make webview transparent
                 runOnMainThread {
-                    android.util.Log.d("StreamCallPlugin", "Setting overlay visible after accepting call ${call.id}")
+                    android.util.Log.d("StreamCallPlugin", "Setting overlay visible after joining call ${call.id}")
+                    bridge?.webView?.setBackgroundColor(Color.TRANSPARENT) // Make webview transparent
+                    bridge?.webView?.bringToFront() // Ensure WebView is on top and transparent
                     overlayView?.setContent {
-                        CallOverlayView(
-                            context = context,
-                            streamVideo = streamVideoClient,
-                            call = call
-                        )
+                        VideoTheme {
+                            CallContent(
+                                call = call,
+                                onBackPressed = { /* Handle back press if needed */ },
+                                controlsContent = { /* Empty to disable native controls */ },
+                                appBarContent = { /* Empty to disable app bar with stop call button */ }
+                            )
+                        }
                     }
                     overlayView?.isVisible = true
+                    // Ensure overlay is behind WebView by adjusting its position in the parent
+                    val parent = overlayView?.parent as? ViewGroup
+                    parent?.removeView(overlayView)
+                    parent?.addView(overlayView, 0) // Add at index 0 to ensure it's behind other views
                 }
             } catch (e: Exception) {
                 android.util.Log.e("StreamCallPlugin", "Error accepting call ${call.id}: ${e.message}")
@@ -818,6 +852,48 @@ public class StreamCallPlugin : Plugin() {
                     android.widget.Toast.makeText(
                         context,
                         "Failed to join call: ${e.message}",
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
+
+    // Function to check required permissions
+    private fun checkPermissions(): Boolean {
+        val audioPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
+        val cameraPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+        return audioPermission == PackageManager.PERMISSION_GRANTED && cameraPermission == PackageManager.PERMISSION_GRANTED
+    }
+
+    // Function to request required permissions
+    private fun requestPermissions() {
+        ActivityCompat.requestPermissions(
+            activity,
+            arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.CAMERA),
+            1001 // Request code for permission result handling
+        )
+    }
+
+    // Override to handle permission results
+    override fun handleRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.handleRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 1001) {
+            if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                android.util.Log.d("StreamCallPlugin", "Permissions granted, can proceed with call")
+                // Permissions granted, can attempt to join the call again if needed
+                val ringingCall = streamVideoClient?.state?.ringingCall?.value
+                if (ringingCall != null) {
+                    kotlinx.coroutines.GlobalScope.launch {
+                        internalAcceptCall(ringingCall)
+                    }
+                }
+            } else {
+                android.util.Log.e("StreamCallPlugin", "Permissions not granted, cannot join call")
+                runOnMainThread {
+                    android.widget.Toast.makeText(
+                        context,
+                        "Permissions not granted. Cannot join call.",
                         android.widget.Toast.LENGTH_LONG
                     ).show()
                 }
@@ -921,14 +997,14 @@ public class StreamCallPlugin : Plugin() {
         val callId = call.id
         android.util.Log.d("StreamCallPlugin", "Attempting to end call $callId")
         call.leave()
-        
+
         // Capture context from the overlayView
         val currentContext = overlayView?.context ?: this.savedContext
         if (currentContext == null) {
             android.util.Log.w("StreamCallPlugin", "Cannot end call $callId because context is null")
             return
         }
-        
+
         runOnMainThread {
             android.util.Log.d("StreamCallPlugin", "Setting overlay invisible after ending call $callId")
 
@@ -959,20 +1035,24 @@ public class StreamCallPlugin : Plugin() {
             }
 
             overlayView?.setContent {
-                CallOverlayView(
-                    context = currentContext,
-                    streamVideo = streamVideoClient,
-                    call = null
-                )
+                VideoTheme {
+                    CallContent(
+                        call = call,
+                        onBackPressed = { /* Handle back press if needed */ },
+                        controlsContent = { /* Empty to disable native controls */ },
+                        appBarContent = { /* Empty to disable app bar with stop call button */ }
+                    )
+                }
             }
             overlayView?.isVisible = false
+            bridge?.webView?.setBackgroundColor(Color.WHITE) // Restore webview opacity
             this@StreamCallPlugin.ringtonePlayer?.stopRinging()
 
             // Also hide incoming call view if visible
             android.util.Log.d("StreamCallPlugin", "Hiding incoming call view for call $callId")
             incomingCallView?.isVisible = false
         }
-        
+
         // Notify that call has ended using helper
         updateCallStatusAndNotify(callId, "left")
     }
@@ -1068,15 +1148,22 @@ public class StreamCallPlugin : Plugin() {
             android.util.Log.d("StreamCallPlugin", "- Users: $userIds")
             android.util.Log.d("StreamCallPlugin", "- Should Ring: $shouldRing")
 
+            // Check permissions before creating the call
+            if (!checkPermissions()) {
+                requestPermissions()
+                call.reject("Permissions required for call. Please grant them.")
+                return
+            }
+
             // Create and join call in a coroutine
             kotlinx.coroutines.GlobalScope.launch {
                 try {
                     // Create the call object
                     val streamCall = streamVideoClient?.call(type = callType, id = callId)
-                    
+
                     // Note: We no longer start tracking here - we'll wait for CallSessionStartedEvent
                     // instead, which contains the actual participant list
-                    
+
                     android.util.Log.d("StreamCallPlugin", "Creating call with members...")
                     // Create the call with all members
                     val createResult = streamCall?.create(
@@ -1085,9 +1172,9 @@ public class StreamCallPlugin : Plugin() {
                         ring = shouldRing,
                         team = team,
                     )
-                    
+
                     if (createResult?.isFailure == true) {
-                       throw (createResult.errorOrNull() ?: RuntimeException("Unknown error creating call")) as Throwable
+                        throw (createResult.errorOrNull() ?: RuntimeException("Unknown error creating call")) as Throwable
                     }
 
                     android.util.Log.d("StreamCallPlugin", "Setting overlay visible for outgoing call $callId")
@@ -1096,14 +1183,25 @@ public class StreamCallPlugin : Plugin() {
                         streamCall?.microphone?.setEnabled(true)
                         streamCall?.camera?.setEnabled(true)
 
+                        bridge?.webView?.setBackgroundColor(Color.TRANSPARENT) // Make webview transparent
+                        bridge?.webView?.bringToFront() // Ensure WebView is on top and transparent
                         overlayView?.setContent {
-                            CallOverlayView(
-                                context = context,
-                                streamVideo = streamVideoClient,
-                                call = streamCall
-                            )
+                            VideoTheme {
+                                if (streamCall != null) {
+                                    CallContent(
+                                        call = streamCall,
+                                        onBackPressed = { /* Handle back press if needed */ },
+                                        controlsContent = { /* Empty to disable native controls */ },
+                                        appBarContent = { /* Empty to disable app bar with stop call button */ }
+                                    )
+                                }
+                            }
                         }
                         overlayView?.isVisible = true
+                        // Ensure overlay is behind WebView by adjusting its position in the parent
+                        val parent = overlayView?.parent as? ViewGroup
+                        parent?.removeView(overlayView)
+                        parent?.addView(overlayView, 0) // Add at index 0 to ensure it's behind other views
                     }
 
                     // Resolve the call with success
@@ -1122,7 +1220,7 @@ public class StreamCallPlugin : Plugin() {
 
     private fun startCallTimeoutMonitor(callCid: String, memberIds: List<String>) {
         val callState = LocalCallState(members = memberIds)
-        
+
         val handler = Handler(Looper.getMainLooper())
         val timeoutRunnable = object : Runnable {
             override fun run() {
@@ -1130,55 +1228,55 @@ public class StreamCallPlugin : Plugin() {
                 handler.postDelayed(this, 1000)
             }
         }
-        
+
         handler.postDelayed(timeoutRunnable, 1000)
         callState.timer = handler
-        
+
         callStates[callCid] = callState
-        
+
         android.util.Log.d("StreamCallPlugin", "Started timeout monitor for call $callCid with ${memberIds.size} members")
     }
 
     private fun checkCallTimeout(callCid: String) {
         val callState = callStates[callCid] ?: return
-        
+
         val now = System.currentTimeMillis()
         val elapsedSeconds = (now - callState.createdAt) / 1000
-        
+
         if (elapsedSeconds >= 30) {
             android.util.Log.d("StreamCallPlugin", "Call $callCid has timed out after $elapsedSeconds seconds")
-            
+
             val hasAccepted = callState.participantResponses.values.any { it == "accepted" }
-            
+
             if (!hasAccepted) {
                 android.util.Log.d("StreamCallPlugin", "No one accepted call $callCid, marking all non-responders as missed")
-                
+
                 // First, remove the timer to prevent further callbacks
                 callState.timer?.removeCallbacksAndMessages(null)
                 callState.timer = null
-                
+
                 callState.members.forEach { memberId ->
                     if (memberId !in callState.participantResponses) {
                         callState.participantResponses[memberId] = "missed"
-                        
+
                         updateCallStatusAndNotify(callCid, "missed", memberId)
                     }
                 }
-                
+
                 val callIdParts = callCid.split(":")
                 if (callIdParts.size >= 2) {
                     val callType = callIdParts[0]
                     val callId = callIdParts[1]
-                    
+
                     streamVideoClient?.call(type = callType, id = callId)?.let { call ->
                         kotlinx.coroutines.GlobalScope.launch {
                             try {
                                 // Use endCallRaw instead of manual cleanup
                                 endCallRaw(call)
-                                
+
                                 // Clean up state - we don't need to do this in endCallRaw because we already did it here
                                 callStates.remove(callCid)
-                                
+
                                 // Notify that call has ended using helper
                                 updateCallStatusAndNotify(callCid, "ended", null, "timeout")
                             } catch (e: Exception) {
@@ -1194,17 +1292,17 @@ public class StreamCallPlugin : Plugin() {
     private fun cleanupCall(callCid: String) {
         // Get the call state
         val callState = callStates[callCid]
-        
+
         if (callState != null) {
             // Ensure timer is properly canceled
             android.util.Log.d("StreamCallPlugin", "Stopping timer for call: $callCid")
             callState.timer?.removeCallbacksAndMessages(null)
             callState.timer = null
         }
-        
+
         // Remove from callStates
         callStates.remove(callCid)
-        
+
         // Hide UI elements directly without setting content
         runOnMainThread {
             android.util.Log.d("StreamCallPlugin", "Hiding UI elements for call $callCid (one-time cleanup)")
@@ -1212,44 +1310,44 @@ public class StreamCallPlugin : Plugin() {
             ringtonePlayer?.stopRinging()
             incomingCallView?.isVisible = false
         }
-        
+
         android.util.Log.d("StreamCallPlugin", "Cleaned up resources for ended call: $callCid")
     }
 
     private fun checkAllParticipantsResponded(callCid: String) {
         val callState = callStates[callCid] ?: return
-        
+
         val totalParticipants = callState.members.size
         val responseCount = callState.participantResponses.size
-        
+
         android.util.Log.d("StreamCallPlugin", "Checking responses for call $callCid: $responseCount / $totalParticipants")
-        
+
         val allResponded = responseCount >= totalParticipants
-        val allRejectedOrMissed = allResponded && 
-            callState.participantResponses.values.all { it == "rejected" || it == "missed" }
-        
+        val allRejectedOrMissed = allResponded &&
+                callState.participantResponses.values.all { it == "rejected" || it == "missed" }
+
         if (allResponded && allRejectedOrMissed) {
             android.util.Log.d("StreamCallPlugin", "All participants have rejected or missed the call $callCid")
-            
+
             // Cancel the timer immediately to prevent further callbacks
             callState.timer?.removeCallbacksAndMessages(null)
             callState.timer = null
-            
+
             // End the call using endCallRaw
             val callIdParts = callCid.split(":")
             if (callIdParts.size >= 2) {
                 val callType = callIdParts[0]
                 val callId = callIdParts[1]
-                
+
                 streamVideoClient?.call(type = callType, id = callId)?.let { call ->
                     kotlinx.coroutines.GlobalScope.launch {
                         try {
                             // Use endCallRaw instead of manual cleanup
                             endCallRaw(call)
-                            
+
                             // Clean up state - we don't need to do this in endCallRaw because we already did it here
                             callStates.remove(callCid)
-                            
+
                             // Notify that call has ended using helper
                             updateCallStatusAndNotify(callCid, "ended", null, "all_rejected_or_missed")
                         } catch (e: Exception) {
@@ -1291,9 +1389,9 @@ public class StreamCallPlugin : Plugin() {
         val result = JSObject()
         result.put("callId", currentCallId)
         result.put("state", currentCallState)
-        
+
         // No additional fields to ensure compatibility with CallEvent interface
-        
+
         call.resolve(result)
     }
 
@@ -1302,12 +1400,12 @@ public class StreamCallPlugin : Plugin() {
         // Update stored call info
         currentCallId = callId
         currentCallState = state
-        
+
         // Get call type from call ID if available
         if (callId.contains(":")) {
             currentCallType = callId.split(":").firstOrNull() ?: ""
         }
-        
+
         // Create data object with only the fields in the CallEvent interface
         val data = JSObject().apply {
             put("callId", callId)
@@ -1319,9 +1417,40 @@ public class StreamCallPlugin : Plugin() {
                 put("reason", it)
             }
         }
-        
+
         // Notify listeners
         notifyListeners("callEvent", data)
+    }
+
+    @PluginMethod
+    fun joinCall(call: PluginCall) {
+        val fragment = callFragment
+        if (fragment != null && fragment.getCall() != null) {
+            if (!checkPermissions()) {
+                requestPermissions()
+                call.reject("Permissions required for call. Please grant them.")
+                return
+            }
+            CoroutineScope(Dispatchers.Main).launch {
+                fragment.getCall()?.join()
+                call.resolve()
+            }
+        } else {
+            call.reject("No active call or fragment not initialized")
+        }
+    }
+
+    @PluginMethod
+    fun leaveCall(call: PluginCall) {
+        val fragment = callFragment
+        if (fragment != null && fragment.getCall() != null) {
+            CoroutineScope(Dispatchers.Main).launch {
+                fragment.getCall()?.leave()
+                call.resolve()
+            }
+        } else {
+            call.reject("No active call or fragment not initialized")
+        }
     }
 
     data class LocalCallState(

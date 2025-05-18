@@ -1,163 +1,55 @@
-package ee.forgr.capacitor.streamcall
+package ee.forgr.capacitor.streamcall;
 
-import android.util.Log
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalLayoutDirection
-import io.getstream.video.android.compose.theme.VideoTheme
-import io.getstream.video.android.compose.ui.components.background.CallBackground
-import io.getstream.video.android.compose.ui.components.call.ringing.incomingcall.IncomingCallControls
-import io.getstream.video.android.compose.ui.components.call.ringing.incomingcall.IncomingCallDetails
-import io.getstream.video.android.core.Call
-import io.getstream.video.android.core.MemberState
-import io.getstream.video.android.core.RingingState
-import io.getstream.video.android.core.StreamVideo
-import io.getstream.video.android.core.call.state.AcceptCall
-import io.getstream.video.android.core.call.state.DeclineCall
-import io.getstream.video.android.core.call.state.ToggleCamera
-import io.getstream.video.android.model.User
+import android.content.Context;
+import android.view.View;
+import android.widget.Button;
+import android.widget.TextView;
+import io.getstream.video.android.core.Call;
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
-@Composable
-fun IncomingCallView(
-    streamVideo: StreamVideo?,
-    call: Call? = null,
-    onDeclineCall: ((Call) -> Unit)? = null,
-    onAcceptCall: ((Call) -> Unit)? = null,
-    onHideIncomingCall: (() -> Unit)? = null
-) {
-    val ringingState = call?.state?.ringingState?.collectAsState(initial = RingingState.Idle)
+class IncomingCallView(context: Context) : View(context) {
+    private var callerName: TextView
+    private var acceptButton: Button
+    private var rejectButton: Button
+    private var incomingCall: Call? = null
 
-    LaunchedEffect(ringingState?.value) {
-        Log.d("IncomingCallView", "Changing ringingState to ${ringingState?.value}")
-        when (ringingState?.value) {
-            RingingState.TimeoutNoAnswer, RingingState.RejectedByAll -> {
-                Log.d("IncomingCallView", "Call ended (${ringingState.value}), hiding incoming call view")
-                onHideIncomingCall?.invoke()
-            }
-            RingingState.Active -> {
-                Log.d("IncomingCallView", "Call accepted, hiding incoming call view")
-                onHideIncomingCall?.invoke()
-            }
-            else -> {
-                // Keep the view visible for other states
-            }
-        }
-    }
+    init {
+        // Initialize UI components immediately
+        callerName = TextView(context)
+        acceptButton = Button(context)
+        rejectButton = Button(context)
 
-    if (ringingState != null) {
-        Log.d("IncomingCallView", "Ringing state changed to: ${ringingState.value}")
-    }
+        acceptButton.text = "Accept"
+        rejectButton.text = "Reject"
 
-    val backgroundColor = when {
-        streamVideo == null -> Color.Cyan
-        call == null -> Color.Red
-        else -> Color.Green
-    }
-
-    if (call !== null) {
-//        val participants by call.state.participants.collectAsState()
-//        val members by call.state.members.collectAsState()
-//        call.state.session
-        val session by call.state.session.collectAsState()
-        val isCameraEnabled by call.camera.isEnabled.collectAsState()
-        val isVideoType = true
-
-        val statusBarPadding = WindowInsets.statusBars.asPaddingValues()
-        val navigationBarPadding = WindowInsets.navigationBars.asPaddingValues()
-        val safeDrawingPadding = WindowInsets.safeDrawing.asPaddingValues()
-        val layoutDirection = LocalLayoutDirection.current
-
-        // println("participants: ${participants.map { it.name.value }} Members: ${members}")
-
-        VideoTheme {
-            CallBackground(
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(
-                            top = statusBarPadding.calculateTopPadding(),
-                            bottom = navigationBarPadding.calculateBottomPadding()
-                        ),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.SpaceBetween
-                ) {
-                    IncomingCallDetails(
-                        modifier = Modifier
-                            .padding(
-                                top = VideoTheme.dimens.spacingXl,
-                                start = safeDrawingPadding.calculateStartPadding(layoutDirection),
-                                end = safeDrawingPadding.calculateEndPadding(layoutDirection)
-                            ),
-                        isVideoType = isVideoType,
-                        participants = (session?.participants?.map { MemberState(
-                            user = User(
-                                id = it.user.id,
-                                name = it.user.id,
-                                image = it.user.image
-                            ),
-                            custom = mapOf(),
-                            role = it.role,
-                            createdAt = org.threeten.bp.OffsetDateTime.now(),
-                            updatedAt = org.threeten.bp.OffsetDateTime.now(),
-                            deletedAt = org.threeten.bp.OffsetDateTime.now(),
-                            acceptedAt = org.threeten.bp.OffsetDateTime.now(),
-                            rejectedAt = org.threeten.bp.OffsetDateTime.now()
-                        ) }?.filter { it.user.id != streamVideo?.userId }) ?: listOf()
-                    )
-
-                    IncomingCallControls(
-                        modifier = Modifier
-                            .padding(
-                                bottom = VideoTheme.dimens.spacingL,
-                                start = safeDrawingPadding.calculateStartPadding(layoutDirection),
-                                end = safeDrawingPadding.calculateEndPadding(layoutDirection)
-                            ),
-                        isVideoCall = isVideoType,
-                        isCameraEnabled = isCameraEnabled,
-                        onCallAction = { action ->
-                            when (action) {
-                                DeclineCall -> {
-                                    onDeclineCall?.invoke(call)
-                                }
-                                AcceptCall -> {
-                                    call.camera.setEnabled(isCameraEnabled)
-                                    onAcceptCall?.invoke(call)
-                                }
-                                is ToggleCamera -> {
-                                    call.camera.setEnabled(action.isEnabled)
-                                }
-                                else -> { /* ignore other actions */ }
-                            }
-                        }
-                    )
+        acceptButton.setOnClickListener {
+            incomingCall?.let { call ->
+                CoroutineScope(Dispatchers.Main).launch {
+                    call.join()
+                    visibility = GONE
                 }
             }
         }
-    } else {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(backgroundColor)
-        )
+
+        rejectButton.setOnClickListener {
+            incomingCall?.let { call ->
+                CoroutineScope(Dispatchers.Main).launch {
+                    call.leave()
+                    visibility = GONE
+                }
+            }
+        }
+
+        // Placeholder for layout setup, adjust based on your actual layout
+    }
+
+    fun setIncomingCall(call: Call) {
+        this.incomingCall = call
+        // Update UI with call details
+        // For example, set caller name from call.state or metadata
+        callerName.text = "Incoming Call" // Placeholder, update with actual data
+        visibility = VISIBLE
     }
 }

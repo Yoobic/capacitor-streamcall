@@ -81,17 +81,9 @@ class CustomNotificationHandler(
         shouldHaveContentIntent: Boolean,
         callId: StreamCallId
     ): Notification {
- 
-        // customCreateIncomingCallChannel()
+        customCreateIncomingCallChannel()
         val manufacturer = Build.MANUFACTURER.lowercase()
         if (manufacturer.contains("xiaomi") || manufacturer.contains("mi")) {
-            // val serviceIntent = Intent(application, CallForegroundService::class.java)
-            // serviceIntent.action = CallForegroundService.ACTION_START_FOREGROUND_SERVICE
-            // if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            //     application.startForegroundService(serviceIntent)
-            // } else {
-            //     application.startService(serviceIntent)
-            // }
             // Adjust PendingIntent for Xiaomi to avoid permission denial
             val xiaomiAcceptIntent = PendingIntent.getActivity(
                 application,

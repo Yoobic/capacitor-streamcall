@@ -42,11 +42,11 @@ dependencies {
     implementation project(':capacitor-cordova-android-plugins')
 
     // Firebase dependenciesx
-    implementation platform('com.google.firebase:firebase-bom:32.7.2')
+    implementation platform('com.google.firebase:firebase-bom:33.13.0')
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'com.google.firebase:firebase-messaging'
     implementation 'com.google.firebase:firebase-common'
-    implementation("io.getstream:stream-video-android-ui-compose:1.3.1")
+    implementation("io.getstream:stream-video-android-ui-compose:1.6.1")
 
     debugImplementation 'com.facebook.flipper:flipper:0.273.0'
     debugImplementation 'com.facebook.soloader:soloader:0.10.5'
