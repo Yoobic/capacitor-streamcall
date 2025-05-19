@@ -244,6 +244,48 @@ public class StreamCallPlugin : Plugin() {
                     kotlinx.coroutines.GlobalScope.launch {
                         internalAcceptCall(call)
                     }
+                    // activity?.runOnUiThread {
+                    //     android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: ACCEPT_CALL - Starting UI setup for call ${call.id}")
+                    //     bridge?.webView?.setBackgroundColor(Color.TRANSPARENT) // Make webview transparent
+                    //     android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: ACCEPT_CALL - WebView set to transparent for call ${call.id}")
+                    //     bridge?.webView?.bringToFront() // Ensure WebView is on top and transparent
+                    //     android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: ACCEPT_CALL - WebView brought to front for call ${call.id}")
+                    //     overlayView?.setContent {
+                    //         VideoTheme {
+                    //             if (call != null) {
+                    //                 android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: ACCEPT_CALL - Setting CallContent for call ${call.id}")
+                    //                 CallContent(
+                    //                     call = call,
+                    //                     onBackPressed = { /* Handle back press if needed */ },
+                    //                     controlsContent = { /* Empty to disable native controls */ },
+                    //                     appBarContent = { /* Empty to disable app bar with stop call button */ }
+                    //                 )
+                    //             } else {
+                    //                 Text(text = "Waiting for active call...", style = TextStyle(color = androidx.compose.ui.graphics.Color.White, fontSize = 16.sp))
+                    //                 android.util.Log.w("StreamCallPlugin", "handleOnNewIntent: ACCEPT_CALL - Call is null, waiting...")
+                    //             }
+                    //         }
+                    //     }
+                    //     android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: ACCEPT_CALL - Content set for overlayView for call ${call.id}")
+                    //     overlayView?.isVisible = true
+                    //     android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: ACCEPT_CALL - overlayView set to visible for call ${call.id}, isVisible: ${overlayView?.isVisible}")
+                    //     // Ensure overlay is behind WebView by adjusting its position in the parent
+                    //     val parent = overlayView?.parent as? ViewGroup
+                    //     parent?.removeView(overlayView)
+                    //     parent?.addView(overlayView, 0) // Add at index 0 to ensure it's behind other views
+                    //     android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: ACCEPT_CALL - overlayView re-added to parent at index 0 for call ${call.id}")
+                    //     // Add a small delay to ensure UI refresh
+                    //     mainHandler.postDelayed({
+                    //         android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: ACCEPT_CALL - Delayed UI check, overlay visible: ${overlayView?.isVisible} for call ${call.id}")
+                    //         if (overlayView?.isVisible == true) {
+                    //             overlayView?.invalidate()
+                    //             overlayView?.requestLayout()
+                    //             android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: ACCEPT_CALL - UI invalidated and layout requested for call ${call.id}")
+                    //         } else {
+                    //             android.util.Log.w("StreamCallPlugin", "handleOnNewIntent: ACCEPT_CALL - overlayView not visible after delay for call ${call.id}")
+                    //         }
+                    //     }, 500)
+                    // }
                 } else {
                     android.util.Log.e("StreamCallPlugin", "handleOnNewIntent: ACCEPT_CALL - Call object is null for cid: $cid")
                 }
@@ -879,6 +921,8 @@ public class StreamCallPlugin : Plugin() {
                 // Join the call without affecting others
                 call.accept()
                 android.util.Log.d("StreamCallPlugin", "internalAcceptCall: call.accept() completed for call ${call.id}")
+                call.join()
+                android.util.Log.d("StreamCallPlugin", "internalAcceptCall: call.join() completed for call ${call.id}")
                 streamVideoClient?.state?.setActiveCall(call)
                 android.util.Log.d("StreamCallPlugin", "internalAcceptCall: setActiveCall completed for call ${call.id}")
 
@@ -893,27 +937,63 @@ public class StreamCallPlugin : Plugin() {
                     android.util.Log.d("StreamCallPlugin", "internalAcceptCall: WebView background set to transparent for call ${call.id}")
                     bridge?.webView?.bringToFront() // Ensure WebView is on top and transparent
                     android.util.Log.d("StreamCallPlugin", "internalAcceptCall: WebView brought to front for call ${call.id}")
+                    // Reusing the initialization logic from call method
+                    call.microphone?.setEnabled(true)
+                    call.camera?.setEnabled(true)
+                    android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Microphone and camera enabled for call ${call.id}")
                     overlayView?.setContent {
                         VideoTheme {
-                            val activeCall = streamVideoClient?.state?.activeCall?.collectAsState()?.value
-                            if (activeCall != null) {
+                            if (call != null) {
+                                android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Setting CallContent with active call ${call.id}")
                                 CallContent(
-                                    call = activeCall,
+                                    call = call,
                                     onBackPressed = { /* ... */ },
                                     controlsContent = { /* ... */ },
                                     appBarContent = { /* ... */ }
                                 )
+                            } else {
+                                android.util.Log.w("StreamCallPlugin", "internalAcceptCall: Active call is null, cannot set CallContent for call ${call.id}")
                             }
                         }
                     }
+                    android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Content set for overlayView for call ${call.id}")
                     overlayView?.isVisible = true
-                    android.util.Log.d("StreamCallPlugin", "internalAcceptCall: OverlayView content set and made visible for call ${call.id}")
+                    android.util.Log.d("StreamCallPlugin", "internalAcceptCall: OverlayView set to visible for call ${call.id}, isVisible: ${overlayView?.isVisible}")
 
                     // Ensure overlay is behind WebView by adjusting its position in the parent
                     val parent = overlayView?.parent as? ViewGroup
                     parent?.removeView(overlayView)
                     parent?.addView(overlayView, 0) // Add at index 0 to ensure it's behind other views
                     android.util.Log.d("StreamCallPlugin", "internalAcceptCall: OverlayView re-added to parent at index 0 for call ${call.id}")
+                    // Add a small delay to ensure UI refresh
+                    mainHandler.postDelayed({
+                        android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Delayed UI check, overlay visible: ${overlayView?.isVisible} for call ${call.id}")
+                        if (overlayView?.isVisible == true) {
+                            overlayView?.invalidate()
+                            overlayView?.requestLayout()
+                            android.util.Log.d("StreamCallPlugin", "internalAcceptCall: UI invalidated and layout requested for call ${call.id}")
+                            // Force refresh with active call from client
+                            val activeCall = streamVideoClient?.state?.activeCall?.value
+                            if (activeCall != null) {
+                                overlayView?.setContent {
+                                    VideoTheme {
+                                        android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Force refreshing CallContent with active call ${activeCall.id}")
+                                        CallContent(
+                                            call = activeCall,
+                                            onBackPressed = { /* ... */ },
+                                            controlsContent = { /* ... */ },
+                                            appBarContent = { /* ... */ }
+                                        )
+                                    }
+                                }
+                                android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Content force refreshed for call ${activeCall.id}")
+                            } else {
+                                android.util.Log.w("StreamCallPlugin", "internalAcceptCall: Active call is null during force refresh for call ${call.id}")
+                            }
+                        } else {
+                            android.util.Log.w("StreamCallPlugin", "internalAcceptCall: overlayView not visible after delay for call ${call.id}")
+                        }
+                    }, 1000) // Increased delay to ensure all events are processed
                 }
             } catch (e: Exception) {
                 android.util.Log.e("StreamCallPlugin", "internalAcceptCall: Error accepting call ${call.id}: ${e.message}", e)
