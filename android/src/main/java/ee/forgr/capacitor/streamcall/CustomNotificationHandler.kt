@@ -4,14 +4,11 @@ import android.app.Application
 import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.content.Context
 import android.content.Intent
-import android.content.ComponentName
 import android.media.RingtoneManager
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import io.getstream.log.taggedLogger
 import io.getstream.video.android.core.RingingState
 import io.getstream.video.android.core.notifications.DefaultNotificationHandler
 import io.getstream.video.android.core.notifications.NotificationHandler

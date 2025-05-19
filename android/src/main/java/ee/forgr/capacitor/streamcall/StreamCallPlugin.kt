@@ -49,8 +49,6 @@ import io.getstream.android.video.generated.models.CallRingEvent
 import io.getstream.android.video.generated.models.CallSessionEndedEvent
 import io.getstream.android.video.generated.models.CallSessionStartedEvent
 import io.getstream.video.android.core.sounds.RingingConfig
-import androidx.fragment.app.FragmentManager
-import androidx.fragment.app.FragmentTransaction
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import android.Manifest
@@ -60,13 +58,8 @@ import androidx.core.content.ContextCompat
 import io.getstream.android.video.generated.models.VideoEvent
 import io.getstream.video.android.compose.theme.VideoTheme
 import io.getstream.video.android.compose.ui.components.call.activecall.CallContent
-import androidx.compose.material3.Text
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.sp
 import io.getstream.video.android.core.CameraDirection
-import kotlinx.coroutines.flow.collect
 import android.content.BroadcastReceiver
 import android.content.Intent
 import android.content.IntentFilter

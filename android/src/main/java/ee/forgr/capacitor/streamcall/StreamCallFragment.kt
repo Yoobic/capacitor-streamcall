@@ -6,7 +6,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import androidx.fragment.app.Fragment;
 import io.getstream.video.android.core.Call;
-import io.getstream.video.android.core.ParticipantState;
 import kotlinx.coroutines.CoroutineScope;
 import kotlinx.coroutines.Dispatchers;
 import kotlinx.coroutines.flow.launchIn;
