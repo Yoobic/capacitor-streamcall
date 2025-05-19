@@ -8,6 +8,12 @@
       <ion-button [color]="isCameraOff ? 'medium' : 'primary'" (click)="toggleCamera()">
         <ion-icon [name]="isCameraOff ? 'videocam-off-outline' : 'camera-outline'"></ion-icon>
       </ion-button>
+      <ion-button [color]="isSpeakerOn ? 'primary' : 'medium'" (click)="toggleSpeaker()">
+        <ion-icon [name]="isSpeakerOn ? 'volume-high-outline' : 'volume-mute-outline'"></ion-icon>
+      </ion-button>
+      <ion-button color="primary" (click)="flipCamera()">
+        <ion-icon [name]="activeCamera === 'front' ? 'camera-reverse-outline' : 'camera-outline'"></ion-icon>
+      </ion-button>
       <ion-button color="danger" (click)="endCall()">End</ion-button>
     </div>
   </div>

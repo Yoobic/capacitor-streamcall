@@ -229,4 +229,22 @@ export interface StreamCallPlugin {
    * console.log(callStatus);
    */
   getCallStatus(): Promise<CallEvent>;
+
+  /**
+   * Set speakerphone on
+   * @param {{ name: string }} options - Speakerphone name
+   * @returns {Promise<SuccessResponse>} Success status
+   * @example
+   * await StreamCall.setSpeaker({ name: 'speaker' });
+   */
+  setSpeaker(options: { name: string }): Promise<SuccessResponse>;
+
+  /**
+   * Switch camera
+   * @param {{ camera: 'front' | 'back' }} options - Camera to switch to
+   * @returns {Promise<SuccessResponse>} Success status
+   * @example
+   * await StreamCall.switchCamera({ camera: 'back' });
+   */
+  switchCamera(options: { camera: 'front' | 'back' }): Promise<SuccessResponse>;
 }

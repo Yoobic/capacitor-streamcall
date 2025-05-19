@@ -633,6 +633,32 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
     return { success: true };
   }
 
+  async setSpeaker(options: { name: string }): Promise<SuccessResponse> {
+    if (!this.currentCall) {
+      console.log('No active call', this.currentCall);
+      throw new Error('No active call');
+    }
+
+    await this.currentCall.speaker.select(options.name);
+
+    return { success: true };
+  }
+
+  async switchCamera(options: { camera: 'front' | 'back' }): Promise<SuccessResponse> {
+    if (!this.currentCall) {
+      console.log('No active call', this.currentCall);
+      throw new Error('No active call');
+    }
+
+    if (options.camera === 'front') {
+      await this.currentCall.camera.selectDirection('front');
+    } else {
+      await this.currentCall.camera.selectDirection('back');
+    }
+
+    return { success: true };
+  }
+
   async acceptCall(): Promise<SuccessResponse> {
     if (!this.incomingCall || !this.client) {
       console.log('No incoming call to accept', this.incomingCall, this.client);

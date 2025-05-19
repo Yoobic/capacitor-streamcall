@@ -65,6 +65,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.sp
+import io.getstream.video.android.core.CameraDirection
 import kotlinx.coroutines.flow.collect
 
 // I am not a religious pearson, but at this point, I am not sure even god himself would understand this code
@@ -1403,6 +1404,40 @@ public class StreamCallPlugin : Plugin() {
         call.resolve(result)
     }
 
+    @PluginMethod
+    fun setSpeaker(call: PluginCall) {
+        val name = call.getString("name") ?: "speaker"
+        val activeCall = streamVideoClient?.state?.activeCall?.value
+        if (activeCall != null) {
+            if (name == "speaker")
+                activeCall.speaker.setSpeakerPhone(enable = true)
+            else
+                activeCall.speaker.setSpeakerPhone(enable = false)
+            call.resolve(JSObject().apply {
+                put("success", true)
+            })
+        } else {
+            call.reject("No active call")
+        }
+    }
+
+    @PluginMethod
+    fun switchCamera(call: PluginCall) {
+        val camera = call.getString("camera") ?: "front"
+        val activeCall = streamVideoClient?.state?.activeCall?.value
+        if (activeCall != null) {
+            if (camera == "front")
+                activeCall.camera.setDirection(CameraDirection.Front)
+            else
+                activeCall.camera.setDirection(CameraDirection.Back)
+            call.resolve(JSObject().apply {
+                put("success", true)
+            })
+        } else {
+            call.reject("No active call")
+        }
+    }
+    
     // Helper method to update call status and notify listeners
     private fun updateCallStatusAndNotify(callId: String, state: String, userId: String? = null, reason: String? = null) {
         // Update stored call info

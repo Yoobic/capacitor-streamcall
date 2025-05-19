@@ -24,7 +24,9 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "setCameraEnabled", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "acceptCall", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "isCameraEnabled", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "getCallStatus", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "getCallStatus", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setSpeaker", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "switchCamera", returnType: CAPPluginReturnPromise)
     ]
 
     private enum State {
@@ -792,4 +794,66 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             "state": currentCallState
         ])
     }
+
+    @objc func setSpeaker(_ call: CAPPluginCall) {
+        guard let name = call.getString("name") else {
+            call.reject("Missing required parameter: name")
+            return
+        }
+
+        do {
+            try requireInitialized()
+
+            Task {
+                do {
+                    if let activeCall = streamVideo?.state.activeCall {
+                        if name == "speaker" {
+                            try await activeCall.speaker.enableSpeakerPhone()
+                        } else {
+                            try await activeCall.speaker.disableSpeakerPhone()
+                        }
+                    }
+                    call.resolve([
+                        "success": true
+                    ])
+                } catch {
+                    log.error("Error setting speaker: \(String(describing: error))")
+                    call.reject("Failed to set speaker: \(error.localizedDescription)")
+                }
+            }
+        } catch {
+            call.reject("StreamVideo not initialized")
+        }
+    }
+
+    @objc func switchCamera(_ call: CAPPluginCall) {
+        guard let camera = call.getString("camera") else {
+            call.reject("Missing required parameter: camera")
+            return
+        }
+
+        do {
+            try requireInitialized()
+
+            Task {
+                do {
+                    if let activeCall = streamVideo?.state.activeCall {
+                        if (camera == "front" && activeCall.camera.direction != .front) ||
+                           (camera == "back" && activeCall.camera.direction != .back) {
+                            try await activeCall.camera.flip()
+                        }
+                    }
+                    call.resolve([
+                        "success": true
+                    ])
+                } catch {
+                    log.error("Error switching camera: \(String(describing: error))")
+                    call.reject("Failed to switch camera: \(error.localizedDescription)")
+                }
+            }
+        } catch {
+            call.reject("StreamVideo not initialized")
+        }
+    }
+            
 }

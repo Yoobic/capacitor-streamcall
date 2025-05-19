@@ -17,6 +17,8 @@ export class AppComponent {
   isInCall = false;
   isMuted = false;
   isCameraOff = false;
+  isSpeakerOn = true;
+  activeCamera: 'front' | 'back' = 'front';
   incomingCallId: string | null = null;
   incomingToast: HTMLIonToastElement | null = null;
 
@@ -35,6 +37,22 @@ export class AppComponent {
   async toggleCamera() {
     this.isCameraOff = !this.isCameraOff;
     await StreamCall.setCameraEnabled({ enabled: !this.isCameraOff });
+    this.cdr.detectChanges();
+  }
+
+  async toggleSpeaker() {
+    this.isSpeakerOn = !this.isSpeakerOn;
+    if (StreamCall.setSpeaker) {
+      await StreamCall.setSpeaker({ name: this.isSpeakerOn ? 'speaker' : 'receiver' });
+    }
+    this.cdr.detectChanges();
+  }
+
+  async flipCamera() {
+    this.activeCamera = this.activeCamera === 'front' ? 'back' : 'front';
+    if (StreamCall.switchCamera) {
+      await StreamCall.switchCamera({ camera: this.activeCamera });
+    }
     this.cdr.detectChanges();
   }
 

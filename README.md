@@ -133,6 +133,8 @@ The SDK will automatically use the system language and these translations.
 * [`rejectCall()`](#rejectcall)
 * [`isCameraEnabled()`](#iscameraenabled)
 * [`getCallStatus()`](#getcallstatus)
+* [`setSpeaker(...)`](#setspeaker)
+* [`switchCamera(...)`](#switchcamera)
 * [Interfaces](#interfaces)
 * [Type Aliases](#type-aliases)
 * [Enums](#enums)
@@ -313,6 +315,40 @@ getCallStatus() => Promise<CallEvent>
 Get the current call status
 
 **Returns:** <code>Promise&lt;<a href="#callevent">CallEvent</a>&gt;</code>
+
+--------------------
+
+
+### setSpeaker(...)
+
+```typescript
+setSpeaker(options: { name: string; }) => Promise<SuccessResponse>
+```
+
+Set speakerphone on
+
+| Param         | Type                           | Description         |
+| ------------- | ------------------------------ | ------------------- |
+| **`options`** | <code>{ name: string; }</code> | - Speakerphone name |
+
+**Returns:** <code>Promise&lt;<a href="#successresponse">SuccessResponse</a>&gt;</code>
+
+--------------------
+
+
+### switchCamera(...)
+
+```typescript
+switchCamera(options: { camera: 'front' | 'back'; }) => Promise<SuccessResponse>
+```
+
+Switch camera
+
+| Param         | Type                                        | Description           |
+| ------------- | ------------------------------------------- | --------------------- |
+| **`options`** | <code>{ camera: 'front' \| 'back'; }</code> | - Camera to switch to |
+
+**Returns:** <code>Promise&lt;<a href="#successresponse">SuccessResponse</a>&gt;</code>
 
 --------------------
 
