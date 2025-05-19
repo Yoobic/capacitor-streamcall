@@ -61,8 +61,11 @@ import io.getstream.android.video.generated.models.VideoEvent
 import io.getstream.video.android.compose.theme.VideoTheme
 import io.getstream.video.android.compose.ui.components.call.activecall.CallContent
 import androidx.compose.material3.Text
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.flow.collect
 
 // I am not a religious pearson, but at this point, I am not sure even god himself would understand this code
 // It's a spaghetti-like, tangled, unreadable mess and frankly, I am deeply sorry for the code crimes commited in the Android impl
@@ -285,7 +288,7 @@ public class StreamCallPlugin : Plugin() {
             )
             setContent {
                 VideoTheme {
-                    val activeCall = streamVideoClient?.state?.activeCall?.value
+                    val activeCall = streamVideoClient?.state?.activeCall?.collectAsState()?.value
                     if (activeCall != null) {
                         CallContent(
                             call = activeCall,
@@ -821,6 +824,7 @@ public class StreamCallPlugin : Plugin() {
 
                 // Join the call without affecting others
                 call.accept()
+                streamVideoClient?.state?.setActiveCall(call)
 
                 // Notify that call has started using helper
                 updateCallStatusAndNotify(call.id, "joined")
@@ -832,15 +836,19 @@ public class StreamCallPlugin : Plugin() {
                     bridge?.webView?.bringToFront() // Ensure WebView is on top and transparent
                     overlayView?.setContent {
                         VideoTheme {
-                            CallContent(
-                                call = call,
-                                onBackPressed = { /* Handle back press if needed */ },
-                                controlsContent = { /* Empty to disable native controls */ },
-                                appBarContent = { /* Empty to disable app bar with stop call button */ }
-                            )
+                            val activeCall = streamVideoClient?.state?.activeCall?.collectAsState()?.value
+                            if (activeCall != null) {
+                                CallContent(
+                                    call = activeCall,
+                                    onBackPressed = { /* ... */ },
+                                    controlsContent = { /* ... */ },
+                                    appBarContent = { /* ... */ }
+                                )
+                            }
                         }
                     }
                     overlayView?.isVisible = true
+
                     // Ensure overlay is behind WebView by adjusting its position in the parent
                     val parent = overlayView?.parent as? ViewGroup
                     parent?.removeView(overlayView)
