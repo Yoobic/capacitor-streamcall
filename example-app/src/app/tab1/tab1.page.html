@@ -26,6 +26,10 @@
         <ion-button (click)="login('user2')" color="success">Login as User 2</ion-button>
         <ion-button (click)="login('user3')" color="success">Login as User 3</ion-button>
         <ion-button (click)="login('user4')" color="success">Login as User 4</ion-button>
+        <ion-button (click)="login('user5')" color="success">Login as User 5</ion-button>
+        <ion-button (click)="login('user6')" color="success">Login as User 6</ion-button>
+        <ion-button (click)="login('user7')" color="success">Login as User 7</ion-button>
+        <ion-button (click)="login('user8')" color="success">Login as User 8</ion-button>
         <ion-button (click)="login('user_red_1', 'red')" color="danger">Login as User_red_1</ion-button>
         <ion-button (click)="login('user_red_2', 'red')" color="danger">Login as User_red_2</ion-button>
         <ion-button (click)="login('user_red_3', 'red')" color="danger">Login as User_red_3</ion-button>
@@ -52,6 +56,22 @@
       <ion-button *ngIf="currentUser.userId !== 'user4'" (click)="callUser(['user4'])" color="success">
         <ion-icon name="call"></ion-icon>
         Call User 4
+      </ion-button>
+      <ion-button *ngIf="currentUser.userId !== 'user5'" (click)="callUser(['user5'])" color="success">
+        <ion-icon name="call"></ion-icon>
+        Call User 5
+      </ion-button>
+      <ion-button *ngIf="currentUser.userId !== 'user6'" (click)="callUser(['user6'])" color="success">
+        <ion-icon name="call"></ion-icon>
+        Call User 6
+      </ion-button>
+      <ion-button *ngIf="currentUser.userId !== 'user7'" (click)="callUser(['user7'])" color="success">
+        <ion-icon name="call"></ion-icon>
+        Call User 7
+      </ion-button>
+      <ion-button *ngIf="currentUser.userId !== 'user8'" (click)="callUser(['user8'])" color="success">
+        <ion-icon name="call"></ion-icon>
+        Call User 8
       </ion-button>
       <!-- add multi call test button -->
       <ion-button (click)="callUser(['user1', 'user2'])" color="success">
