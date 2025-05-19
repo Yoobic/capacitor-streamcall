@@ -3,6 +3,8 @@ package io.ionic.starter;
 import android.os.Bundle;
 import android.content.Intent;
 import android.util.Log;
+
+import com.getcapacitor.PluginHandle;
 import com.google.firebase.FirebaseApp;
 
 import com.getcapacitor.BridgeActivity;
@@ -40,12 +42,6 @@ public class MainActivity extends BridgeActivity {
   }
 
   @Override
-  protected void onNewIntent(Intent intent) {
-    super.onNewIntent(intent);
-    logIntent(intent);
-  }
-
-  @Override
   protected void onRestoreInstanceState(Bundle savedInstanceState) {
     super.onRestoreInstanceState(savedInstanceState);
     Log.d(TAG, "onRestoreInstanceState called, restoring bundle:");
@@ -70,6 +66,33 @@ public class MainActivity extends BridgeActivity {
         logBundle((Bundle) value);
       }
     }
+  }
+
+  @Override
+  protected void onNewIntent(Intent intent) {
+      super.onNewIntent(intent);
+      logIntent(intent);
+      setIntent(intent);
+      // Check for accept call action
+      String action = intent.getAction();
+      Log.d("MainActivity", "onNewIntent: Received intent with action: " + action);
+      if ("io.getstream.video.android.action.ACCEPT_CALL".equals(action)) {
+          String cid = intent.getStringExtra("call-id");
+          Log.d("MainActivity", "onNewIntent: ACCEPT_CALL action received with CID: " + cid);
+          // Forward to StreamCallPlugin
+          com.getcapacitor.PluginHandle pluginHandle = getBridge().getPlugin("StreamCall");
+          if (pluginHandle != null) {
+              com.getcapacitor.Plugin pluginInstance = pluginHandle.getInstance();
+              if (pluginInstance instanceof ee.forgr.capacitor.streamcall.StreamCallPlugin) {
+                  Log.d("MainActivity", "onNewIntent: Forwarding ACCEPT_CALL to StreamCallPlugin");
+                  ((ee.forgr.capacitor.streamcall.StreamCallPlugin) pluginInstance).handleAcceptCallIntent(intent);
+              } else {
+                  Log.e("MainActivity", "onNewIntent: StreamCallPlugin instance not found or invalid");
+              }
+          } else {
+              Log.e("MainActivity", "onNewIntent: StreamCallPlugin handle not found");
+          }
+      }
   }
 
   private void logIntent(Intent intent) {

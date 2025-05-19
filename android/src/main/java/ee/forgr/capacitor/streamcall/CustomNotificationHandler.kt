@@ -36,11 +36,49 @@ class CustomNotificationHandler(
         callDisplayName: String?,
         shouldHaveContentIntent: Boolean,
     ): Notification? {
+        Log.d("CustomNotificationHandler", "getRingingCallNotification called: ringingState=$ringingState, callId=$callId, callDisplayName=$callDisplayName, shouldHaveContentIntent=$shouldHaveContentIntent")
         return if (ringingState is RingingState.Incoming) {
             val fullScreenPendingIntent = intentResolver.searchIncomingCallPendingIntent(callId)
-            val acceptCallPendingIntent = intentResolver.searchAcceptCallPendingIntent(callId)
-            val rejectCallPendingIntent = intentResolver.searchRejectCallPendingIntent(callId)
- 
+
+            // Get the main launch intent for the application
+            val launchIntent = application.packageManager.getLaunchIntentForPackage(application.packageName)
+            var targetComponent: android.content.ComponentName? = null
+            if (launchIntent != null) {
+                targetComponent = launchIntent.component
+                Log.d("CustomNotificationHandler", "Derived launch component: ${targetComponent?.flattenToString()}")
+            } else {
+                Log.e("CustomNotificationHandler", "Could not get launch intent for package: ${application.packageName}. This is problematic for creating explicit intents.")
+            }
+
+            val acceptCallAction = NotificationHandler.ACTION_ACCEPT_CALL
+            val acceptCallIntent = Intent(acceptCallAction)
+                .putExtra(NotificationHandler.INTENT_EXTRA_CALL_CID, callId.cid)
+                .setPackage(application.packageName)
+
+            if (targetComponent != null) {
+                acceptCallIntent.component = targetComponent
+            }
+            acceptCallIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+
+            Log.d("CustomNotificationHandler", "Constructed Accept Call Intent for PI: action=${acceptCallIntent.action}, cid=${acceptCallIntent.getStringExtra(NotificationHandler.INTENT_EXTRA_CALL_CID)}, package=${acceptCallIntent.getPackage()}, component=${acceptCallIntent.component?.flattenToString()}, flags=${acceptCallIntent.flags}")
+
+            // Create PendingIntent for Accept action directly
+            val requestCodeAccept = callId.cid.hashCode() + 1 // Unique request code for the PendingIntent with offset to avoid collisions
+            val acceptCallPendingIntent = PendingIntent.getBroadcast(
+                application,
+                requestCodeAccept,
+                acceptCallIntent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            Log.d("CustomNotificationHandler", "Created Accept Call PendingIntent with requestCode: $requestCodeAccept")
+
+            // val acceptCallPendingIntent = intentResolver.searchAcceptCallPendingIntent(callId) // Bypassing this
+            val rejectCallPendingIntent = intentResolver.searchRejectCallPendingIntent(callId) // Keep using resolver for reject for now, or change it too if needed
+
+            Log.d("CustomNotificationHandler", "Full Screen PI: $fullScreenPendingIntent")
+            Log.d("CustomNotificationHandler", "Custom Accept Call PI: $acceptCallPendingIntent")
+            Log.d("CustomNotificationHandler", "Resolver Reject Call PI: $rejectCallPendingIntent")
+            
             if (fullScreenPendingIntent != null && acceptCallPendingIntent != null && rejectCallPendingIntent != null) {
                 customGetIncomingCallNotification(
                     fullScreenPendingIntent,
@@ -81,11 +119,12 @@ class CustomNotificationHandler(
         shouldHaveContentIntent: Boolean,
         callId: StreamCallId
     ): Notification {
+        Log.d("CustomNotificationHandler", "customGetIncomingCallNotification called: callerName=$callerName, callId=$callId")
         customCreateIncomingCallChannel()
         val manufacturer = Build.MANUFACTURER.lowercase()
         if (manufacturer.contains("xiaomi") || manufacturer.contains("mi")) {
             // Adjust PendingIntent for Xiaomi to avoid permission denial
-            val xiaomiAcceptIntent = PendingIntent.getActivity(
+            val xiaomiAcceptIntent = PendingIntent.getBroadcast(
                 application,
                 0,
                 Intent("io.getstream.video.android.action.ACCEPT_CALL")
@@ -104,9 +143,17 @@ class CustomNotificationHandler(
             )
         }
  
+        val acceptIntent = PendingIntent.getBroadcast(
+            application,
+            0,
+            Intent("io.getstream.video.android.action.ACCEPT_CALL")
+                .setPackage(application.packageName)
+                .putExtra(NotificationHandler.INTENT_EXTRA_CALL_CID, callId),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
         return buildNotification(
             fullScreenPendingIntent,
-            acceptCallPendingIntent,
+            acceptIntent,
             rejectCallPendingIntent,
             callerName,
             shouldHaveContentIntent,
@@ -124,10 +171,11 @@ class CustomNotificationHandler(
         channelId: String,
         includeSound: Boolean
     ): Notification {
+        Log.d("CustomNotificationHandler", "buildNotification called: callerName=$callerName, channelId=$channelId, includeSound=$includeSound")
         return getNotification {
             priority = NotificationCompat.PRIORITY_HIGH
             setContentTitle(callerName)
-            setContentText("Incoming call")
+            setContentText("Incoming call toto")
             setChannelId(channelId)
             setOngoing(true)
             setAutoCancel(false)
@@ -165,11 +213,13 @@ class CustomNotificationHandler(
     }
  
     override fun onMissedCall(callId: StreamCallId, callDisplayName: String) {
+        Log.d("CustomNotificationHandler", "onMissedCall called: callId=$callId, callDisplayName=$callDisplayName")
         endCall(callId)
         super.onMissedCall(callId, callDisplayName)
     }
  
     private fun customCreateIncomingCallChannel() {
+        Log.d("CustomNotificationHandler", "customCreateIncomingCallChannel called")
         maybeCreateChannel(
             channelId = INCOMING_CALLS_CUSTOM,
             context = application,
@@ -196,6 +246,7 @@ class CustomNotificationHandler(
     }
  
     public fun clone(): CustomNotificationHandler {
+        Log.d("CustomNotificationHandler", "clone called")
         return CustomNotificationHandler(this.application, this.endCall, this.incomingCall)
     }
 }
