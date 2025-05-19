@@ -56,12 +56,12 @@ export class AppComponent {
     this.cdr.detectChanges();
   }
 
-  private async presentToast(message: string, color: 'success' | 'danger') {
+  private async presentToast(message: string, color: 'success' | 'danger', position: 'top' | 'bottom' = 'top') {
     const toast = await this.toastController.create({
       message,
       duration: 2000,
       color,
-      position: 'top'
+      position
     });
     await toast.present();
   }
@@ -148,24 +148,27 @@ export class AppComponent {
           await this.incomingToast?.dismiss();
           const cameraEnabled = await StreamCall.isCameraEnabled();
           this.isCameraOff = !cameraEnabled.enabled;
-          await this.presentToast('Call started', 'success');
+          await this.presentToast('Call started', 'success', 'bottom');
           this.cdr.detectChanges();
         }, 1000);
       } else if (event.state === 'left') {
         this.isInCall = false;
         console.log('Call ended', event);
-        await this.presentToast('Call ended', 'success');
+        await this.presentToast('Call ended', 'success', 'bottom');
         this.cdr.detectChanges();
       } else if (event.state === 'rejected') {
         //this.isInCall = false;
         await this.incomingToast?.dismiss();
         console.log('Call rejected', event);
-        await this.presentToast('Call rejected', 'success');
+        await this.presentToast('Call rejected', 'success', 'bottom');
         this.cdr.detectChanges();
       } else if (event.state === 'ringing') {
         //if (Capacitor.getPlatform() === 'web') {
         this.incomingCallId = event.callId;
-        await this.presentIncomingCallToast();
+        if(!Capacitor.isNativePlatform()) {
+          // on web, we need to show a toast to accept or reject the call
+          await this.presentIncomingCallToast();
+        }
         this.cdr.detectChanges();
         // }
       } else if (event.state === 'ended' && event.reason === 'all_rejected_or_missed' && Capacitor.getPlatform() === 'web') {
@@ -175,7 +178,7 @@ export class AppComponent {
       } else {
         if (Capacitor.getPlatform() !== 'ios') {
           console.log('Call event', event);
-          await this.presentToast(`Call event: ${event.state}`, 'success');
+          await this.presentToast(`Call event: ${event.state}`, 'success', 'bottom');
           this.cdr.detectChanges();
         }
       }
