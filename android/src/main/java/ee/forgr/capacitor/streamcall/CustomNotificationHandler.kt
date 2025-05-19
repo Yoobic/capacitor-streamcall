@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.ComponentName
 import android.media.RingtoneManager
 import android.os.Build
 import android.util.Log
@@ -62,9 +63,9 @@ class CustomNotificationHandler(
 
             Log.d("CustomNotificationHandler", "Constructed Accept Call Intent for PI: action=${acceptCallIntent.action}, cid=${acceptCallIntent.getStringExtra(NotificationHandler.INTENT_EXTRA_CALL_CID)}, package=${acceptCallIntent.getPackage()}, component=${acceptCallIntent.component?.flattenToString()}, flags=${acceptCallIntent.flags}")
 
-            // Create PendingIntent for Accept action directly
+            // Create PendingIntent for Accept action using getActivity to launch the app
             val requestCodeAccept = callId.cid.hashCode() + 1 // Unique request code for the PendingIntent with offset to avoid collisions
-            val acceptCallPendingIntent = PendingIntent.getBroadcast(
+            val acceptCallPendingIntent = PendingIntent.getActivity(
                 application,
                 requestCodeAccept,
                 acceptCallIntent,
@@ -72,7 +73,6 @@ class CustomNotificationHandler(
             )
             Log.d("CustomNotificationHandler", "Created Accept Call PendingIntent with requestCode: $requestCodeAccept")
 
-            // val acceptCallPendingIntent = intentResolver.searchAcceptCallPendingIntent(callId) // Bypassing this
             val rejectCallPendingIntent = intentResolver.searchRejectCallPendingIntent(callId) // Keep using resolver for reject for now, or change it too if needed
 
             Log.d("CustomNotificationHandler", "Full Screen PI: $fullScreenPendingIntent")
