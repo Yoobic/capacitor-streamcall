@@ -175,8 +175,20 @@ public class StreamCallPlugin : Plugin() {
         androidx.core.content.ContextCompat.registerReceiver(activity, acceptCallReceiver, filter, androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
         android.util.Log.d("StreamCallPlugin", "Registered broadcast receiver for ACCEPT_CALL action with high priority")
 
+        // Start the background service to keep the app alive
+        val serviceIntent = Intent(activity, StreamCallBackgroundService::class.java)
+        activity.startService(serviceIntent)
+        android.util.Log.d("StreamCallPlugin", "Started StreamCallBackgroundService to keep app alive")
+
         // Handle initial intent if present
         activity?.intent?.let { handleOnNewIntent(it) }
+
+        // process the very first intent that started the app (if any)
+        pendingIntent?.let {
+            android.util.Log.d("StreamCallPlugin","Processing saved initial intent")
+            handleOnNewIntent(it)
+            pendingIntent = null
+        }
     }
 
     @OptIn(DelicateCoroutinesApi::class)
@@ -237,48 +249,7 @@ public class StreamCallPlugin : Plugin() {
                     kotlinx.coroutines.GlobalScope.launch {
                         internalAcceptCall(call)
                     }
-                    // activity?.runOnUiThread {
-                    //     android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: ACCEPT_CALL - Starting UI setup for call ${call.id}")
-                    //     bridge?.webView?.setBackgroundColor(Color.TRANSPARENT) // Make webview transparent
-                    //     android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: ACCEPT_CALL - WebView set to transparent for call ${call.id}")
-                    //     bridge?.webView?.bringToFront() // Ensure WebView is on top and transparent
-                    //     android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: ACCEPT_CALL - WebView brought to front for call ${call.id}")
-                    //     overlayView?.setContent {
-                    //         VideoTheme {
-                    //             if (call != null) {
-                    //                 android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: ACCEPT_CALL - Setting CallContent for call ${call.id}")
-                    //                 CallContent(
-                    //                     call = call,
-                    //                     onBackPressed = { /* Handle back press if needed */ },
-                    //                     controlsContent = { /* Empty to disable native controls */ },
-                    //                     appBarContent = { /* Empty to disable app bar with stop call button */ }
-                    //                 )
-                    //             } else {
-                    //                 Text(text = "Waiting for active call...", style = TextStyle(color = androidx.compose.ui.graphics.Color.White, fontSize = 16.sp))
-                    //                 android.util.Log.w("StreamCallPlugin", "handleOnNewIntent: ACCEPT_CALL - Call is null, waiting...")
-                    //             }
-                    //         }
-                    //     }
-                    //     android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: ACCEPT_CALL - Content set for overlayView for call ${call.id}")
-                    //     overlayView?.isVisible = true
-                    //     android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: ACCEPT_CALL - overlayView set to visible for call ${call.id}, isVisible: ${overlayView?.isVisible}")
-                    //     // Ensure overlay is behind WebView by adjusting its position in the parent
-                    //     val parent = overlayView?.parent as? ViewGroup
-                    //     parent?.removeView(overlayView)
-                    //     parent?.addView(overlayView, 0) // Add at index 0 to ensure it's behind other views
-                    //     android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: ACCEPT_CALL - overlayView re-added to parent at index 0 for call ${call.id}")
-                    //     // Add a small delay to ensure UI refresh
-                    //     mainHandler.postDelayed({
-                    //         android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: ACCEPT_CALL - Delayed UI check, overlay visible: ${overlayView?.isVisible} for call ${call.id}")
-                    //         if (overlayView?.isVisible == true) {
-                    //             overlayView?.invalidate()
-                    //             overlayView?.requestLayout()
-                    //             android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: ACCEPT_CALL - UI invalidated and layout requested for call ${call.id}")
-                    //         } else {
-                    //             android.util.Log.w("StreamCallPlugin", "handleOnNewIntent: ACCEPT_CALL - overlayView not visible after delay for call ${call.id}")
-                    //         }
-                    //     }, 500)
-                    // }
+                    bringAppToForeground()
                 } else {
                     android.util.Log.e("StreamCallPlugin", "handleOnNewIntent: ACCEPT_CALL - Call object is null for cid: $cid")
                 }
@@ -1676,11 +1647,46 @@ public class StreamCallPlugin : Plugin() {
                         kotlinx.coroutines.GlobalScope.launch {
                             internalAcceptCall(call)
                         }
+                        bringAppToForeground()
                     } else {
                         android.util.Log.e("StreamCallPlugin", "BroadcastReceiver: Call object is null for cid: $cid")
                     }
                 }
             }
         }
+    }
+
+    private fun bringAppToForeground() {
+        try {
+            val ctx = savedContext ?: context
+            val launchIntent = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)
+            launchIntent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            if (launchIntent != null) {
+                ctx.startActivity(launchIntent)
+                android.util.Log.d("StreamCallPlugin", "bringAppToForeground: Launch intent executed to foreground app")
+            } else {
+                android.util.Log.w("StreamCallPlugin", "bringAppToForeground: launchIntent is null")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("StreamCallPlugin", "bringAppToForeground error", e)
+        }
+    }
+
+    companion object {
+        private var pendingIntent: Intent? = null
+        @JvmStatic fun saveInitialIntent(it: Intent) {
+            pendingIntent = it
+        }
+        @JvmStatic fun preLoadInit(ctx: Context, app: Application) {
+            holder ?: run {
+                val p = StreamCallPlugin()
+                p.savedContext = ctx
+                p.initializeStreamVideo(ctx, app)
+                holder = p
+                // record the intent that started the process
+                if (ctx is Activity) saveInitialIntent((ctx as Activity).intent)
+            }
+        }
+        private var holder: StreamCallPlugin? = null
     }
 }

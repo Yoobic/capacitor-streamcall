@@ -1,2 +1,46 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+
+          <service
+              android:name="io.getstream.android.push.firebase.ChatFirebaseMessagingService"
+              android:exported="false">
+              <intent-filter>
+                  <action android:name="com.google.firebase.MESSAGING_EVENT" />
+              </intent-filter>
+              <intent-filter>
+                  <action android:name="FCM_PLUGIN_ACTIVITY" />
+                  <category android:name="android.intent.category.DEFAULT" />
+              </intent-filter>
+          </service>
+
+        <activity  android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation"
+            android:name=".MainActivity"
+            android:label="@string/title_activity_main"
+            android:theme="@style/AppTheme.NoActionBarLaunch"
+            android:launchMode="singleTask"
+            android:showOnLockScreen="true"
+            android:showWhenLocked="true"
+            android:exported="true">
+            <intent-filter android:priority="1" >
+                <action android:name="io.getstream.video.android.action.INCOMING_CALL" />
+                <action android:name="io.getstream.video.android.action.ONGOING_CALL" />
+                <action android:name="io.getstream.video.android.action.ACCEPT_CALL" />
+                <action android:name="io.getstream.video.android.action.OUTGOING_CALL" />
+                <action android:name="io.getstream.video.android.action.NOTIFICATION" />
+            </intent-filter>
+        </activity>
+        <service
+            android:name="ee.forgr.capacitor.streamcall.StreamCallBackgroundService"
+            android:enabled="true"
+            android:exported="false" />
+    </application>
+
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
 </manifest>

@@ -12,7 +12,7 @@ import { ToastController } from '@ionic/angular';
 })
 export class Tab1Page {
   private readonly STYLE_ID = 'magic_transparent_background';
-  private readonly API_URL = 'https://magic-login-srvv2-48.localcan.dev';
+  private readonly API_URL = 'https://streamcall-20.localcan.dev';
   private readonly API_KEY = 'vq4zdsazqxd7';
   transparent = false;
   currentUser: {
@@ -39,7 +39,12 @@ export class Tab1Page {
         this.callStatus = JSON.stringify(event, null, 2);
       }
     });
-    this.callStatus = JSON.stringify(await StreamCall.getCallStatus(), null, 2);
+    try {
+      this.callStatus = JSON.stringify(await StreamCall.getCallStatus(), null, 2);
+    } catch (error) {
+      console.error('Failed to get call status:', error);
+      this.callStatus = 'Failed to get call status';
+    }
   }
 
   private async loadStoredUser() {

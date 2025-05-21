@@ -39,12 +39,12 @@ public class DemoApplication extends Application {
     private void initializeApp() {
         Log.i(TAG, "Initializing application...");
         // Initialize Firebase
+        com.google.firebase.FirebaseApp.initializeApp(this);
          try {
-            StreamCallPlugin pl = (new StreamCallPlugin());
-            pl.initializeStreamVideo(this, this);
-            Log.i(TAG, "StreamVideo Plugin initialized successfully");
+            StreamCallPlugin.preLoadInit(this, this);
+            Log.i(TAG, "StreamVideo Plugin preLoadInit invoked successfully");
          } catch (Exception e) {
-             Log.e(TAG, "Failed to initialize StreamVideo Plugin", e);
+             Log.e(TAG, "Failed to pre-initialize StreamVideo Plugin", e);
          }
         Log.i(TAG, "Application initialization completed");
     }

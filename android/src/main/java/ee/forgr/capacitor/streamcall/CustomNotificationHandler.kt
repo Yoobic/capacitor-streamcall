@@ -50,7 +50,7 @@ class CustomNotificationHandler(
 
             val acceptCallAction = NotificationHandler.ACTION_ACCEPT_CALL
             val acceptCallIntent = Intent(acceptCallAction)
-                .putExtra(NotificationHandler.INTENT_EXTRA_CALL_CID, callId.cid)
+                .putExtra(NotificationHandler.INTENT_EXTRA_CALL_CID, callId)
                 .setPackage(application.packageName)
 
             if (targetComponent != null) {
@@ -118,39 +118,12 @@ class CustomNotificationHandler(
     ): Notification {
         Log.d("CustomNotificationHandler", "customGetIncomingCallNotification called: callerName=$callerName, callId=$callId")
         customCreateIncomingCallChannel()
-        val manufacturer = Build.MANUFACTURER.lowercase()
-        if (manufacturer.contains("xiaomi") || manufacturer.contains("mi")) {
-            // Adjust PendingIntent for Xiaomi to avoid permission denial
-            val xiaomiAcceptIntent = PendingIntent.getBroadcast(
-                application,
-                0,
-                Intent("io.getstream.video.android.action.ACCEPT_CALL")
-                .setPackage(application.packageName)
-                .putExtra(NotificationHandler.INTENT_EXTRA_CALL_CID, callId),
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-            )
-            return buildNotification(
-                fullScreenPendingIntent,
-                xiaomiAcceptIntent,
-                rejectCallPendingIntent,
-                callerName,
-                shouldHaveContentIntent,
-                INCOMING_CALLS_CUSTOM,
-                true // Include sound
-            )
-        }
- 
-        val acceptIntent = PendingIntent.getBroadcast(
-            application,
-            0,
-            Intent("io.getstream.video.android.action.ACCEPT_CALL")
-                .setPackage(application.packageName)
-                .putExtra(NotificationHandler.INTENT_EXTRA_CALL_CID, callId),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
+        // Always use the provided acceptCallPendingIntent (created with getActivity) so that
+        // the app process is started and MainActivity receives the ACCEPT_CALL action even
+        // when the app has been killed.
         return buildNotification(
             fullScreenPendingIntent,
-            acceptIntent,
+            acceptCallPendingIntent,
             rejectCallPendingIntent,
             callerName,
             shouldHaveContentIntent,

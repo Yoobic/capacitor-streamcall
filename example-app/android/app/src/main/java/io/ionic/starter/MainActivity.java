@@ -21,6 +21,9 @@ public class MainActivity extends BridgeActivity {
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
+    // Save initial intent for StreamCallPlugin (handles killed-state notification)
+    ee.forgr.capacitor.streamcall.StreamCallPlugin.saveInitialIntent(getIntent());
+
     super.onCreate(savedInstanceState);
 //    StreamCallPlugin pl = (new StreamCallPlugin());
 //    pl.setBridge(this.getBridge());
@@ -79,6 +82,7 @@ public class MainActivity extends BridgeActivity {
       if ("io.getstream.video.android.action.ACCEPT_CALL".equals(action)) {
           String cid = intent.getStringExtra("call-id");
           Log.d("MainActivity", "onNewIntent: ACCEPT_CALL action received with CID: " + cid);
+          ee.forgr.capacitor.streamcall.StreamCallPlugin.saveInitialIntent(intent);
           // Forward to StreamCallPlugin
           com.getcapacitor.PluginHandle pluginHandle = getBridge().getPlugin("StreamCall");
           if (pluginHandle != null) {
