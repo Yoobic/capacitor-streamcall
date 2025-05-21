@@ -71,7 +71,6 @@ public class StreamCallPlugin : Plugin() {
     private var streamVideoClient: StreamVideo? = null
     private var state: State = State.NOT_INITIALIZED
     private var overlayView: ComposeView? = null
-    private var incomingCallView: ComposeView? = null
     private var barrierView: View? = null
     private var ringtonePlayer: RingtonePlayer? = null
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -281,14 +280,7 @@ public class StreamCallPlugin : Plugin() {
 
     private fun hideIncomingCall() {
         activity?.runOnUiThread {
-            incomingCallView?.isVisible = false
-            // Stop ringtone if it's still playing
-            ringtonePlayer?.stopRinging()
-            // Check if device is locked using KeyguardManager
-            val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-            if (keyguardManager.isKeyguardLocked) {
-                activity.moveTaskToBack(true)
-            }
+            // No dedicated incoming-call native view anymore; UI handled by web layer
         }
     }
 
@@ -347,19 +339,6 @@ public class StreamCallPlugin : Plugin() {
             setBackgroundColor(Color.parseColor("#1a242c"))
         }
         parent.addView(barrierView, parent.indexOfChild(bridge?.webView) + 1) // Add above WebView
-
-        // Create and add incoming call view (above webview for incoming call UI)
-        incomingCallView = ComposeView(context).apply {
-            isVisible = false
-            layoutParams = FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
-            setContent {
-                IncomingCallView(context)
-            }
-        }
-        parent.addView(incomingCallView, parent.indexOfChild(bridge?.webView) + 2)  // Add above WebView
     }
 
     @PluginMethod
@@ -850,7 +829,7 @@ public class StreamCallPlugin : Plugin() {
                 // Hide incoming call view first
                 runOnMainThread {
                     android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Hiding incoming call view for call ${call.id}")
-                    incomingCallView?.isVisible = false
+                    // No dedicated incoming-call native view anymore; UI handled by web layer
                 }
                 android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Incoming call view hidden for call ${call.id}")
 
@@ -1180,7 +1159,7 @@ public class StreamCallPlugin : Plugin() {
 
             // Also hide incoming call view if visible
             android.util.Log.d("StreamCallPlugin", "Hiding incoming call view for call $callId")
-            incomingCallView?.isVisible = false
+            // No dedicated incoming-call native view anymore; UI handled by web layer
         }
 
         // Notify that call has ended using helper
@@ -1438,7 +1417,7 @@ public class StreamCallPlugin : Plugin() {
             android.util.Log.d("StreamCallPlugin", "Hiding UI elements for call $callCid (one-time cleanup)")
             overlayView?.isVisible = false
             ringtonePlayer?.stopRinging()
-            incomingCallView?.isVisible = false
+            // No dedicated incoming-call native view anymore; UI handled by web layer
         }
 
         android.util.Log.d("StreamCallPlugin", "Cleaned up resources for ended call: $callCid")
