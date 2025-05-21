@@ -210,30 +210,21 @@ public class StreamCallPlugin : Plugin() {
                     android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: INCOMING_CALL - cid is not null, processing.")
                     val call = streamVideoClient?.call(id = cid.id, type = cid.type)
                     android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: INCOMING_CALL - Got call object: ${call?.id}")
-                    // Start playing ringtone
+                    // Start ringtone only; UI handled in web layer
                     ringtonePlayer?.startRinging()
-                    android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: INCOMING_CALL - Started ringtone player.")
-                    // let's set a barrier. This will prevent the user from interacting with the webview while the calling screen is loading
-                    // Launch a coroutine to handle the suspend function
-                    showBarrier()
-                    android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: INCOMING_CALL - Shown barrier.")
 
-                    kotlinx.coroutines.GlobalScope.launch {
-                        android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: INCOMING_CALL - Coroutine launched for call.get()")
-                        call?.get()
-                        android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: INCOMING_CALL - call.get() completed.")
-                        activity?.runOnUiThread {
-                            android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: INCOMING_CALL - Updating UI for incoming call view.")
-                            incomingCallView?.setContent {
-                                IncomingCallView(context)
-                                // Note: We can't pass the call here directly as IncomingCallView doesn't accept it in constructor
-                                // Additional logic to set the call might be needed post initialization
-                            }
-                            incomingCallView?.isVisible = true
-                            hideBarrier()
-                            android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: INCOMING_CALL - Incoming call view visible, barrier hidden.")
+                    // Notify WebView/JS about incoming call so it can render its own UI
+                    try {
+                        val payload = com.getcapacitor.JSObject().apply {
+                            put("cid", cid.cid)
+                            put("type", "incoming")
                         }
+                        notifyListeners("incomingCall", payload, true)
+                    } catch (e: Exception) {
+                        android.util.Log.e("StreamCallPlugin", "Error notifying JS about incoming call", e)
                     }
+
+                    bringAppToForeground()
                 } else {
                     android.util.Log.w("StreamCallPlugin", "handleOnNewIntent: INCOMING_CALL - cid is null. Cannot process.")
                 }

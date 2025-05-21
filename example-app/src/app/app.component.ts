@@ -21,6 +21,8 @@ export class AppComponent {
   activeCamera: 'front' | 'back' = 'front';
   incomingCallId: string | null = null;
   incomingToast: HTMLIonToastElement | null = null;
+  /** Lock-screen incoming call flag (Android) */
+  isLockscreenIncoming = false;
 
   async endCall() {
     await StreamCall.endCall();
@@ -143,6 +145,7 @@ export class AppComponent {
     StreamCall.addListener('callEvent', async(event) => {
       if (event.state === 'joined') {
         this.isInCall = true;
+        this.isLockscreenIncoming = false;
         console.log('Call started', event);
         setTimeout(async () => {
           await this.incomingToast?.dismiss();
@@ -153,6 +156,7 @@ export class AppComponent {
         }, 1000);
       } else if (event.state === 'left') {
         this.isInCall = false;
+        this.isLockscreenIncoming = false;
         console.log('Call ended', event);
         await this.presentToast('Call ended', 'success', 'bottom');
         this.cdr.detectChanges();
@@ -183,5 +187,15 @@ export class AppComponent {
         }
       }
     });
+
+    // Android lock-screen full-screen intent
+    if (Capacitor.getPlatform() === 'android') {
+      StreamCall.addListener('incomingCall', async (payload: any) => {
+        console.log('[incomingCall] lock-screen payload', payload);
+        this.incomingCallId = payload.cid;
+        this.isLockscreenIncoming = true;
+        this.cdr.detectChanges();
+      });
+    }
   }
 }

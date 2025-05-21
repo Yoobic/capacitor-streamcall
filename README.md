@@ -128,6 +128,7 @@ The SDK will automatically use the system language and these translations.
 * [`setMicrophoneEnabled(...)`](#setmicrophoneenabled)
 * [`setCameraEnabled(...)`](#setcameraenabled)
 * [`addListener('callEvent', ...)`](#addlistenercallevent-)
+* [`addListener('incomingCall', ...)`](#addlistenerincomingcall-)
 * [`removeAllListeners()`](#removealllisteners)
 * [`acceptCall()`](#acceptcall)
 * [`rejectCall()`](#rejectcall)
@@ -250,6 +251,25 @@ Add listener for call events
 | ------------------ | ------------------------------------------------------------------- | --------------------------------- |
 | **`eventName`**    | <code>'callEvent'</code>                                            | - Name of the event to listen for |
 | **`listenerFunc`** | <code>(event: <a href="#callevent">CallEvent</a>) =&gt; void</code> | - Callback function               |
+
+**Returns:** <code>Promise&lt;{ remove: () =&gt; Promise&lt;void&gt;; }&gt;</code>
+
+--------------------
+
+
+### addListener('incomingCall', ...)
+
+```typescript
+addListener(eventName: 'incomingCall', listenerFunc: (event: IncomingCallPayload) => void) => Promise<{ remove: () => Promise<void>; }>
+```
+
+Listen for lock-screen incoming call (Android only).
+Fired when the app is shown by full-screen intent before user interaction.
+
+| Param              | Type                                                                                    |
+| ------------------ | --------------------------------------------------------------------------------------- |
+| **`eventName`**    | <code>'incomingCall'</code>                                                             |
+| **`listenerFunc`** | <code>(event: <a href="#incomingcallpayload">IncomingCallPayload</a>) =&gt; void</code> |
 
 **Returns:** <code>Promise&lt;{ remove: () =&gt; Promise&lt;void&gt;; }&gt;</code>
 
@@ -584,6 +604,14 @@ The JSON representation for <a href="#listvalue">`ListValue`</a> is JSON array.
 | --------------- | ------------------- | ------------------------------------------------------------------- |
 | **`userId`**    | <code>string</code> | the user to pin                                                     |
 | **`sessionId`** | <code>string</code> | the user sesion_id to pin, if not provided, applies to all sessions |
+
+
+#### IncomingCallPayload
+
+| Prop       | Type                    | Description                              |
+| ---------- | ----------------------- | ---------------------------------------- |
+| **`cid`**  | <code>string</code>     | Full call CID (e.g. default:123)         |
+| **`type`** | <code>'incoming'</code> | Event type (currently always "incoming") |
 
 
 #### CameraEnabledResponse

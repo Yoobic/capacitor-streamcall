@@ -1,4 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <application>
 
           <service
@@ -13,22 +14,6 @@
               </intent-filter>
           </service>
 
-        <activity  android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation"
-            android:name=".MainActivity"
-            android:label="@string/title_activity_main"
-            android:theme="@style/AppTheme.NoActionBarLaunch"
-            android:launchMode="singleTask"
-            android:showOnLockScreen="true"
-            android:showWhenLocked="true"
-            android:exported="true">
-            <intent-filter android:priority="1" >
-                <action android:name="io.getstream.video.android.action.INCOMING_CALL" />
-                <action android:name="io.getstream.video.android.action.ONGOING_CALL" />
-                <action android:name="io.getstream.video.android.action.ACCEPT_CALL" />
-                <action android:name="io.getstream.video.android.action.OUTGOING_CALL" />
-                <action android:name="io.getstream.video.android.action.NOTIFICATION" />
-            </intent-filter>
-        </activity>
         <service
             android:name="ee.forgr.capacitor.streamcall.StreamCallBackgroundService"
             android:enabled="true"

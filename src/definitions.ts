@@ -189,6 +189,15 @@ export interface StreamCallPlugin {
   ): Promise<{ remove: () => Promise<void> }>;
 
   /**
+   * Listen for lock-screen incoming call (Android only).
+   * Fired when the app is shown by full-screen intent before user interaction.
+   */
+  addListener(
+    eventName: 'incomingCall',
+    listenerFunc: (event: IncomingCallPayload) => void,
+  ): Promise<{ remove: () => Promise<void> }>;
+
+  /**
    * Remove all event listeners
    * @returns {Promise<void>}
    * @example
@@ -247,4 +256,17 @@ export interface StreamCallPlugin {
    * await StreamCall.switchCamera({ camera: 'back' });
    */
   switchCamera(options: { camera: 'front' | 'back' }): Promise<SuccessResponse>;
+}
+
+/**
+ * @interface IncomingCallPayload
+ * @description Payload delivered with "incomingCall" event (Android lock-screen).
+ * @property {string} cid - Call CID (type:id)
+ * @property {string} type - Always "incoming" for this event
+ */
+export interface IncomingCallPayload {
+  /** Full call CID (e.g. default:123) */
+  cid: string;
+  /** Event type (currently always "incoming") */
+  type: 'incoming';
 }

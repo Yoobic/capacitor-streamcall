@@ -42,6 +42,14 @@ public class MainActivity extends BridgeActivity {
     // Log the initial intent
     Intent intent = getIntent();
     logIntent(intent);
+
+    // Ensure the activity is visible over the lock screen when launched via full-screen intent
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
+      setShowWhenLocked(true);
+      setTurnScreenOn(true);
+    } else {
+      getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED | android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+    }
   }
 
   @Override
@@ -80,21 +88,36 @@ public class MainActivity extends BridgeActivity {
       String action = intent.getAction();
       Log.d("MainActivity", "onNewIntent: Received intent with action: " + action);
       if ("io.getstream.video.android.action.ACCEPT_CALL".equals(action)) {
-          String cid = intent.getStringExtra("call-id");
-          Log.d("MainActivity", "onNewIntent: ACCEPT_CALL action received with CID: " + cid);
-          ee.forgr.capacitor.streamcall.StreamCallPlugin.saveInitialIntent(intent);
-          // Forward to StreamCallPlugin
-          com.getcapacitor.PluginHandle pluginHandle = getBridge().getPlugin("StreamCall");
-          if (pluginHandle != null) {
-              com.getcapacitor.Plugin pluginInstance = pluginHandle.getInstance();
-              if (pluginInstance instanceof ee.forgr.capacitor.streamcall.StreamCallPlugin) {
-                  Log.d("MainActivity", "onNewIntent: Forwarding ACCEPT_CALL to StreamCallPlugin");
-                  ((ee.forgr.capacitor.streamcall.StreamCallPlugin) pluginInstance).handleAcceptCallIntent(intent);
-              } else {
-                  Log.e("MainActivity", "onNewIntent: StreamCallPlugin instance not found or invalid");
-              }
+          Log.d("MainActivity", "onNewIntent: ACCEPT_CALL action received");
+
+          android.app.KeyguardManager km = (android.app.KeyguardManager) getSystemService(KEYGUARD_SERVICE);
+          if (km != null && km.isKeyguardLocked()) {
+              Log.d("MainActivity", "Device is locked – requesting dismiss before handling call");
+              km.requestDismissKeyguard(this, new android.app.KeyguardManager.KeyguardDismissCallback() {
+                  @Override
+                  public void onDismissSucceeded() {
+                      Log.d("MainActivity", "Keyguard dismissed, forwarding intent to StreamCallPlugin");
+                      forwardAcceptIntent(intent);
+                  }
+
+                  @Override
+                  public void onDismissCancelled() {
+                      Log.d("MainActivity", "Keyguard dismiss cancelled");
+                  }
+              });
           } else {
-              Log.e("MainActivity", "onNewIntent: StreamCallPlugin handle not found");
+              forwardAcceptIntent(intent);
+          }
+      }
+  }
+
+  private void forwardAcceptIntent(Intent intent) {
+      ee.forgr.capacitor.streamcall.StreamCallPlugin.saveInitialIntent(intent);
+      PluginHandle pluginHandle = getBridge().getPlugin("StreamCall");
+      if (pluginHandle != null) {
+          com.getcapacitor.Plugin pluginInstance = pluginHandle.getInstance();
+          if (pluginInstance instanceof ee.forgr.capacitor.streamcall.StreamCallPlugin) {
+              ((ee.forgr.capacitor.streamcall.StreamCallPlugin) pluginInstance).handleAcceptCallIntent(intent);
           }
       }
   }

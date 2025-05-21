@@ -36,7 +36,7 @@ class CustomNotificationHandler(
     ): Notification? {
         Log.d("CustomNotificationHandler", "getRingingCallNotification called: ringingState=$ringingState, callId=$callId, callDisplayName=$callDisplayName, shouldHaveContentIntent=$shouldHaveContentIntent")
         return if (ringingState is RingingState.Incoming) {
-            val fullScreenPendingIntent = intentResolver.searchIncomingCallPendingIntent(callId)
+            // Note: we create our own fullScreenPendingIntent later based on acceptCallPendingIntent
 
             // Get the main launch intent for the application
             val launchIntent = application.packageManager.getLaunchIntentForPackage(application.packageName)
@@ -48,8 +48,26 @@ class CustomNotificationHandler(
                 Log.e("CustomNotificationHandler", "Could not get launch intent for package: ${application.packageName}. This is problematic for creating explicit intents.")
             }
 
+            // Intent to simply bring the app to foreground and show incoming-call UI (no auto accept)
+            val incomingIntentAction = "io.getstream.video.android.action.INCOMING_CALL"
+            val incomingCallIntent = Intent(incomingIntentAction)
+                .putExtra(NotificationHandler.INTENT_EXTRA_CALL_CID, callId)
+                .setPackage(application.packageName)
+            if (targetComponent != null) incomingCallIntent.component = targetComponent
+            incomingCallIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+
+            // Use the app's MainActivity intent so webview loads; user sees app UI
+            val requestCodeFull = callId.cid.hashCode()
+            val fullScreenPendingIntent = PendingIntent.getActivity(
+                application,
+                requestCodeFull,
+                incomingCallIntent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+
             val acceptCallAction = NotificationHandler.ACTION_ACCEPT_CALL
             val acceptCallIntent = Intent(acceptCallAction)
+                // Pass full Parcelable so both new and old handlers succeed
                 .putExtra(NotificationHandler.INTENT_EXTRA_CALL_CID, callId)
                 .setPackage(application.packageName)
 
