@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.31](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.30...0.0.31) (2025-05-22)
+
+
+### Bug Fixes
+
+* reset state of call each time join ([1415d0f](https://github.com/Cap-go/capacitor-streamcall/commit/1415d0fdd6f32a33fd2c01cd73490a734993aa58))
+
 ### [0.0.30](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.29...0.0.30) (2025-05-22)
 
 
