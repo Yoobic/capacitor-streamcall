@@ -1,4 +1,6 @@
 import UIKit
+import os.log
+import WebKit
 
 class TouchInterceptView: UIView {
     private weak var webView: UIView?
@@ -11,58 +13,119 @@ class TouchInterceptView: UIView {
         // Ensure this view is transparent and doesn't interfere with display
         self.backgroundColor = .clear
         self.isOpaque = false
-        // print("TouchInterceptView setup with webView: \(webView) and overlayView: \(overlayView)")
+        os_log(.debug, "TouchInterceptView: setupWithWebView - webView: %{public}s, overlayView: %{public}s", String(describing: webView), String(describing: overlayView))
     }
     
-    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        guard let webView = webView, let overlayView = overlayView, overlayView.isHidden == false else {
-            // print("hitTest: Conditions not met - webView: \(webView?.description ?? "nil"), overlayView: \(overlayView?.description ?? "nil"), overlayHidden: \(overlayView?.isHidden ?? true)")
-            return super.hitTest(point, with: event)
-        }
-        
-        // First, check if the webview has a specific subview to interact with at this point
-        let webViewHit = webView.hitTest(point, with: event)
-        if webViewHit != nil && webViewHit != webView {
-            // Check if the hit view is a specific interactive element (like a button)
-            if webViewHit is UIButton || webViewHit?.accessibilityTraits.contains(.button) == true {
-                // print("hitTest: WebView interactive element hit at point \(point) - returning \(webViewHit?.description ?? "nil")")
-                return webViewHit
-            } else {
-                // print("hitTest: WebView hit at point \(point) but not an interactive element - passing through")
+    private func isInteractive(_ view: UIView) -> Bool {
+        if view is UIControl { return true }
+        if let grs = view.gestureRecognizers, !grs.isEmpty { return true }
+        return false
+    }
+
+    private func nonGreedyInteractiveHitTest(in view: UIView, point: CGPoint, with event: UIEvent?) -> UIView? {
+        // Traverse subviews in reverse order (frontmost first)
+        for subview in view.subviews.reversed() where subview.isUserInteractionEnabled && !subview.isHidden && subview.alpha >= 0.01 {
+            let converted = view.convert(point, to: subview)
+            if subview.point(inside: converted, with: event) {
+                if let hit = nonGreedyInteractiveHitTest(in: subview, point: converted, with: event) {
+                    return hit
+                }
             }
-        } else {
-            // print("hitTest: No WebView hit at point \(point) - passing through")
         }
-        
-        // If no specific interactive element in webview is hit, pass through to overlay (StreamCall UI)
-        let overlayHit = overlayView.hitTest(point, with: event)
-        if overlayHit != nil {
-            // print("hitTest: Overlay hit at point \(point) - returning \(overlayHit?.description ?? "nil")")
-            return overlayHit
+        // If no subview handled, return view itself only if truly interactive
+        return isInteractive(view) && view.point(inside: point, with: event) ? view : nil
+    }
+
+    private func forwardClickToWeb(at pointInSelf: CGPoint) {
+        guard let wk = webView as? WKWebView else { return }
+        let locationInWeb = self.convert(pointInSelf, to: wk)
+        let x = Int(locationInWeb.x)
+        let y = Int(locationInWeb.y)
+        let js = """
+        (() => {
+            const x = \(x); const y = \(y);
+            const el = document.elementFromPoint(x, y);
+            if (!el) return 'NO_ELEM';
+            const eventInit = { bubbles: true, cancelable: true, clientX: x, clientY: y };
+            const touchInit = { bubbles: true, cancelable: true, touches: [{ clientX: x, clientY: y }], targetTouches: [], changedTouches: [], shiftKey: false };
+            const seq = [];
+            try {
+                seq.push(new TouchEvent('touchstart', touchInit));
+            } catch(e) { console.log('TouchEvent not supported', e); }
+            seq.push(new PointerEvent('pointerdown', { ...eventInit, pointerType: 'touch' }));
+            seq.push(new MouseEvent('mousedown', eventInit));
+            try {
+                seq.push(new TouchEvent('touchend', touchInit));
+            } catch(e) { }
+            seq.push(new PointerEvent('pointerup', { ...eventInit, pointerType: 'touch' }));
+            seq.push(new MouseEvent('mouseup', eventInit));
+            seq.push(new MouseEvent('click', eventInit));
+            seq.forEach(evt => el.dispatchEvent(evt));
+            console.log('SyntheticClick seq on', el);
+            return el.tagName;
+        })();
+        """
+        os_log(.debug, "TouchInterceptView: forwardClickToWeb - (%{public}d,%{public}d)", x, y)
+        wk.evaluateJavaScript(js) { result, error in
+            if let error = error {
+                os_log(.error, "TouchInterceptView: JS error %{public}s", String(describing: error))
+            } else {
+                os_log(.debug, "TouchInterceptView: JS returned %{public}s", String(describing: result))
+            }
         }
-        
-        // If neither webview nor overlay handles the touch, return nil to pass through
-        // print("hitTest: No hit at point \(point) - returning nil")
+    }
+
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        // Forward to web for debugging every touch point
+        os_log(.debug, "TouchInterceptView: hitTest entry at %{public}s. Forwarding click to web.", String(describing: point))
+        forwardClickToWeb(at: point)
+        // 1. interactive hit on overlay (including root)
+        if let overlayView = self.overlayView, !overlayView.isHidden {
+            let overlayPoint = self.convert(point, to: overlayView)
+            if let overlayHit = nonGreedyInteractiveHitTest(in: overlayView, point: overlayPoint, with: event) {
+                os_log(.debug, "TouchInterceptView: hitTest - Overlay view %{public}s at %{public}s", String(describing: overlayHit), String(describing: overlayPoint))
+                return overlayHit
+            }
+        }
+        // 2. webView fallback
+        if let webView = self.webView {
+            let webPoint = self.convert(point, to: webView)
+            let result = webView.hitTest(webPoint, with: event)
+            os_log(.debug, "TouchInterceptView: hitTest - WebView result %{public}s at %{public}s", String(describing: result), String(describing: webPoint))
+            return result
+        }
+        os_log(.debug, "TouchInterceptView: hitTest - No view found for %{public}s", String(describing: point))
         return nil
     }
     
     override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
-        guard let webView = webView, let overlayView = overlayView, overlayView.isHidden == false else {
-            // print("point(inside:with): Conditions not met - webView: \(webView?.description ?? "nil"), overlayView: \(overlayView?.description ?? "nil"), overlayHidden: \(overlayView?.isHidden ?? true)")
-            return false
+        guard let webView = self.webView else {
+            os_log(.debug, "TouchInterceptView: point(inside) - webView is nil for point %{public}s. Checking overlay or deferring to super.", String(describing: point))
+            if let overlayView = self.overlayView, !overlayView.isHidden {
+                let overlayPoint = self.convert(point, to: overlayView)
+                let overlayViewConsidersPointInside = overlayView.point(inside: overlayPoint, with: event)
+                os_log(.debug, "TouchInterceptView: point(inside) - webView nil. Overlay (%{public}s) for converted point %{public}s = %s", String(describing: overlayViewConsidersPointInside), String(describing: overlayPoint), String(describing: overlayViewConsidersPointInside))
+                return overlayViewConsidersPointInside
+            }
+            return super.point(inside: point, with: event)
         }
-        // Check if webview has content at this point
-        if webView.point(inside: point, with: event) {
-            // If webview claims the point, check for interactive elements in hitTest
-            // print("point(inside:with): WebView claims point \(point) - will check for interactive elements")
-            return true
+        
+        let webViewPoint = self.convert(point, to: webView)
+        let webViewConsidersPointInside = webView.point(inside: webViewPoint, with: event)
+        
+        if let overlayView = self.overlayView, !overlayView.isHidden {
+            let overlayPoint = self.convert(point, to: overlayView)
+            let overlayViewConsidersPointInside = overlayView.point(inside: overlayPoint, with: event)
+            let result = webViewConsidersPointInside || overlayViewConsidersPointInside
+            os_log(.debug, "TouchInterceptView: point(inside) - WebView (%{public}s at %{public}s) OR Visible Overlay (%{public}s at %{public}s) for original point %{public}s = %s", String(describing: webViewConsidersPointInside), String(describing: webViewPoint), String(describing: overlayViewConsidersPointInside), String(describing: overlayPoint), String(describing: point), String(describing: result))
+            return result
+        } else {
+            if self.overlayView == nil {
+                 os_log(.debug, "TouchInterceptView: point(inside) - Overlay nil. WebView (%{public}s at %{public}s) for original point %{public}s = %s", String(describing: webViewConsidersPointInside), String(describing: webViewPoint), String(describing: point), String(describing: webViewConsidersPointInside))
+            } else {
+                 os_log(.debug, "TouchInterceptView: point(inside) - Overlay hidden. WebView (%{public}s at %{public}s) for original point %{public}s = %s", String(describing: webViewConsidersPointInside), String(describing: webViewPoint), String(describing: point), String(describing: webViewConsidersPointInside))
+            }
+            return webViewConsidersPointInside
         }
-        // Otherwise, allow touches to pass through to the overlay if relevant
-        if overlayView.point(inside: point, with: event) {
-            // print("point(inside:with): Overlay claims point \(point)")
-            return true
-        }
-        // print("point(inside:with): No view claims point \(point)")
-        return false
     }
 } 
