@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.28](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.27...0.0.28) (2025-05-22)
+
+
+### Features
+
+* try to improve new_android ([90b4f84](https://github.com/Cap-go/capacitor-streamcall/commit/90b4f84a700a11a7d2285a1a09fdbc71ad400f8e))
+
+
+### Bug Fixes
+
+* add more users for test ([23e2b97](https://github.com/Cap-go/capacitor-streamcall/commit/23e2b977ebbcd3a912feb41a47abf44b9106194b))
+* android design + remove tab and move notifs bototm ([49b1892](https://github.com/Cap-go/capacitor-streamcall/commit/49b1892a10dfcb68e17e5886982a58e7cfaccd97))
+* join a call ([87bf92b](https://github.com/Cap-go/capacitor-streamcall/commit/87bf92ba93e8fa0541bedf87f19ae76083325f7b))
+* join issue ([514564c](https://github.com/Cap-go/capacitor-streamcall/commit/514564ce65d0da5d20d14eef99b2453b6c909c23))
+* killed or locked android ([15dd89b](https://github.com/Cap-go/capacitor-streamcall/commit/15dd89b67da9d1f9fbd788b9fff691896d80de52))
+* make call work in kill ([95db358](https://github.com/Cap-go/capacitor-streamcall/commit/95db3582a08adf67b2661c3a0d8475d3f9659b2b))
+* make notif from lockscreen work ! ([ba2af63](https://github.com/Cap-go/capacitor-streamcall/commit/ba2af639acd250aef163577b23fc7f4491071840))
+* remove useless component ([2f4dc9c](https://github.com/Cap-go/capacitor-streamcall/commit/2f4dc9c2566491d11fae89aba1a5d48a1c51b1d3))
+* remove uselss import ([660c852](https://github.com/Cap-go/capacitor-streamcall/commit/660c8524e851de079575aba78c0d9545f2ffdfa1))
+
 ### [0.0.27](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.26...0.0.27) (2025-05-15)
 
 
