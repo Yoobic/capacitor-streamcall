@@ -16,16 +16,16 @@ class TouchInterceptWrapper(private val originalViewGroup: ViewGroup) : Coordina
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
-        // Broadcast to all children first
-        for (i in 0 until childCount) {
+        // Traverse children from top (highest z) to bottom
+        for (i in childCount - 1 downTo 0) {
             val child = getChildAt(i)
             if (child.visibility == VISIBLE) {
-                val eventCopy = MotionEvent.obtain(ev)
-                child.dispatchTouchEvent(eventCopy)
-                eventCopy.recycle()
+                val copy = MotionEvent.obtain(ev)
+                val handled = child.dispatchTouchEvent(copy)
+                copy.recycle()
+                if (handled) return true
             }
         }
-        // Then let the normal touch handling occur
-        return super.dispatchTouchEvent(ev)
+        return false
     }
 }

@@ -298,7 +298,20 @@ public class StreamCallPlugin : Plugin() {
 
     private fun setupViews() {
         val context = context
-        val parent = bridge?.webView?.parent as? ViewGroup ?: return
+        val originalParent = bridge?.webView?.parent as? ViewGroup ?: return
+
+        // Wrap original parent with TouchInterceptWrapper to allow touch passthrough
+        val rootParent = originalParent.parent as? ViewGroup
+        val indexInRoot = rootParent?.indexOfChild(originalParent) ?: -1
+        if (rootParent != null && indexInRoot >= 0) {
+            rootParent.removeViewAt(indexInRoot)
+            touchInterceptWrapper = TouchInterceptWrapper(originalParent).apply {
+                setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            }
+            rootParent.addView(touchInterceptWrapper, indexInRoot)
+        }
+
+        val parent: ViewGroup = touchInterceptWrapper ?: originalParent
 
         // Make WebView initially visible and opaque
         bridge?.webView?.setBackgroundColor(Color.WHITE) // Or whatever background color suits your app
@@ -323,11 +336,6 @@ public class StreamCallPlugin : Plugin() {
             }
         }
         parent.addView(overlayView, 0)  // Add at index 0 to ensure it's below WebView
-
-        // touchInterceptWrapper = TouchInterceptWrapper(parent).apply {
-        //     setBackgroundColor(android.graphics.Color.TRANSPARENT)
-        // }
-        // No need to add to parent as TouchInterceptWrapper handles its own children
 
         // Create barrier view (above webview for blocking interaction during call setup)
         barrierView = View(context).apply {
