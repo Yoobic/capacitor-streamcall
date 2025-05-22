@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.30](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.29...0.0.30) (2025-05-22)
+
+
+### Bug Fixes
+
+* touch event android ([965ed90](https://github.com/Cap-go/capacitor-streamcall/commit/965ed90a7c2f74539035d6e3f8b2b787a13fedef))
+* touch intercept in Android ([1303821](https://github.com/Cap-go/capacitor-streamcall/commit/13038215007523750b7198d2835ca2790887e65b))
+
 ### [0.0.29](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.28...0.0.29) (2025-05-22)
 
 
