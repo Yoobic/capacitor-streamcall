@@ -163,7 +163,7 @@ class CustomNotificationHandler(
         return getNotification {
             priority = NotificationCompat.PRIORITY_HIGH
             setContentTitle(callerName)
-            setContentText("Incoming call toto")
+            setContentText("Incoming call")
             setChannelId(channelId)
             setOngoing(true)
             setAutoCancel(false)
