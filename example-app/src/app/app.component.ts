@@ -145,6 +145,9 @@ export class AppComponent {
     StreamCall.addListener('callEvent', async(event) => {
       if (event.state === 'joined') {
         this.isInCall = true;
+        this.isCameraOff = false;
+        this.isMuted = false;
+        this.isSpeakerOn = true;
         this.isLockscreenIncoming = false;
         console.log('Call started', event);
         setTimeout(async () => {
