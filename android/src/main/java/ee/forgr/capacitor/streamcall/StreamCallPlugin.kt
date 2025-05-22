@@ -63,6 +63,7 @@ import io.getstream.video.android.core.CameraDirection
 import android.content.BroadcastReceiver
 import android.content.Intent
 import android.content.IntentFilter
+import io.getstream.android.video.generated.models.CallSessionParticipantLeftEvent
 
 // I am not a religious pearson, but at this point, I am not sure even god himself would understand this code
 // It's a spaghetti-like, tangled, unreadable mess and frankly, I am deeply sorry for the code crimes commited in the Android impl
@@ -705,6 +706,24 @@ public class StreamCallPlugin : Plugin() {
                         updateCallStatusAndNotify(event.callCid, "left")
                     }
 
+                    is CallSessionParticipantLeftEvent -> {
+                        val activeCall = streamVideoClient?.state?.activeCall?.value
+                        android.util.Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: Received for call ${event.callCid}. User left: ${event.participant?.user?.id}. Active call: ${activeCall?.cid}")
+                        if (activeCall != null && activeCall.cid == event.callCid) {
+                            // It's crucial to check the participant count *after* the event has been processed by the SDK's state
+                            // We might need a small delay or rely on a subsequent state update if the count isn't immediately reflective.
+                            // However, for now, let's try checking it directly.
+                            val totalParticipants = activeCall.state.participantCounts.value?.total
+                            android.util.Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: Current total participants in active call ${activeCall.cid}: $totalParticipants")
+                            if (totalParticipants == 1) { // Current user is the only one left
+                                android.util.Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: Local user is the last participant in call ${activeCall.cid}. Ending call.")
+                                kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
+                                    endCallRaw(activeCall)
+                                }
+                            }
+                        }
+                    }
+
                     else -> {
                         updateCallStatusAndNotify(
                             streamVideoClient?.state?.activeCall?.value?.cid ?: "",
@@ -726,7 +745,8 @@ public class StreamCallPlugin : Plugin() {
                         android.util.Log.d("StreamCallPlugin", "- All participants: ${state.participants}")
                         android.util.Log.d("StreamCallPlugin", "- Remote participants: ${state.remoteParticipants}")
 
-                        // Notify that a call has started using our helper
+                        // Notify that a call has started or state updated (e.g., participants changed but still active)
+                        // The actual check for "last participant" is now handled by CallSessionParticipantLeftEvent
                         updateCallStatusAndNotify(call.cid, "joined")
                     } ?: run {
                         // Notify that call has ended using our helper
