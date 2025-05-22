@@ -709,18 +709,22 @@ public class StreamCallPlugin : Plugin() {
                     is CallSessionParticipantLeftEvent -> {
                         val activeCall = streamVideoClient?.state?.activeCall?.value
                         android.util.Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: Received for call ${event.callCid}. User left: ${event.participant?.user?.id}. Active call: ${activeCall?.cid}")
+
                         if (activeCall != null && activeCall.cid == event.callCid) {
-                            // It's crucial to check the participant count *after* the event has been processed by the SDK's state
-                            // We might need a small delay or rely on a subsequent state update if the count isn't immediately reflective.
-                            // However, for now, let's try checking it directly.
-                            val totalParticipants = activeCall.state.participantCounts.value?.total
-                            android.util.Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: Current total participants in active call ${activeCall.cid}: $totalParticipants")
-                            if (totalParticipants == 1) { // Current user is the only one left
-                                android.util.Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: Local user is the last participant in call ${activeCall.cid}. Ending call.")
+                            // Directly check remote participants after a left event for the active call
+                            val remoteParticipants = activeCall.state.remoteParticipants.value
+                            android.util.Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: Active call ${activeCall.cid}, remote participants count: ${remoteParticipants.size}")
+
+                            if (remoteParticipants.isEmpty()) {
+                                android.util.Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: All remote participants have left call ${activeCall.cid}. Ending call.")
                                 kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
                                     endCallRaw(activeCall)
                                 }
+                            } else {
+                                android.util.Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: Remote participants still present in call ${activeCall.cid}. Count: ${remoteParticipants.size}")
                             }
+                        } else {
+                            android.util.Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: Conditions not met (activeCall null, or cid mismatch, or local user not joined). ActiveCall CID: ${activeCall?.cid}, Event CID: ${event.callCid}")
                         }
                     }
 
