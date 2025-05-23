@@ -6,8 +6,7 @@
   <h2><a href="https://capgo.app/consulting/?ref=plugin"> Fix your annoying bug now, Hire a Capacitor expert 💪</a></h2>
 </div>
 
-WIP: We are actively working on this plugin. not yet ready for production.
-Uses the https://getstream.io/ SDK to implement calling in Capacitor
+Uses the https://getstream.io/ native SDK to implement calling in Capacitor
 
 ## Install
 
