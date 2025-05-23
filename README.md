@@ -116,6 +116,50 @@ You can find all available localization keys in the [StreamVideo SDK repository]
 
 The SDK will automatically use the system language and these translations.
 
+To receive all on Android from lockscreen you need to listen to specific event `incomingCall`:
+
+Here is one exemple in angular from our demo app:
+
+```ts
+StreamCall.addListener('incomingCall', async (payload: any) => {
+    console.log('[incomingCall] lock-screen payload', payload);
+    this.incomingCallId = payload.cid;
+    this.isLockscreenIncoming = true;
+    this.cdr.detectChanges();
+});
+```
+This will allow you to display a custom call screen and then enter or reject the call with :
+
+```ts
+  async acceptCall() {
+    if (!this.incomingCallId) return;
+    
+    try {
+      await StreamCall.acceptCall();
+      await this.presentToast('Call accepted', 'success');
+    } catch (error) {
+      console.error('Failed to accept call:', error);
+      await this.presentToast('Failed to accept call', 'danger');
+    }
+  }
+
+  async rejectCall() {
+    if (!this.incomingCallId) return;
+    
+    try {
+      await StreamCall.rejectCall();
+      this.incomingCallId = null;
+      await this.presentToast('Call rejected', 'success');
+    } catch (error) {
+      console.error('Failed to reject call:', error);
+      await this.presentToast('Failed to reject call', 'danger');
+    }
+  }
+```
+This is the only way we found to allow the app to use the same UI when phone is lock for the video call.
+This can be done that way only on Android on IOS this part is handle by the OS.
+
+
 ## API
 
 <docgen-index>
