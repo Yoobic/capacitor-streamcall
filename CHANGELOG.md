@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.34](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.33...0.0.34) (2025-05-23)
+
+
+### Bug Fixes
+
+* touch event on ios ([6d93220](https://github.com/Cap-go/capacitor-streamcall/commit/6d93220818baeb16e0f0dedeae521a408b5f432a))
+
 ### [0.0.33](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.32...0.0.33) (2025-05-22)
 
 
