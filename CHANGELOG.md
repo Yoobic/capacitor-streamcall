@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.47](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.46...0.0.47) (2025-05-28)
+
+
+### Bug Fixes
+
+* adjust button positioning during call and ensure consistent call termination logic ([72e8950](https://github.com/Cap-go/capacitor-streamcall/commit/72e8950cecbdc25431808c10d160e92fcd1f0844))
+
 ### [0.0.46](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.45...0.0.46) (2025-05-28)
 
 
