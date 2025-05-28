@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.46](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.45...0.0.46) (2025-05-28)
+
+
+### Features
+
+* improve call termination logic by determining whether to end or leave based on participant count and creator status ([820cf07](https://github.com/Cap-go/capacitor-streamcall/commit/820cf079d8ee69052a0c6efb240bd871b132bd80))
+
 ### [0.0.45](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.44...0.0.45) (2025-05-28)
 
 
