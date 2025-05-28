@@ -26,6 +26,8 @@ export class AppComponent {
   isLockscreenIncoming = false;
   /** Outgoing call flag */
   isOutgoingCall = false;
+  /** Caller information for incoming calls */
+  callerInfo: { userId: string; name?: string; imageURL?: string } | null = null;
 
   async endCall() {
     await StreamCall.endCall();
@@ -128,35 +130,6 @@ export class AppComponent {
     await this.outgoingToast.present();
   }
 
-
-  private async presentIncomingCallToast() {
-    if (this.incomingToast) {
-      await this.incomingToast.dismiss();
-    }
-    this.incomingToast = await this.toastController.create({
-      message: 'Incoming call...',
-      position: 'top',
-      buttons: [
-        {
-          side: 'start',
-          icon: 'call',
-          handler: () => {
-            void this.acceptCall();
-          }
-        },
-        {
-          side: 'end',
-          icon: 'close',
-          handler: () => {
-            void this.rejectCall();
-          }
-        }
-      ],
-      duration: 0
-    });
-    await this.incomingToast.present();
-  }
-
   ngOnInit() {
     console.log('Making app transparent and initializing StreamCall');
     StreamCall.removeAllListeners();
@@ -178,7 +151,7 @@ export class AppComponent {
     document.head.appendChild(styleElement);
 
     // register event listeners
-    StreamCall.addListener('callEvent', async(event) => {
+    StreamCall.addListener('callEvent', async(event: any) => {
       if (event.state === 'joined') {
         this.isInCall = true;
         this.isCameraOff = false;
@@ -186,6 +159,7 @@ export class AppComponent {
         this.isSpeakerOn = true;
         this.isLockscreenIncoming = false;
         this.isOutgoingCall = false;
+        this.callerInfo = null; // Clear caller info when call starts
         console.log('Call started', event);
         setTimeout(async () => {
           await this.incomingToast?.dismiss();
@@ -199,12 +173,14 @@ export class AppComponent {
         this.isInCall = false;
         this.isLockscreenIncoming = false;
         this.isOutgoingCall = false;
+        this.callerInfo = null; // Clear caller info when call ends
         console.log('Call ended', event);
         await this.presentToast('Call ended', 'success', 'bottom');
         this.cdr.detectChanges();
       } else if (event.state === 'rejected') {
         //this.isInCall = false;
         this.isOutgoingCall = false;
+        this.callerInfo = null; // Clear caller info when call is rejected
         await this.incomingToast?.dismiss();
         console.log('Call rejected', event);
         await this.presentToast('Call rejected', 'success', 'bottom');
@@ -213,9 +189,13 @@ export class AppComponent {
       } else if (event.state === 'ringing') {
         //if (Capacitor.getPlatform() === 'web') {
         this.incomingCallId = event.callId;
-        if(!Capacitor.isNativePlatform()) {
-          // on web, we need to show a toast to accept or reject the call
-          await this.presentIncomingCallToast();
+        // Extract caller information if available
+        if (event.caller) {
+          this.callerInfo = {
+            userId: event.caller.userId,
+            name: event.caller.name,
+            imageURL: event.caller.imageURL
+          };
         }
         this.cdr.detectChanges();
         // }
@@ -227,6 +207,7 @@ export class AppComponent {
         await this.presentToast('Call rejected or missed by all participants', 'success');
         this.isInCall = false;
         this.isOutgoingCall = false;
+        this.callerInfo = null;
         this.cdr.detectChanges();
       } else {
         if (Capacitor.getPlatform() !== 'ios') {
@@ -242,6 +223,14 @@ export class AppComponent {
       StreamCall.addListener('incomingCall', async (payload: any) => {
         console.log('[incomingCall] lock-screen payload', payload);
         this.incomingCallId = payload.cid;
+        // Extract caller information if available
+        if (payload.caller) {
+          this.callerInfo = {
+            userId: payload.caller.userId,
+            name: payload.caller.name,
+            imageURL: payload.caller.imageURL
+          };
+        }
         this.isLockscreenIncoming = true;
         this.cdr.detectChanges();
       });

@@ -140,123 +140,96 @@ Add string resources for different languages:
 </resources>
 ```
 
-## Usage
+## Displaying Caller Information
 
-### Handling Incoming Calls (Android)
-On Android, to handle incoming calls when the device is locked, you need to listen for the `incomingCall` event and manage the call state properly:
+When receiving incoming calls, you can access caller information including name, user ID, and profile image. This information is automatically extracted from the call data and passed through the event system.
+
+### Getting Caller Information
+
+The caller information is available in two ways:
+
+**1. Through Call Events**
+
+The `callEvent` listener provides caller information for incoming calls:
 
 ```typescript
-import { StreamCall } from '@capgo/capacitor-stream-call';
-
-export class CallService {
-  private incomingCallId: string | null = null;
-  private isLockscreenIncoming = false;
-
-  constructor() {
-    this.setupIncomingCallListener();
+StreamCall.addListener('callEvent', (event) => {
+  if (event.state === 'ringing' && event.caller) {
+    console.log('Incoming call from:', event.caller.name || event.caller.userId);
+    console.log('Caller image:', event.caller.imageURL);
+    // Update your UI to show caller information
+    showIncomingCallUI(event.caller);
   }
+});
+```
 
-  private setupIncomingCallListener() {
-    StreamCall.addListener('incomingCall', async (payload) => {
-      console.log('Incoming call from lockscreen:', payload);
-      
-      // Store the call ID and show incoming call UI
-      this.incomingCallId = payload.cid;
-      this.isLockscreenIncoming = true;
-      
-      // Show your custom incoming call screen
-      this.showIncomingCallScreen(payload);
-    });
-  }
+**2. Through Incoming Call Events (Android lock-screen)**
 
-  // Accept the incoming call
-  async acceptCall() {
-    if (!this.incomingCallId) {
-      console.warn('No incoming call to accept');
-      return;
-    }
-    
-    try {
-      await StreamCall.acceptCall();
-      this.clearIncomingCall();
-      console.log('Call accepted successfully');
-    } catch (error) {
-      console.error('Failed to accept call:', error);
-    }
-  }
+The `incomingCall` listener also includes caller information:
 
-  // Reject the incoming call
-  async rejectCall() {
-    if (!this.incomingCallId) {
-      console.warn('No incoming call to reject');
-      return;
-    }
-    
-    try {
-      await StreamCall.rejectCall();
-      this.clearIncomingCall();
-      console.log('Call rejected successfully');
-    } catch (error) {
-      console.error('Failed to reject call:', error);
-    }
+```typescript
+StreamCall.addListener('incomingCall', (payload) => {
+  if (payload.caller) {
+    console.log('Lock-screen call from:', payload.caller.name || payload.caller.userId);
+    // Update your lock-screen UI
+    updateLockScreenUI(payload.caller);
   }
+});
+```
 
-  private clearIncomingCall() {
-    this.incomingCallId = null;
-    this.isLockscreenIncoming = false;
-    // Hide your incoming call UI
-    this.hideIncomingCallScreen();
-  }
+### Caller Information Structure
 
-  private showIncomingCallScreen(payload: any) {
-    // Implement your custom incoming call UI
-    // This should show accept/reject buttons and caller information
-    // Example: navigate to incoming call page or show modal
-  }
-
-  private hideIncomingCallScreen() {
-    // Hide the incoming call UI
-    // Example: navigate away from incoming call page or close modal
-  }
+```typescript
+interface CallMember {
+  userId: string;      // User ID (always present)
+  name?: string;       // Display name (optional)
+  imageURL?: string;   // Profile image URL (optional)
+  role?: string;       // User role (optional)
 }
 ```
 
-> **Important:** This lock-screen handling is only required on Android. On iOS, the system handles incoming call UI automatically.
+### Example Implementation
 
-### Basic Call Operations
+Here's how to implement a proper incoming call screen with caller information:
+
 ```typescript
-import { StreamCall } from '@capgo/capacitor-stream-call';
+export class CallService {
+  private callerInfo: CallMember | null = null;
 
-// Login to Stream Video
-await StreamCall.login({
-  token: 'your_user_token',
-  userId: 'user_id', 
-  name: 'User Name',
-  apiKey: 'your_api_key',
-  magicDivId: 'video-container'
-});
+  constructor() {
+    this.setupCallListeners();
+  }
 
-// Make a call
-await StreamCall.call({
-  userIds: ['user_to_call'],
-  type: 'default',
-  ring: true
-});
+  private setupCallListeners() {
+    StreamCall.addListener('callEvent', (event) => {
+      if (event.state === 'ringing') {
+        this.callerInfo = event.caller || null;
+        this.showIncomingCallScreen();
+      } else if (event.state === 'joined' || event.state === 'left') {
+        this.callerInfo = null;
+        this.hideIncomingCallScreen();
+      }
+    });
 
-// End call
-await StreamCall.endCall();
+    // Android lock-screen support
+    if (Capacitor.getPlatform() === 'android') {
+      StreamCall.addListener('incomingCall', (payload) => {
+        this.callerInfo = payload.caller || null;
+        this.showLockScreenIncomingCall();
+      });
+    }
+  }
 
-// Toggle microphone
-await StreamCall.setMicrophoneEnabled({ enabled: false });
-
-// Toggle camera  
-await StreamCall.setCameraEnabled({ enabled: false });
-
-// Switch camera
-await StreamCall.switchCamera({ camera: 'front' });
-
-// Logout
-await StreamCall.logout();
+  private showIncomingCallScreen() {
+    const callerName = this.callerInfo?.name || 'Unknown Caller';
+    const callerImage = this.callerInfo?.imageURL || 'default-avatar.png';
+    
+    // Update your UI components
+    document.getElementById('caller-name').textContent = callerName;
+    document.getElementById('caller-image').src = callerImage;
+    document.getElementById('incoming-call-screen').style.display = 'block';
+  }
+}
 ```
 
 ## API

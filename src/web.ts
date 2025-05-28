@@ -10,6 +10,7 @@ import type {
   CameraEnabledResponse,
   CallEvent,
   CallState,
+  CallMember,
 } from './definitions';
 
 export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
@@ -49,11 +50,28 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
   private ringCallback = (event: AllClientEvents['call.ring']) => {
     console.log('Call ringing', event, this.currentCall);
     this.incomingCall = event.call;
+    
+    // Extract caller information
+    let caller: CallMember | undefined;
+    
+    if (event.call?.created_by) {
+      caller = {
+        userId: event.call.created_by.id,
+        name: event.call.created_by.name,
+        imageURL: event.call.created_by.image,
+        role: event.call.created_by.role,
+      };
+    }
+    
     if (!this.currentCall) {
       console.log('Creating new call', event.call.id);
       this.currentCall = this.client?.call(event.call.type, event.call.id);
       // this.currentActiveCallId = this.currentCall?.cid;
-      this.notifyListeners('callEvent', { callId: event.call.id, state: CallingState.RINGING });
+      this.notifyListeners('callEvent', { 
+        callId: event.call.id, 
+        state: CallingState.RINGING,
+        caller
+      });
       // Clear previous responses when a new call starts
       this.participantResponses.clear();
     }
@@ -699,6 +717,79 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
     }
     const enabled = await this.currentCall.camera.enabled;
     return { enabled };
+  }
+
+  async getCallInfo(options: { callId: string }): Promise<CallEvent> {
+    if (!this.currentCall) {
+      throw new Error('No active call');
+    }
+
+    if (this.currentCall.id !== options.callId) {
+      throw new Error('Call ID does not match active call');
+    }
+
+    const callingState = this.currentCall.state.callingState;
+    let state: CallState;
+
+    switch (callingState) {
+      case CallingState.IDLE:
+        state = 'idle';
+        break;
+      case CallingState.RINGING:
+        state = 'ringing';
+        break;
+      case CallingState.JOINING:
+        state = 'joining';
+        break;
+      case CallingState.RECONNECTING:
+        state = 'reconnecting';
+        break;
+      case CallingState.JOINED:
+        state = 'joined';
+        break;
+      case CallingState.LEFT:
+        state = 'left';
+        break;
+      default:
+        state = 'unknown';
+    }
+
+    // Try to get caller information from the call
+    let caller: CallMember | undefined;
+    let members: CallMember[] = [];
+
+    try {
+      // Get call details
+      const callDetails = await this.currentCall.get();
+      
+      if (callDetails?.call?.created_by) {
+        caller = {
+          userId: callDetails.call.created_by.id,
+          name: callDetails.call.created_by.name,
+          imageURL: callDetails.call.created_by.image,
+          role: callDetails.call.created_by.role,
+        };
+      }
+
+      // Get current participants
+      if (this.currentCall.state.participants) {
+        members = this.currentCall.state.participants.map((participant: StreamVideoParticipant) => ({
+          userId: participant.userId,
+          name: participant.name,
+          imageURL: participant.image,
+          role: participant.roles?.[0],
+        }));
+      }
+    } catch (error) {
+      console.warn('Failed to get call details:', error);
+    }
+
+    return {
+      callId: this.currentCall.id,
+      state,
+      caller,
+      members,
+    };
   }
 
   async getCallStatus(): Promise<CallEvent> {

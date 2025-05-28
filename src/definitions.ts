@@ -56,12 +56,33 @@ export type CallState =
 export type CallType = 'default' | 'audio_room' | 'livestream' | 'development';
 
 /**
+ * @interface CallMember
+ * @description Information about a call member/participant
+ * @property {string} userId - User ID of the member
+ * @property {string} [name] - Display name of the user
+ * @property {string} [imageURL] - Profile image URL of the user
+ * @property {string} [role] - Role of the user in the call
+ */
+export interface CallMember {
+  /** User ID of the member */
+  userId: string;
+  /** Display name of the user */
+  name?: string;
+  /** Profile image URL of the user */
+  imageURL?: string;
+  /** Role of the user in the call */
+  role?: string;
+}
+
+/**
  * @interface CallEvent
  * @description Event emitted when call state changes
  * @property {string} callId - Unique identifier of the call
  * @property {CallState} state - Current state of the call
  * @property {string} [userId] - User ID of the participant who triggered the event
  * @property {string} [reason] - Reason for the call state change
+ * @property {CallMember} [caller] - Information about the caller (for incoming calls)
+ * @property {CallMember[]} [members] - List of call members
  */
 export interface CallEvent {
   /** ID of the call */
@@ -72,6 +93,10 @@ export interface CallEvent {
   userId?: string;
   /** Reason for the call state change, if applicable */
   reason?: string;
+  /** Information about the caller (for incoming calls) */
+  caller?: CallMember;
+  /** List of call members */
+  members?: CallMember[];
 }
 
 export interface CameraEnabledResponse {
@@ -256,6 +281,12 @@ export interface StreamCallPlugin {
    * await StreamCall.switchCamera({ camera: 'back' });
    */
   switchCamera(options: { camera: 'front' | 'back' }): Promise<SuccessResponse>;
+
+  /**
+   * Get detailed information about an active call including caller details
+   * @param options - Options containing the call ID
+   */
+  getCallInfo(options: { callId: string }): Promise<CallEvent>;
 }
 
 /**
@@ -263,10 +294,13 @@ export interface StreamCallPlugin {
  * @description Payload delivered with "incomingCall" event (Android lock-screen).
  * @property {string} cid - Call CID (type:id)
  * @property {string} type - Always "incoming" for this event
+ * @property {CallMember} [caller] - Information about the caller
  */
 export interface IncomingCallPayload {
   /** Full call CID (e.g. default:123) */
   cid: string;
   /** Event type (currently always "incoming") */
   type: 'incoming';
+  /** Information about the caller */
+  caller?: CallMember;
 }

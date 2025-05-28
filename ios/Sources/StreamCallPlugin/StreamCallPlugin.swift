@@ -26,7 +26,8 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "isCameraEnabled", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getCallStatus", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setSpeaker", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "switchCamera", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "switchCamera", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getCallInfo", returnType: CAPPluginReturnPromise)
     ]
 
     private enum State {
@@ -60,7 +61,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     private var callViewModel: CallViewModel?
 
     // Helper method to update call status and notify listeners
-    private func updateCallStatusAndNotify(callId: String, state: String, userId: String? = nil, reason: String? = nil) {
+    private func updateCallStatusAndNotify(callId: String, state: String, userId: String? = nil, reason: String? = nil, caller: [String: Any]? = nil, members: [[String: Any]]? = nil) {
         // Update stored call info
         currentCallId = callId
         currentCallState = state
@@ -77,6 +78,14 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
         if let reason = reason {
             data["reason"] = reason
+        }
+        
+        if let caller = caller {
+            data["caller"] = caller
+        }
+        
+        if let members = members {
+            data["members"] = members
         }
 
         // Notify listeners
@@ -231,7 +240,48 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                                 self.hasNotifiedCallJoined = true
                             }
                         } else if case .incoming(let incomingCall) = newState {
-                            self.updateCallStatusAndNotify(callId: incomingCall.id, state: "ringing")
+                            // Extract caller information
+                            Task {
+                                var caller: [String: Any]? = nil
+                                var members: [[String: Any]]? = nil
+                                
+                                do {
+                                    // Get the call from StreamVideo to access detailed information
+                                    if let streamVideo = self.streamVideo {
+                                        let call = streamVideo.call(callType: incomingCall.type, callId: incomingCall.id)
+                                        let callInfo = try await call.get()
+                                        
+                                        // Extract caller information
+                                        let createdBy = callInfo.call.createdBy
+                                        var callerData: [String: Any] = [:]
+                                        callerData["userId"] = createdBy.id
+                                        callerData["name"] = createdBy.name
+                                        callerData["imageURL"] = createdBy.image
+                                        callerData["role"] = createdBy.role
+                                        caller = callerData
+                                        
+                                        // Extract members information from current participants if available
+                                        var membersArray: [[String: Any]] = []
+                                        if let activeCall = streamVideo.state.activeCall {
+                                            let participants = activeCall.state.participants
+                                            for participant in participants {
+                                                var memberData: [String: Any] = [:]
+                                                memberData["userId"] = participant.userId
+                                                memberData["name"] = participant.name
+                                                memberData["imageURL"] = participant.profileImageURL?.absoluteString ?? ""
+                                                memberData["role"] = participant.roles.first ?? ""
+                                                membersArray.append(memberData)
+                                            }
+                                        }
+                                        members = membersArray.isEmpty ? nil : membersArray
+                                    }
+                                } catch {
+                                    print("Failed to get call info for caller details: \(error)")
+                                }
+                                
+                                // Notify with caller information
+                                self.updateCallStatusAndNotify(callId: incomingCall.id, state: "ringing", caller: caller, members: members)
+                            }
                         } else if newState == .idle && self.streamVideo?.state.activeCall == nil {
                             // Get the call ID that was active before the state changed
                             let endingCallId = viewModel.call?.cId
@@ -783,7 +833,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func getCallStatus(_ call: CAPPluginCall) {
-        // Use stored state rather than accessing SDK state directly
+        // If not in a call, reject
         if currentCallId.isEmpty || currentCallState == "left" {
             call.reject("Not in a call")
             return
@@ -793,6 +843,90 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             "callId": currentCallId,
             "state": currentCallState
         ])
+    }
+    
+    @objc func getCallInfo(_ call: CAPPluginCall) {
+        guard let callId = call.getString("callId") else {
+            call.reject("Missing required parameter: callId")
+            return
+        }
+        
+        do {
+            try requireInitialized()
+            
+            guard let activeCall = streamVideo?.state.activeCall, activeCall.cId == callId else {
+                call.reject("Call ID does not match active call")
+                return
+            }
+            
+            Task {
+                do {
+                    // Get detailed call information
+                    let callInfo = try await activeCall.get()
+                    
+                    // Extract caller information
+                    var caller: [String: Any]? = nil
+                    let createdBy = callInfo.call.createdBy
+                    var callerData: [String: Any] = [:]
+                    callerData["userId"] = createdBy.id
+                    callerData["name"] = createdBy.name
+                    callerData["imageURL"] = createdBy.image
+                    callerData["role"] = createdBy.role
+                    caller = callerData
+                    
+                    // Extract members information
+                    var membersArray: [[String: Any]] = []
+                    let participants = await activeCall.state.participants
+                    for participant in participants {
+                        var memberData: [String: Any] = [:]
+                        memberData["userId"] = participant.userId
+                        memberData["name"] = participant.name
+                        memberData["imageURL"] = participant.profileImageURL
+                        memberData["role"] = participant.roles.first ?? ""
+                        membersArray.append(memberData)
+                    }
+                    let members = membersArray
+                    
+                    // Determine call state based on current calling state
+                    let state: String
+                    let callingState = await self.callViewModel?.callingState
+                    switch callingState {
+                    case .idle:
+                        state = "idle"
+                    case .incoming:
+                        state = "ringing"
+                    case .outgoing:
+                        state = "ringing"
+                    case .inCall:
+                        state = "joined"
+                    case .lobby:
+                        state = "lobby"
+                    case .joining:
+                        state = "joining"
+                    case .reconnecting:
+                        state = "reconnecting"
+                    case .none:
+                        state = "unknown"
+                    }
+                    
+                    var result: [String: Any] = [:]
+                    result["callId"] = callId
+                    result["state"] = state
+                    
+                    if let caller = caller {
+                        result["caller"] = caller
+                    }
+                    
+                    result["members"] = members
+                    
+                    call.resolve(result)
+                } catch {
+                    call.reject("Failed to get call info: \(error.localizedDescription)")
+                }
+            }
+        } catch {
+            call.reject("StreamVideo not initialized")
+        }
     }
 
     @objc func setSpeaker(_ call: CAPPluginCall) {

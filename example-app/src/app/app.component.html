@@ -32,8 +32,12 @@
 
       <!-- Caller info -->
       <div style="text-align:center;margin-bottom:20px;">
-        <h2 style="color:white;font-size:28px;font-weight:300;margin:0 0 8px 0;">Unknown Caller</h2>
-        <p style="color:rgba(255,255,255,0.7);font-size:16px;margin:0;">Mobile • Calling...</p>
+        <h2 style="color:white;font-size:28px;font-weight:300;margin:0 0 8px 0;">
+          {{ callerInfo?.name || 'Unknown Caller' }}
+        </h2>
+        <p style="color:rgba(255,255,255,0.7);font-size:16px;margin:0;">
+          {{ callerInfo?.userId || 'Mobile' }} • Calling...
+        </p>
       </div>
     </div>
 

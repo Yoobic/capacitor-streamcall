@@ -215,15 +215,37 @@ public class StreamCallPlugin : Plugin() {
                     // Start ringtone only; UI handled in web layer
                     ringtonePlayer?.startRinging()
 
-                    // Notify WebView/JS about incoming call so it can render its own UI
-                    try {
-                        val payload = com.getcapacitor.JSObject().apply {
-                            put("cid", cid.cid)
-                            put("type", "incoming")
+                    // Try to get caller information from the call
+                    kotlinx.coroutines.GlobalScope.launch {
+                        try {
+                            val callInfo = call?.get()
+                            val callerInfo = callInfo?.getOrNull()?.call?.createdBy
+                            
+                            val payload = com.getcapacitor.JSObject().apply {
+                                put("cid", cid.cid)
+                                put("type", "incoming")
+                                if (callerInfo != null) {
+                                    val caller = com.getcapacitor.JSObject().apply {
+                                        put("userId", callerInfo.id)
+                                        put("name", callerInfo.name ?: "")
+                                        put("imageURL", callerInfo.image ?: "")
+                                        put("role", callerInfo.role ?: "")
+                                    }
+                                    put("caller", caller)
+                                }
+                            }
+                            
+                            // Notify WebView/JS about incoming call so it can render its own UI
+                            notifyListeners("incomingCall", payload, true)
+                        } catch (e: Exception) {
+                            android.util.Log.e("StreamCallPlugin", "Error getting call info for incoming call", e)
+                            // Fallback to basic payload without caller info
+                            val payload = com.getcapacitor.JSObject().apply {
+                                put("cid", cid.cid)
+                                put("type", "incoming")
+                            }
+                            notifyListeners("incomingCall", payload, true)
                         }
-                        notifyListeners("incomingCall", payload, true)
-                    } catch (e: Exception) {
-                        android.util.Log.e("StreamCallPlugin", "Error notifying JS about incoming call", e)
                     }
 
                     bringAppToForeground()
