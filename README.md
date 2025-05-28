@@ -15,6 +15,81 @@ npm install @capgo/capacitor-stream-call
 npx cap sync
 ```
 
+## Android Setup
+
+### MainActivity.java
+Modify your `MainActivity.java` to handle incoming calls:
+
+```java
+@Override
+protected void onCreate(Bundle savedInstanceState) {
+  // Save initial intent for StreamCallPlugin (handles killed-state notification)
+  ee.forgr.capacitor.streamcall.StreamCallPlugin.saveInitialIntent(getIntent());
+  
+  super.onCreate(savedInstanceState);
+  
+  // Ensure the activity is visible over the lock screen when launched via full-screen intent
+  if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
+    setShowWhenLocked(true);
+    setTurnScreenOn(true);
+  } else {
+    getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED | android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+  }
+}
+
+@Override
+protected void onNewIntent(Intent intent) {
+    super.onNewIntent(intent);
+    setIntent(intent);
+    String action = intent.getAction();
+    if ("io.getstream.video.android.action.ACCEPT_CALL".equals(action)) {
+        android.app.KeyguardManager km = (android.app.KeyguardManager) getSystemService(KEYGUARD_SERVICE);
+        if (km != null && km.isKeyguardLocked()) {
+          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            km.requestDismissKeyguard(this, new KeyguardManager.KeyguardDismissCallback() {
+                @Override
+                public void onDismissSucceeded() {
+                    forwardAcceptIntent(intent);
+                }
+            });
+          }
+        } else {
+            forwardAcceptIntent(intent);
+        }
+    }
+}
+
+private void forwardAcceptIntent(Intent intent) {
+    ee.forgr.capacitor.streamcall.StreamCallPlugin.saveInitialIntent(intent);
+    PluginHandle pluginHandle = getBridge().getPlugin("StreamCall");
+    if (pluginHandle != null) {
+        com.getcapacitor.Plugin pluginInstance = pluginHandle.getInstance();
+        if (pluginInstance instanceof ee.forgr.capacitor.streamcall.StreamCallPlugin) {
+            ((ee.forgr.capacitor.streamcall.StreamCallPlugin) pluginInstance).handleAcceptCallIntent(intent);
+        }
+    }
+}
+```
+
+### Application Class
+Create or modify your Application class to pre-initialize the plugin:
+
+```java
+@Override
+public void onCreate() {
+    super.onCreate();
+    
+    // Initialize Firebase
+    com.google.firebase.FirebaseApp.initializeApp(this);
+    
+    try {
+        StreamCallPlugin.preLoadInit(this, this);
+    } catch (Exception e) {
+        Log.e("App", "Failed to pre-initialize StreamVideo Plugin", e);
+    }
+}
+```
+
 ## Setting up Android StreamVideo apikey
 1. Add your apikey to the Android project:
 ```
