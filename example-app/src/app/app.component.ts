@@ -21,6 +21,7 @@ export class AppComponent {
   activeCamera: 'front' | 'back' = 'front';
   incomingCallId: string | null = null;
   incomingToast: HTMLIonToastElement | null = null;
+  outgoingToast: HTMLIonToastElement | null = null;
   /** Lock-screen incoming call flag (Android) */
   isLockscreenIncoming = false;
 
@@ -92,6 +93,33 @@ export class AppComponent {
       await this.presentToast('Failed to reject call', 'danger');
     }
   }
+  private async stopWaitingCallToast() {
+    if (this.outgoingToast) {
+      await this.outgoingToast.dismiss();
+    }
+  }
+
+  private async presentWaitingCallToast() {
+    if (this.outgoingToast) {
+      await this.outgoingToast.dismiss();
+    }
+    this.outgoingToast = await this.toastController.create({
+      message: 'Calling call...',
+      position: 'top',
+      buttons: [
+        {
+          side: 'end',
+          icon: 'close',
+          handler: () => {
+            void this.rejectCall();
+          }
+        }
+      ],
+      duration: 0
+    });
+    await this.outgoingToast.present();
+  }
+
 
   private async presentIncomingCallToast() {
     if (this.incomingToast) {
@@ -155,6 +183,7 @@ export class AppComponent {
           const cameraEnabled = await StreamCall.isCameraEnabled();
           this.isCameraOff = !cameraEnabled.enabled;
           await this.presentToast('Call started', 'success', 'bottom');
+          await this.stopWaitingCallToast();
           this.cdr.detectChanges();
         }, 1000);
       } else if (event.state === 'left') {
@@ -168,6 +197,7 @@ export class AppComponent {
         await this.incomingToast?.dismiss();
         console.log('Call rejected', event);
         await this.presentToast('Call rejected', 'success', 'bottom');
+        await this.stopWaitingCallToast();
         this.cdr.detectChanges();
       } else if (event.state === 'ringing') {
         //if (Capacitor.getPlatform() === 'web') {
@@ -178,14 +208,18 @@ export class AppComponent {
         }
         this.cdr.detectChanges();
         // }
-      } else if (event.state === 'ended' && event.reason === 'all_rejected_or_missed' && Capacitor.getPlatform() === 'web') {
+      } else if (event.state === 'created') {
+        await this.presentWaitingCallToast();
+        this.cdr.detectChanges();
+      }
+       else if (event.state === 'ended' && event.reason === 'all_rejected_or_missed' && Capacitor.getPlatform() === 'web') {
         await this.presentToast('Call rejected or missed by all participants', 'success');
         this.isInCall = false;
         this.cdr.detectChanges();
       } else {
         if (Capacitor.getPlatform() !== 'ios') {
           console.log('Call event', event);
-          await this.presentToast(`Call event: ${event.state}`, 'success', 'bottom');
+          // await this.presentToast(`Call event: ${event.state}`, 'success', 'bottom');
           this.cdr.detectChanges();
         }
       }

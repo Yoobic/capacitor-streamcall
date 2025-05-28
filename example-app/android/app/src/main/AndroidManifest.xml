@@ -16,8 +16,6 @@
             android:label="@string/title_activity_main"
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"
-            android:showOnLockScreen="true"
-            android:showWhenLocked="true"
             android:exported="true">
 
           <intent-filter>

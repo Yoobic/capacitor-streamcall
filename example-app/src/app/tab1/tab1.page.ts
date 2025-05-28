@@ -112,7 +112,6 @@ export class Tab1Page {
         type: 'default',
         ring: true
       });
-      await this.presentToast(`Calling ${userIds}...`, 'success');
     } catch (error) {
       console.error(`Failed to call ${userIds}:`, error);
       await this.presentToast(`Failed to call ${userIds}`, 'danger');
