@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.44](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.43...0.0.44) (2025-05-28)
+
+
+### Features
+
+* add caller information handling for incoming calls and improve example implementation ([14d5e86](https://github.com/Cap-go/capacitor-streamcall/commit/14d5e86cca8692ff541924ea58a7dcd6cd7dfcce))
+
 ### [0.0.43](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.42...0.0.43) (2025-05-28)
 
 ### [0.0.42](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.41...0.0.42) (2025-05-28)
