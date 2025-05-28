@@ -64,6 +64,8 @@ import android.content.BroadcastReceiver
 import android.content.Intent
 import android.content.IntentFilter
 import io.getstream.android.video.generated.models.CallSessionParticipantLeftEvent
+import io.getstream.video.android.core.RealtimeConnection
+import io.getstream.video.android.core.events.ParticipantLeftEvent
 
 // I am not a religious pearson, but at this point, I am not sure even god himself would understand this code
 // It's a spaghetti-like, tangled, unreadable mess and frankly, I am deeply sorry for the code crimes commited in the Android impl
@@ -706,25 +708,39 @@ public class StreamCallPlugin : Plugin() {
                         updateCallStatusAndNotify(event.callCid, "left")
                     }
 
-                    is CallSessionParticipantLeftEvent -> {
+                    is ParticipantLeftEvent, is CallSessionParticipantLeftEvent -> {
                         val activeCall = streamVideoClient?.state?.activeCall?.value
-                        android.util.Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: Received for call ${event.callCid}. User left: ${event.participant?.user?.id}. Active call: ${activeCall?.cid}")
 
-                        if (activeCall != null && activeCall.cid == event.callCid) {
-                            // Directly check remote participants after a left event for the active call
-                            val remoteParticipants = activeCall.state.remoteParticipants.value
-                            android.util.Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: Active call ${activeCall.cid}, remote participants count: ${remoteParticipants.size}")
+                        val callId = when (event) {
+                            is ParticipantLeftEvent -> {
+                                event.callCid
+                            }
+                            is CallSessionParticipantLeftEvent -> {
+                                event.callCid
+                            }
 
-                            if (remoteParticipants.isEmpty()) {
-                                android.util.Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: All remote participants have left call ${activeCall.cid}. Ending call.")
-                                kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
-                                    endCallRaw(activeCall)
+                            else -> {
+                                throw RuntimeException("Unreachable code reached when getting callId")
+                            }
+                        }
+
+                        android.util.Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: Received for call $callId. Active call: ${activeCall?.cid}")
+
+
+                        if (activeCall != null && activeCall.cid == callId) {
+                            val connectionState = activeCall.state.connection.value
+                            if (connectionState == RealtimeConnection.Disconnected) {
+                                val total = activeCall.state.participantCounts.value?.total
+                                android.util.Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: Participant left, remaining: $total");
+                                if (total != null && total <= 2) {
+                                    android.util.Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: All remote participants have left call ${activeCall.cid}. Ending call.")
+                                    kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
+                                        endCallRaw(activeCall)
+                                    }
                                 }
-                            } else {
-                                android.util.Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: Remote participants still present in call ${activeCall.cid}. Count: ${remoteParticipants.size}")
                             }
                         } else {
-                            android.util.Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: Conditions not met (activeCall null, or cid mismatch, or local user not joined). ActiveCall CID: ${activeCall?.cid}, Event CID: ${event.callCid}")
+                            android.util.Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: Conditions not met (activeCall null, or cid mismatch, or local user not joined). ActiveCall CID: ${activeCall?.cid}")
                         }
                     }
 
