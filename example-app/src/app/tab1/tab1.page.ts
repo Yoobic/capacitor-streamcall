@@ -3,6 +3,7 @@ import { StreamCall } from '@capgo/capacitor-stream-call';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { ToastController } from '@ionic/angular';
+import { AppComponent } from '../app.component';
 
 @Component({
   selector: 'app-tab1',
@@ -26,7 +27,8 @@ export class Tab1Page {
 
   constructor(
     private http: HttpClient,
-    private toastController: ToastController
+    private toastController: ToastController,
+    private appComponent: AppComponent
   ) {
     void this.loadStoredUser();
     this.getCallStatus();
@@ -97,6 +99,10 @@ export class Tab1Page {
         teams: response.teams,
       };
       localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+      
+      // Set current user ID in AppComponent for filtering
+      this.appComponent.setCurrentUserId(response.userId);
+      
       await this.presentToast('Login successful', 'success');
       
     } catch (error) {
@@ -152,6 +158,10 @@ export class Tab1Page {
       await StreamCall.logout();
       this.currentUser = null;
       localStorage.removeItem('currentUser');
+      
+      // Clear current user ID in AppComponent
+      this.appComponent.setCurrentUserId('');
+      
       await this.presentToast('Logout successful', 'success');
     } catch (error) {
       console.error('Logout failed:', error);

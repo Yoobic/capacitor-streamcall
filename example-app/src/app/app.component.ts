@@ -28,6 +28,20 @@ export class AppComponent {
   isOutgoingCall = false;
   /** Caller information for incoming calls */
   callerInfo: { userId: string; name?: string; imageURL?: string } | null = null;
+  /** Members information for outgoing calls */
+  callMembers: Array<{ userId: string; name?: string; imageURL?: string }> = [];
+  /** Flag to track if this is an incoming call to prevent state conflicts */
+  private isIncomingCall = false;
+  /** Current user ID for filtering */
+  private currentUserId: string | null = null;
+
+  private getCurrentUserId(): string | null {
+    return this.currentUserId;
+  }
+
+  setCurrentUserId(userId: string) {
+    this.currentUserId = userId;
+  }
 
   async endCall() {
     await StreamCall.endCall();
@@ -152,6 +166,8 @@ export class AppComponent {
 
     // register event listeners
     StreamCall.addListener('callEvent', async(event: any) => {
+      console.log('Call event received:', event);
+      
       if (event.state === 'joined') {
         this.isInCall = true;
         this.isCameraOff = false;
@@ -159,7 +175,9 @@ export class AppComponent {
         this.isSpeakerOn = true;
         this.isLockscreenIncoming = false;
         this.isOutgoingCall = false;
+        this.isIncomingCall = false;
         this.callerInfo = null; // Clear caller info when call starts
+        this.callMembers = []; // Clear members info when call starts
         console.log('Call started', event);
         setTimeout(async () => {
           await this.incomingToast?.dismiss();
@@ -173,46 +191,97 @@ export class AppComponent {
         this.isInCall = false;
         this.isLockscreenIncoming = false;
         this.isOutgoingCall = false;
+        this.isIncomingCall = false;
         this.callerInfo = null; // Clear caller info when call ends
+        this.callMembers = []; // Clear members info when call ends
         console.log('Call ended', event);
         await this.presentToast('Call ended', 'success', 'bottom');
         this.cdr.detectChanges();
       } else if (event.state === 'rejected') {
-        //this.isInCall = false;
         this.isOutgoingCall = false;
+        this.isIncomingCall = false;
         this.callerInfo = null; // Clear caller info when call is rejected
+        this.callMembers = []; // Clear members info when call is rejected
         await this.incomingToast?.dismiss();
         console.log('Call rejected', event);
         await this.presentToast('Call rejected', 'success', 'bottom');
         await this.stopWaitingCallToast();
         this.cdr.detectChanges();
       } else if (event.state === 'ringing') {
-        //if (Capacitor.getPlatform() === 'web') {
-        this.incomingCallId = event.callId;
-        // Extract caller information if available
-        if (event.caller) {
-          this.callerInfo = {
-            userId: event.caller.userId,
-            name: event.caller.name,
-            imageURL: event.caller.imageURL
-          };
+        // Only mark as incoming call if we don't already have an outgoing call in progress
+        if (!this.isOutgoingCall) {
+          // This is an incoming call
+          this.isIncomingCall = true;
+          this.isOutgoingCall = false;
+          this.incomingCallId = event.callId;
+          
+          // Extract caller information if available
+          if (event.caller) {
+            this.callerInfo = {
+              userId: event.caller.userId,
+              name: event.caller.name,
+              imageURL: event.caller.imageURL
+            };
+          }
+          
+          console.log('Incoming call from:', this.callerInfo);
+        } else {
+          // This is an outgoing call that is now ringing - keep the outgoing state
+          console.log('Outgoing call is now ringing');
         }
         this.cdr.detectChanges();
-        // }
       } else if (event.state === 'created') {
-        this.isOutgoingCall = true;
-        this.cdr.detectChanges();
-      }
-       else if (event.state === 'ended' && event.reason === 'all_rejected_or_missed' && Capacitor.getPlatform() === 'web') {
+        // Only set as outgoing call if it's not already marked as incoming AND there's no caller info
+        // If there's caller info, this is an incoming call that someone else created
+        if (!this.isIncomingCall && !event.caller) {
+          console.log('Processing created event:', event);
+          
+          // For outgoing calls, we should be the one initiating, so if we get a 'created' 
+          // event and we're not already in an incoming call state, it's likely our outgoing call
+          this.isOutgoingCall = true;
+          
+          console.log('Event members (raw):', event.members);
+          
+          // Members should now be a proper array from all platforms
+          if (event.members && Array.isArray(event.members)) {
+            // Filter out self from the members list for outgoing calls
+            const currentUserId = this.getCurrentUserId();
+            console.log('Current user ID for filtering:', currentUserId);
+            console.log('Event members before filtering:', event.members);
+            
+            this.callMembers = event.members
+              .filter((member: any) => {
+                const shouldInclude = member.userId !== currentUserId;
+                console.log(`Member ${member.userId}: shouldInclude=${shouldInclude} (current user: ${currentUserId})`);
+                return shouldInclude;
+              })
+              .map((member: any) => ({
+                userId: member.userId,
+                name: member.name,
+                imageURL: member.imageURL
+              }));
+            
+            console.log('Final callMembers (filtered):', this.callMembers);
+          } else {
+            console.log('No valid members data');
+            this.callMembers = [];
+          }
+          
+          this.cdr.detectChanges();
+        } else if (event.caller) {
+          console.log('Created event has caller info - this is an incoming call created by someone else, ignoring for outgoing UI');
+        }
+      } else if (event.state === 'ended' && event.reason === 'all_rejected_or_missed' && Capacitor.getPlatform() === 'web') {
         await this.presentToast('Call rejected or missed by all participants', 'success');
         this.isInCall = false;
         this.isOutgoingCall = false;
+        this.isIncomingCall = false;
         this.callerInfo = null;
+        this.callMembers = [];
         this.cdr.detectChanges();
       } else {
         if (Capacitor.getPlatform() !== 'ios') {
           console.log('Call event', event);
-          // await this.presentToast(`Call event: ${event.state}`, 'success', 'bottom');
           this.cdr.detectChanges();
         }
       }
@@ -222,7 +291,12 @@ export class AppComponent {
     if (Capacitor.getPlatform() === 'android') {
       StreamCall.addListener('incomingCall', async (payload: any) => {
         console.log('[incomingCall] lock-screen payload', payload);
+        
+        // Mark this as an incoming call to prevent conflicts
+        this.isIncomingCall = true;
+        this.isOutgoingCall = false;
         this.incomingCallId = payload.cid;
+        
         // Extract caller information if available
         if (payload.caller) {
           this.callerInfo = {
@@ -231,7 +305,9 @@ export class AppComponent {
             imageURL: payload.caller.imageURL
           };
         }
+        
         this.isLockscreenIncoming = true;
+        console.log('[incomingCall] Android lock-screen incoming call from:', this.callerInfo);
         this.cdr.detectChanges();
       });
     }

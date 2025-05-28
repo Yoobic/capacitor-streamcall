@@ -459,8 +459,6 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     print("- Should Ring: \(shouldRing)")
                     print("- Team: \(team)")
 
-
-
                     // Update the CallOverlayView with the active call
                     // Create the call object
                     await self.callViewModel?.startCall(
@@ -470,6 +468,31 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         ring: shouldRing
                     )
                     
+                    // Notify about call creation with members information
+                    let membersData = members.map { userId in
+                        [
+                            "userId": userId,
+                            "name": "",  // We don't have name info here, will be populated when call connects
+                            "imageURL": "",
+                            "role": ""
+                        ]
+                    }
+                    
+                    // Add current user to members if not already included
+                    var allMembers = membersData
+                    if let currentUser = self.streamVideo?.user {
+                        let currentUserExists = allMembers.contains { $0["userId"] as? String == currentUser.id }
+                        if !currentUserExists {
+                            allMembers.append([
+                                "userId": currentUser.id,
+                                "name": currentUser.name,
+                                "imageURL": currentUser.imageURL?.absoluteString ?? "",
+                                "role": ""
+                            ])
+                        }
+                    }
+                    
+                    self.updateCallStatusAndNotify(callId: callId, state: "created", members: allMembers)
                     
                     // Update UI on main thread
                     await MainActor.run {
@@ -497,16 +520,34 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             try requireInitialized()
 
             Task {
-                if let activeCall = streamVideo?.state.activeCall {
+                // Check both active call and callViewModel's call state to handle outgoing calls
+                let activeCall = streamVideo?.state.activeCall
+                let viewModelCall = await callViewModel?.call
+                
+                if let activeCall = activeCall {
+                    // There's an active call, end it normally
                     activeCall.leave()
-
-                    // Update view state instead of cleaning up
+                    
                     await MainActor.run {
-                        // self.overlayViewModel?.updateCall(nil)
                         self.overlayView?.isHidden = true
                         self.webView?.isOpaque = true
                     }
-
+                    
+                    call.resolve([
+                        "success": true
+                    ])
+                } else if let viewModelCall = viewModelCall {
+                    // There's a call in the viewModel (likely outgoing/ringing), end it
+                    viewModelCall.leave()
+                    
+                    // Also hang up to reset the calling state
+                    await callViewModel?.hangUp()
+                    
+                    await MainActor.run {
+                        self.overlayView?.isHidden = true
+                        self.webView?.isOpaque = true
+                    }
+                    
                     call.resolve([
                         "success": true
                     ])

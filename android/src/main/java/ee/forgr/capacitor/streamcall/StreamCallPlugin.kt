@@ -63,6 +63,7 @@ import io.getstream.video.android.core.CameraDirection
 import android.content.BroadcastReceiver
 import android.content.Intent
 import android.content.IntentFilter
+import com.getcapacitor.JSArray
 import io.getstream.android.video.generated.models.CallSessionParticipantLeftEvent
 import io.getstream.video.android.core.RealtimeConnection
 import io.getstream.video.android.core.events.ParticipantLeftEvent
@@ -624,7 +625,38 @@ public class StreamCallPlugin : Plugin() {
                 android.util.Log.v("StreamCallPlugin", "Received an event ${event.getEventType()} $event")
                 when (event) {
                     is CallRingEvent -> {
-                        updateCallStatusAndNotify(event.callCid, "ringing")
+                        // Extract caller information from the ringing call
+                        kotlinx.coroutines.GlobalScope.launch {
+                            try {
+                                val callCid = event.callCid
+                                val callIdParts = callCid.split(":")
+                                if (callIdParts.size >= 2) {
+                                    val callType = callIdParts[0]
+                                    val callId = callIdParts[1]
+                                    val call = streamVideoClient?.call(type = callType, id = callId)
+                                    val callInfo = call?.get()
+                                    val callerInfo = callInfo?.getOrNull()?.call?.createdBy
+                                    
+                                    // Pass caller information to the ringing event
+                                    if (callerInfo != null) {
+                                        val caller = mapOf(
+                                            "userId" to callerInfo.id,
+                                            "name" to (callerInfo.name ?: ""),
+                                            "imageURL" to (callerInfo.image ?: ""),
+                                            "role" to (callerInfo.role ?: "")
+                                        )
+                                        updateCallStatusAndNotify(event.callCid, "ringing", null, null, null, caller)
+                                    } else {
+                                        updateCallStatusAndNotify(event.callCid, "ringing")
+                                    }
+                                } else {
+                                    updateCallStatusAndNotify(event.callCid, "ringing")
+                                }
+                            } catch (e: Exception) {
+                                android.util.Log.e("StreamCallPlugin", "Error getting caller info for ringing event", e)
+                                updateCallStatusAndNotify(event.callCid, "ringing")
+                            }
+                        }
                     }
                     // Handle CallCreatedEvent differently - only log it but don't try to access members yet
                     is CallCreatedEvent -> {
@@ -633,22 +665,59 @@ public class StreamCallPlugin : Plugin() {
                         android.util.Log.d("StreamCallPlugin", "CallCreatedEvent: All members from event: ${event.members.joinToString { it.user.id + " (role: " + it.user.role + ")" }}")
                         android.util.Log.d("StreamCallPlugin", "CallCreatedEvent: Self user ID from SDK: ${this@StreamCallPlugin.streamVideoClient?.userId}")
 
-                        val callParticipants = event.members.filter {
-                            val selfId = this@StreamCallPlugin.streamVideoClient?.userId
-                            val memberId = it.user.id
-                            val isSelf = memberId == selfId
-                            android.util.Log.d("StreamCallPlugin", "CallCreatedEvent: Filtering member $memberId. Self ID: $selfId. Is self: $isSelf")
-                            !isSelf
-                        }.map { it.user.id }
+                        // Only send "created" event for outgoing calls (calls created by current user)
+                        // For incoming calls, we'll only send "ringing" event in CallRingEvent handler
+                        kotlinx.coroutines.GlobalScope.launch {
+                            try {
+                                val callIdParts = callCid.split(":")
+                                if (callIdParts.size >= 2) {
+                                    val callType = callIdParts[0]
+                                    val callId = callIdParts[1]
+                                    val call = streamVideoClient?.call(type = callType, id = callId)
+                                    val callInfo = call?.get()
+                                    val createdBy = callInfo?.getOrNull()?.call?.createdBy
+                                    val currentUserId = streamVideoClient?.userId
+                                    
+                                    android.util.Log.d("StreamCallPlugin", "CallCreatedEvent: Call created by: ${createdBy?.id}, Current user: $currentUserId")
+                                    
+                                    // Only notify for outgoing calls (where current user is the creator)
+                                    if (createdBy?.id == currentUserId) {
+                                        android.util.Log.d("StreamCallPlugin", "CallCreatedEvent: This is an outgoing call, sending created event")
+                                        
+                                        val callParticipants = event.members.filter {
+                                            val selfId = this@StreamCallPlugin.streamVideoClient?.userId
+                                            val memberId = it.user.id
+                                            val isSelf = memberId == selfId
+                                            android.util.Log.d("StreamCallPlugin", "CallCreatedEvent: Filtering member $memberId. Self ID: $selfId. Is self: $isSelf")
+                                            !isSelf
+                                        }.map { it.user.id }
 
-                        android.util.Log.d("StreamCallPlugin", "Call created for $callCid with ${callParticipants.size} remote participants: ${callParticipants.joinToString()}.")
+                                        android.util.Log.d("StreamCallPlugin", "Call created for $callCid with ${callParticipants.size} remote participants: ${callParticipants.joinToString()}.")
 
-                        // Start tracking this call now that we have the member list
-                        startCallTimeoutMonitor(callCid, callParticipants)
+                                        // Start tracking this call now that we have the member list
+                                        startCallTimeoutMonitor(callCid, callParticipants)
 
-                        // Use direction from event if available
-                        val callType = callCid.split(":").firstOrNull() ?: "default"
-                        updateCallStatusAndNotify(callCid, "created")
+                                        // Extract all members information (including self) for UI display
+                                        val allMembers = event.members.map { member ->
+                                            mapOf(
+                                                "userId" to member.user.id,
+                                                "name" to (member.user.name ?: ""),
+                                                "imageURL" to (member.user.image ?: ""),
+                                                "role" to (member.user.role ?: "")
+                                            )
+                                        }
+
+                                        updateCallStatusAndNotify(callCid, "created", null, null, allMembers)
+                                    } else {
+                                        android.util.Log.d("StreamCallPlugin", "CallCreatedEvent: This is an incoming call (created by ${createdBy?.id}), not sending created event")
+                                    }
+                                } else {
+                                    android.util.Log.w("StreamCallPlugin", "CallCreatedEvent: Invalid call CID format: $callCid")
+                                }
+                            } catch (e: Exception) {
+                                android.util.Log.e("StreamCallPlugin", "Error processing CallCreatedEvent", e)
+                            }
+                        }
                     }
                     // Add handler for CallSessionStartedEvent which contains participant information
                     is CallSessionStartedEvent -> {
@@ -1609,7 +1678,7 @@ public class StreamCallPlugin : Plugin() {
     }
     
     // Helper method to update call status and notify listeners
-    private fun updateCallStatusAndNotify(callId: String, state: String, userId: String? = null, reason: String? = null) {
+    private fun updateCallStatusAndNotify(callId: String, state: String, userId: String? = null, reason: String? = null, members: List<Map<String, Any>>? = null, caller: Map<String, Any>? = null) {
         android.util.Log.d("StreamCallPlugin", "updateCallStatusAndNotify called: callId=$callId, state=$state, userId=$userId, reason=$reason")
         // Update stored call info
         currentCallId = callId
@@ -1629,6 +1698,26 @@ public class StreamCallPlugin : Plugin() {
             }
             reason?.let {
                 put("reason", it)
+            }
+            members?.let { membersList ->
+                val membersArray = JSArray()
+                membersList.forEach { member ->
+                    val memberObj = JSObject().apply {
+                        member.forEach { (key, value) ->
+                            put(key, value)
+                        }
+                    }
+                    membersArray.put(memberObj)
+                }
+                put("members", membersArray)
+            }
+            caller?.let { callerInfo ->
+                val callerObj = JSObject().apply {
+                    callerInfo.forEach { (key, value) ->
+                        put(key, value)
+                    }
+                }
+                put("caller", callerObj)
             }
         }
 
