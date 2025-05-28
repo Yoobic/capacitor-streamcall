@@ -6,136 +6,39 @@
   <h2><a href="https://capgo.app/consulting/?ref=plugin"> Fix your annoying bug now, Hire a Capacitor expert 💪</a></h2>
 </div>
 
-Uses the https://getstream.io/ native SDK to implement calling in Capacitor
+A Capacitor plugin that uses the [Stream Video SDK](https://getstream.io/) to enable video calling functionality in your app.
 
-## Install
+## Installation
 
 ```bash
 npm install @capgo/capacitor-stream-call
 npx cap sync
 ```
 
-## Android Setup
+## Configuration
 
-### MainActivity.java
-Modify your `MainActivity.java` to handle incoming calls:
+### iOS Setup
 
-```java
-@Override
-protected void onCreate(Bundle savedInstanceState) {
-  // Save initial intent for StreamCallPlugin (handles killed-state notification)
-  ee.forgr.capacitor.streamcall.StreamCallPlugin.saveInitialIntent(getIntent());
-  
-  super.onCreate(savedInstanceState);
-  
-  // Ensure the activity is visible over the lock screen when launched via full-screen intent
-  if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
-    setShowWhenLocked(true);
-    setTurnScreenOn(true);
-  } else {
-    getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED | android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
-  }
-}
+#### 1. API Key Configuration
+Add your Stream Video API key to `ios/App/App/Info.plist`:
 
-@Override
-protected void onNewIntent(Intent intent) {
-    super.onNewIntent(intent);
-    setIntent(intent);
-    String action = intent.getAction();
-    if ("io.getstream.video.android.action.ACCEPT_CALL".equals(action)) {
-        android.app.KeyguardManager km = (android.app.KeyguardManager) getSystemService(KEYGUARD_SERVICE);
-        if (km != null && km.isKeyguardLocked()) {
-          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            km.requestDismissKeyguard(this, new KeyguardManager.KeyguardDismissCallback() {
-                @Override
-                public void onDismissSucceeded() {
-                    forwardAcceptIntent(intent);
-                }
-            });
-          }
-        } else {
-            forwardAcceptIntent(intent);
-        }
-    }
-}
-
-private void forwardAcceptIntent(Intent intent) {
-    ee.forgr.capacitor.streamcall.StreamCallPlugin.saveInitialIntent(intent);
-    PluginHandle pluginHandle = getBridge().getPlugin("StreamCall");
-    if (pluginHandle != null) {
-        com.getcapacitor.Plugin pluginInstance = pluginHandle.getInstance();
-        if (pluginInstance instanceof ee.forgr.capacitor.streamcall.StreamCallPlugin) {
-            ((ee.forgr.capacitor.streamcall.StreamCallPlugin) pluginInstance).handleAcceptCallIntent(intent);
-        }
-    }
-}
-```
-
-### Application Class
-Create or modify your Application class to pre-initialize the plugin:
-
-```java
-@Override
-public void onCreate() {
-    super.onCreate();
-    
-    // Initialize Firebase
-    com.google.firebase.FirebaseApp.initializeApp(this);
-    
-    try {
-        StreamCallPlugin.preLoadInit(this, this);
-    } catch (Exception e) {
-        Log.e("App", "Failed to pre-initialize StreamVideo Plugin", e);
-    }
-}
-```
-
-## Setting up Android StreamVideo apikey
-1. Add your apikey to the Android project:
-```
-your_app/android/app/src/main/res/values/strings.xml
-```
-
-2. Add your apikey to the Android project:
-```xml
-<string name="CAPACITOR_STREAM_VIDEO_APIKEY">your_api_key</string>
-```
-
-## Setting up iOS StreamVideo apikey
-1. Add your apikey to the iOS project:
-```
-your_app/ios/App/App/Info.plist
-```
-
-Add the following to the Info.plist file:
 ```xml
 <dict>
   <key>CAPACITOR_STREAM_VIDEO_APIKEY</key>
-  <string>n8wv8vjmucdw</string>
+  <string>your_api_key_here</string>
   <!-- other keys -->
 </dict>
 ```
 
-## Native Localization
+#### 2. Localization (Optional)
+To support multiple languages:
 
-### iOS
+1. Add localization files to your Xcode project:
+   - `/App/App/en.lproj/Localizable.strings`
+   - `/App/App/en.lproj/Localizable.stringsdict`
 
-1. Add `Localizable.strings` and `Localizable.stringsdict` files to your Xcode project if you don't have them:
-```
-/App/App/en.lproj/Localizable.strings
-/App/App/en.lproj/Localizable.stringsdict
-```
-
-2. Add new languages to your project in Xcode:
-   - Open project settings
-   - Select your project
-   - Click "Info" tab
-   - Under "Localizations" click "+"
-   - Select the languages you want to add
-
-3. Add the translations in your `Localizable.strings`:
-```
-// en.lproj/Localizable.strings
+2. Add translations in `Localizable.strings`:
+```swift
 "stream.video.call.incoming" = "Incoming call from %@";
 "stream.video.call.accept" = "Accept";
 "stream.video.call.reject" = "Reject";
@@ -144,14 +47,13 @@ Add the following to the Info.plist file:
 "stream.video.call.reconnecting" = "Reconnecting...";
 ```
 
-4. Configure the localization provider in your `AppDelegate.swift`:
+3. Configure localization in your `AppDelegate.swift`:
 ```swift
 import StreamVideo
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Set localization provider to use your app's bundle
         Appearance.localizationProvider = { key, table in
             Bundle.main.localizedString(forKey: key, value: nil, table: table)
         }
@@ -160,12 +62,62 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 ```
 
-You can find all available localization keys in the [StreamVideo SDK repository](https://github.com/GetStream/stream-video-swift/blob/main/Sources/StreamVideoSwiftUI/Resources/en.lproj/Localizable.strings).
+### Android Setup
 
-### Android
-1. Create string resources in `/app/src/main/res/values/strings.xml`:
+#### 1. API Key Configuration
+Add your Stream Video API key to `android/app/src/main/res/values/strings.xml`:
+
 ```xml
-<?xml version="1.0" encoding="utf-8"?>
+<string name="CAPACITOR_STREAM_VIDEO_APIKEY">your_api_key_here</string>
+```
+
+#### 2. MainActivity Configuration
+Modify your `MainActivity.java` to handle incoming calls:
+
+```java
+@Override
+protected void onCreate(Bundle savedInstanceState) {
+  super.onCreate(savedInstanceState);
+  
+  // Enable activity to show over lock screen
+  if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
+    setShowWhenLocked(true);
+    setTurnScreenOn(true);
+  } else {
+    getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED | android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+  }
+}
+```
+
+#### 3. Application Class Configuration
+Create or modify your Application class to initialize the plugin:
+
+```java
+import ee.forgr.capacitor.streamcall.StreamCallPlugin;
+
+@Override
+public void onCreate() {
+  super.onCreate();
+  
+  // Initialize Firebase
+  com.google.firebase.FirebaseApp.initializeApp(this);
+  
+  // Pre-initialize StreamCall plugin
+  try {
+    StreamCallPlugin.preLoadInit(this, this);
+  } catch (Exception e) {
+    Log.e("App", "Failed to pre-initialize StreamVideo Plugin", e);
+  }
+}
+```
+
+> **Note:** If you don't have an Application class, you need to create one and reference it in your `AndroidManifest.xml` with `android:name=".YourApplicationClass"`.
+
+#### 4. Localization (Optional)
+Add string resources for different languages:
+
+**Default (`values/strings.xml`):**
+```xml
 <resources>
     <string name="stream_video_call_incoming">Incoming call from %1$s</string>
     <string name="stream_video_call_accept">Accept</string>
@@ -176,9 +128,8 @@ You can find all available localization keys in the [StreamVideo SDK repository]
 </resources>
 ```
 
-2. Add translations for other languages in their respective folders (e.g., `/app/src/main/res/values-fr/strings.xml`):
+**French (`values-fr/strings.xml`):**
 ```xml
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="stream_video_call_incoming">Appel entrant de %1$s</string>
     <string name="stream_video_call_accept">Accepter</string>
@@ -189,93 +140,124 @@ You can find all available localization keys in the [StreamVideo SDK repository]
 </resources>
 ```
 
-The SDK will automatically use the system language and these translations.
+## Usage
 
-To receive all on Android from lockscreen you need to listen to specific event `incomingCall`:
+### Handling Incoming Calls (Android)
+On Android, to handle incoming calls when the device is locked, you need to listen for the `incomingCall` event and manage the call state properly:
 
-Here is one exemple in angular from our demo app:
+```typescript
+import { StreamCall } from '@capgo/capacitor-stream-call';
 
-```ts
-StreamCall.addListener('incomingCall', async (payload: any) => {
-    console.log('[incomingCall] lock-screen payload', payload);
-    this.incomingCallId = payload.cid;
-    this.isLockscreenIncoming = true;
-    this.cdr.detectChanges();
-});
-```
-This will allow you to display a custom call screen and then enter or reject the call with :
+export class CallService {
+  private incomingCallId: string | null = null;
+  private isLockscreenIncoming = false;
 
-```ts
+  constructor() {
+    this.setupIncomingCallListener();
+  }
+
+  private setupIncomingCallListener() {
+    StreamCall.addListener('incomingCall', async (payload) => {
+      console.log('Incoming call from lockscreen:', payload);
+      
+      // Store the call ID and show incoming call UI
+      this.incomingCallId = payload.cid;
+      this.isLockscreenIncoming = true;
+      
+      // Show your custom incoming call screen
+      this.showIncomingCallScreen(payload);
+    });
+  }
+
+  // Accept the incoming call
   async acceptCall() {
-    if (!this.incomingCallId) return;
+    if (!this.incomingCallId) {
+      console.warn('No incoming call to accept');
+      return;
+    }
     
     try {
       await StreamCall.acceptCall();
-      await this.presentToast('Call accepted', 'success');
+      this.clearIncomingCall();
+      console.log('Call accepted successfully');
     } catch (error) {
       console.error('Failed to accept call:', error);
-      await this.presentToast('Failed to accept call', 'danger');
     }
   }
 
+  // Reject the incoming call
   async rejectCall() {
-    if (!this.incomingCallId) return;
+    if (!this.incomingCallId) {
+      console.warn('No incoming call to reject');
+      return;
+    }
     
     try {
       await StreamCall.rejectCall();
-      this.incomingCallId = null;
-      await this.presentToast('Call rejected', 'success');
+      this.clearIncomingCall();
+      console.log('Call rejected successfully');
     } catch (error) {
       console.error('Failed to reject call:', error);
-      await this.presentToast('Failed to reject call', 'danger');
     }
   }
-```
-This is the only way we found to allow the app to use the same UI when phone is lock for the video call.
-This can be done that way only on Android on IOS this part is handle by the OS.
 
+  private clearIncomingCall() {
+    this.incomingCallId = null;
+    this.isLockscreenIncoming = false;
+    // Hide your incoming call UI
+    this.hideIncomingCallScreen();
+  }
 
-Also, for Android you need to change your main activity like so:
-```java
-@Override
-protected void onCreate(Bundle savedInstanceState) {
-  // Ensure the activity is visible over the lock screen when launched via full-screen intent
-  if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
-    setShowWhenLocked(true);
-    setTurnScreenOn(true);
-  } else {
-    getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED | android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+  private showIncomingCallScreen(payload: any) {
+    // Implement your custom incoming call UI
+    // This should show accept/reject buttons and caller information
+    // Example: navigate to incoming call page or show modal
+  }
+
+  private hideIncomingCallScreen() {
+    // Hide the incoming call UI
+    // Example: navigate away from incoming call page or close modal
   }
 }
 ```
 
-Furthermore, you need to edit your Application class like so:
-```java
-import ee.forgr.capacitor.streamcall.StreamCallPlugin;
+> **Important:** This lock-screen handling is only required on Android. On iOS, the system handles incoming call UI automatically.
 
-@Override
-public void onCreate() {
-  super.onCreate();
-  initializeApp();
-}
+### Basic Call Operations
+```typescript
+import { StreamCall } from '@capgo/capacitor-stream-call';
 
-private void initializeApp() {
-  Log.i(TAG, "Initializing application...");
-  // Initialize Firebase
-  com.google.firebase.FirebaseApp.initializeApp(this);
-    try {
-      StreamCallPlugin.preLoadInit(this, this);
-      Log.i(TAG, "StreamVideo Plugin preLoadInit invoked successfully");
-    } catch (Exception e) {
-        Log.e(TAG, "Failed to pre-initialize StreamVideo Plugin", e);
-    }
-  Log.i(TAG, "Application initialization completed");
-}
+// Login to Stream Video
+await StreamCall.login({
+  token: 'your_user_token',
+  userId: 'user_id', 
+  name: 'User Name',
+  apiKey: 'your_api_key',
+  magicDivId: 'video-container'
+});
+
+// Make a call
+await StreamCall.call({
+  userIds: ['user_to_call'],
+  type: 'default',
+  ring: true
+});
+
+// End call
+await StreamCall.endCall();
+
+// Toggle microphone
+await StreamCall.setMicrophoneEnabled({ enabled: false });
+
+// Toggle camera  
+await StreamCall.setCameraEnabled({ enabled: false });
+
+// Switch camera
+await StreamCall.switchCamera({ camera: 'front' });
+
+// Logout
+await StreamCall.logout();
 ```
-
-> ⚠️ **WARNING**
-> 
-> You may not have the Application class in your project, if so you need to create it.
 
 ## API
 
