@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.49](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.48...0.0.49) (2025-05-28)
+
+
+### Bug Fixes
+
+* improve member data retrieval during call initialization with timeout handling ([78f1039](https://github.com/Cap-go/capacitor-streamcall/commit/78f10394b687205ba2fa4dcc0115e087f106d464))
+
 ### [0.0.48](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.47...0.0.48) (2025-05-28)
 
 
