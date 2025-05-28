@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.39](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.38...0.0.39) (2025-05-28)
+
+
+### Bug Fixes
+
+* accept call when app is minimized ([1f758a3](https://github.com/Cap-go/capacitor-streamcall/commit/1f758a3724f60d5e0a15fa8f7af75a7de30a7cb0))
+
 ### [0.0.38](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.37...0.0.38) (2025-05-28)
 
 ### [0.0.37](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.36...0.0.37) (2025-05-23)
