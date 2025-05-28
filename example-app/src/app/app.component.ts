@@ -24,10 +24,18 @@ export class AppComponent {
   outgoingToast: HTMLIonToastElement | null = null;
   /** Lock-screen incoming call flag (Android) */
   isLockscreenIncoming = false;
+  /** Outgoing call flag */
+  isOutgoingCall = false;
 
   async endCall() {
     await StreamCall.endCall();
     this.isInCall = false;
+    this.cdr.detectChanges();
+  }
+
+  async endOutgoingCall() {
+    await StreamCall.endCall();
+    this.isOutgoingCall = false;
     this.cdr.detectChanges();
   }
 
@@ -177,6 +185,7 @@ export class AppComponent {
         this.isMuted = false;
         this.isSpeakerOn = true;
         this.isLockscreenIncoming = false;
+        this.isOutgoingCall = false;
         console.log('Call started', event);
         setTimeout(async () => {
           await this.incomingToast?.dismiss();
@@ -189,11 +198,13 @@ export class AppComponent {
       } else if (event.state === 'left') {
         this.isInCall = false;
         this.isLockscreenIncoming = false;
+        this.isOutgoingCall = false;
         console.log('Call ended', event);
         await this.presentToast('Call ended', 'success', 'bottom');
         this.cdr.detectChanges();
       } else if (event.state === 'rejected') {
         //this.isInCall = false;
+        this.isOutgoingCall = false;
         await this.incomingToast?.dismiss();
         console.log('Call rejected', event);
         await this.presentToast('Call rejected', 'success', 'bottom');
@@ -209,12 +220,13 @@ export class AppComponent {
         this.cdr.detectChanges();
         // }
       } else if (event.state === 'created') {
-        await this.presentWaitingCallToast();
+        this.isOutgoingCall = true;
         this.cdr.detectChanges();
       }
        else if (event.state === 'ended' && event.reason === 'all_rejected_or_missed' && Capacitor.getPlatform() === 'web') {
         await this.presentToast('Call rejected or missed by all participants', 'success');
         this.isInCall = false;
+        this.isOutgoingCall = false;
         this.cdr.detectChanges();
       } else {
         if (Capacitor.getPlatform() !== 'ios') {

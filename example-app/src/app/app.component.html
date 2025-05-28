@@ -21,7 +21,7 @@
 
   <!-- Android lock-screen incoming overlay -->
   <div *ngIf="isLockscreenIncoming && !isInCall" style="position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);z-index:9999;display:flex;flex-direction:column;">
-
+    
     <!-- Main content area -->
     <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;">
       
@@ -35,7 +35,6 @@
         <h2 style="color:white;font-size:28px;font-weight:300;margin:0 0 8px 0;">Unknown Caller</h2>
         <p style="color:rgba(255,255,255,0.7);font-size:16px;margin:0;">Mobile • Calling...</p>
       </div>
-
     </div>
 
     <!-- Bottom action area -->
@@ -68,6 +67,47 @@
     </div>
   </div>
 
+  <!-- Outgoing call overlay -->
+  <div *ngIf="isOutgoingCall && !isInCall" style="position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);z-index:9999;display:flex;flex-direction:column;">
+    
+    <!-- Main content area -->
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;">
+      
+      <!-- Contact avatar -->
+      <div style="width:140px;height:140px;border-radius:70px;background:linear-gradient(135deg, #2196F3, #9C27B0);display:flex;align-items:center;justify-content:center;margin-bottom:30px;box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+        <ion-icon name="person" style="font-size:60px;color:white;"></ion-icon>
+      </div>
+
+      <!-- Contact info -->
+      <div style="text-align:center;margin-bottom:40px;">
+        <h2 style="color:white;font-size:28px;font-weight:300;margin:0 0 8px 0;">Calling...</h2>
+        <p style="color:rgba(255,255,255,0.7);font-size:16px;margin:0;">Mobile</p>
+      </div>
+
+      <!-- Calling animation -->
+      <div style="display:flex;gap:8px;margin-bottom:60px;">
+        <div style="width:8px;height:8px;border-radius:4px;background:rgba(255,255,255,0.6);animation:calling-dot 1.4s infinite ease-in-out;"></div>
+        <div style="width:8px;height:8px;border-radius:4px;background:rgba(255,255,255,0.6);animation:calling-dot 1.4s infinite ease-in-out 0.2s;"></div>
+        <div style="width:8px;height:8px;border-radius:4px;background:rgba(255,255,255,0.6);animation:calling-dot 1.4s infinite ease-in-out 0.4s;"></div>
+      </div>
+    </div>
+
+    <!-- Bottom action area -->
+    <div style="padding:40px 60px 60px;display:flex;justify-content:center;align-items:center;">
+      
+      <!-- End call button -->
+      <div style="position:relative;">
+        <button (click)="endOutgoingCall()" 
+                style="width:70px;height:70px;border-radius:35px;background:#f44336;border:none;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(244,67,54,0.4);">
+          <ion-icon name="call" style="font-size:32px;color:white;transform:rotate(135deg);"></ion-icon>
+        </button>
+        <div style="position:absolute;top:-45px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.7);padding:8px 12px;border-radius:20px;">
+          <span style="color:white;font-size:12px;white-space:nowrap;">End call</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <style>
     @keyframes pulse {
       0% {
@@ -77,6 +117,17 @@
       100% {
         transform: scale(1.4);
         opacity: 0;
+      }
+    }
+
+    @keyframes calling-dot {
+      0%, 80%, 100% {
+        transform: scale(0.8);
+        opacity: 0.5;
+      }
+      40% {
+        transform: scale(1.2);
+        opacity: 1;
       }
     }
   </style>

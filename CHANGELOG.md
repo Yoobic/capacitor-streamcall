@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.40](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.39...0.0.40) (2025-05-28)
+
+
+### Features
+
+* add outgoing call overlay and functionality ([d753760](https://github.com/Cap-go/capacitor-streamcall/commit/d75376052e45018d5e8fcf7dd66ec43e70c86a6f))
+
 ### [0.0.39](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.38...0.0.39) (2025-05-28)
 
 
