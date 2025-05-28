@@ -251,6 +251,7 @@ export class CallService {
 * [`getCallStatus()`](#getcallstatus)
 * [`setSpeaker(...)`](#setspeaker)
 * [`switchCamera(...)`](#switchcamera)
+* [`getCallInfo(...)`](#getcallinfo)
 * [Interfaces](#interfaces)
 * [Type Aliases](#type-aliases)
 * [Enums](#enums)
@@ -488,6 +489,23 @@ Switch camera
 --------------------
 
 
+### getCallInfo(...)
+
+```typescript
+getCallInfo(options: { callId: string; }) => Promise<CallEvent>
+```
+
+Get detailed information about an active call including caller details
+
+| Param         | Type                             | Description                      |
+| ------------- | -------------------------------- | -------------------------------- |
+| **`options`** | <code>{ callId: string; }</code> | - Options containing the call ID |
+
+**Returns:** <code>Promise&lt;<a href="#callevent">CallEvent</a>&gt;</code>
+
+--------------------
+
+
 ### Interfaces
 
 
@@ -522,12 +540,14 @@ Switch camera
 
 #### CallEvent
 
-| Prop         | Type                                            | Description                                                    |
-| ------------ | ----------------------------------------------- | -------------------------------------------------------------- |
-| **`callId`** | <code>string</code>                             | ID of the call                                                 |
-| **`state`**  | <code><a href="#callstate">CallState</a></code> | Current state of the call                                      |
-| **`userId`** | <code>string</code>                             | User ID of the participant in the call who triggered the event |
-| **`reason`** | <code>string</code>                             | Reason for the call state change, if applicable                |
+| Prop          | Type                                              | Description                                                    |
+| ------------- | ------------------------------------------------- | -------------------------------------------------------------- |
+| **`callId`**  | <code>string</code>                               | ID of the call                                                 |
+| **`state`**   | <code><a href="#callstate">CallState</a></code>   | Current state of the call                                      |
+| **`userId`**  | <code>string</code>                               | User ID of the participant in the call who triggered the event |
+| **`reason`**  | <code>string</code>                               | Reason for the call state change, if applicable                |
+| **`caller`**  | <code><a href="#callmember">CallMember</a></code> | Information about the caller (for incoming calls)              |
+| **`members`** | <code>CallMember[]</code>                         | List of call members                                           |
 
 
 #### CallState
@@ -721,12 +741,23 @@ The JSON representation for <a href="#listvalue">`ListValue`</a> is JSON array.
 | **`sessionId`** | <code>string</code> | the user sesion_id to pin, if not provided, applies to all sessions |
 
 
+#### CallMember
+
+| Prop           | Type                | Description                   |
+| -------------- | ------------------- | ----------------------------- |
+| **`userId`**   | <code>string</code> | User ID of the member         |
+| **`name`**     | <code>string</code> | Display name of the user      |
+| **`imageURL`** | <code>string</code> | Profile image URL of the user |
+| **`role`**     | <code>string</code> | Role of the user in the call  |
+
+
 #### IncomingCallPayload
 
-| Prop       | Type                    | Description                              |
-| ---------- | ----------------------- | ---------------------------------------- |
-| **`cid`**  | <code>string</code>     | Full call CID (e.g. default:123)         |
-| **`type`** | <code>'incoming'</code> | Event type (currently always "incoming") |
+| Prop         | Type                                              | Description                              |
+| ------------ | ------------------------------------------------- | ---------------------------------------- |
+| **`cid`**    | <code>string</code>                               | Full call CID (e.g. default:123)         |
+| **`type`**   | <code>'incoming'</code>                           | Event type (currently always "incoming") |
+| **`caller`** | <code><a href="#callmember">CallMember</a></code> | Information about the caller             |
 
 
 #### CameraEnabledResponse
