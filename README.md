@@ -235,6 +235,48 @@ This is the only way we found to allow the app to use the same UI when phone is 
 This can be done that way only on Android on IOS this part is handle by the OS.
 
 
+Also, for Android you need to change your main activity like so:
+```java
+@Override
+protected void onCreate(Bundle savedInstanceState) {
+  // Ensure the activity is visible over the lock screen when launched via full-screen intent
+  if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
+    setShowWhenLocked(true);
+    setTurnScreenOn(true);
+  } else {
+    getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED | android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+  }
+}
+```
+
+Furthermore, you need to edit your Application class like so:
+```java
+import ee.forgr.capacitor.streamcall.StreamCallPlugin;
+
+@Override
+public void onCreate() {
+  super.onCreate();
+  initializeApp();
+}
+
+private void initializeApp() {
+  Log.i(TAG, "Initializing application...");
+  // Initialize Firebase
+  com.google.firebase.FirebaseApp.initializeApp(this);
+    try {
+      StreamCallPlugin.preLoadInit(this, this);
+      Log.i(TAG, "StreamVideo Plugin preLoadInit invoked successfully");
+    } catch (Exception e) {
+        Log.e(TAG, "Failed to pre-initialize StreamVideo Plugin", e);
+    }
+  Log.i(TAG, "Application initialization completed");
+}
+```
+
+> ⚠️ **WARNING**
+> 
+> You may not have the Application class in your project, if so you need to create it.
+
 ## API
 
 <docgen-index>
