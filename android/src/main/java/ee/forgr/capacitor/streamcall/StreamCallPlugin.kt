@@ -1244,7 +1244,35 @@ public class StreamCallPlugin : Plugin() {
     private suspend fun endCallRaw(call: Call) {
         val callId = call.id
         android.util.Log.d("StreamCallPlugin", "Attempting to end call $callId")
-        call.leave()
+        
+        try {
+            // Get call information to make the decision
+            val callInfo = call.get()
+            val callData = callInfo?.getOrNull()?.call
+            val currentUserId = streamVideoClient?.userId
+            val createdBy = callData?.createdBy?.id
+            val isCreator = createdBy == currentUserId
+            
+            // Use call.state.totalParticipants to get participant count (as per StreamVideo Android SDK docs)
+            val totalParticipants = call.state.totalParticipants.value ?: 0
+            val shouldEndCall = isCreator || totalParticipants <= 2
+            
+            android.util.Log.d("StreamCallPlugin", "Call $callId - Creator: $createdBy, CurrentUser: $currentUserId, IsCreator: $isCreator, TotalParticipants: $totalParticipants, ShouldEnd: $shouldEndCall")
+            
+            if (shouldEndCall) {
+                // End the call for everyone if I'm the creator or only 2 people
+                android.util.Log.d("StreamCallPlugin", "Ending call $callId for all participants (creator: $isCreator, participants: $totalParticipants)")
+                call.end()
+            } else {
+                // Just leave the call if there are more than 2 people and I'm not the creator
+                android.util.Log.d("StreamCallPlugin", "Leaving call $callId (not creator, >2 participants)")
+                call.leave()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("StreamCallPlugin", "Error getting call info for $callId, defaulting to leave()", e)
+            // Fallback to leave if we can't determine the call info
+            call.leave()
+        }
 
         // Capture context from the overlayView
         val currentContext = overlayView?.context ?: this.savedContext
@@ -1341,16 +1369,22 @@ public class StreamCallPlugin : Plugin() {
     @PluginMethod
     fun endCall(call: PluginCall) {
         try {
-            val activeCall = streamVideoClient?.state?.activeCall
-            if (activeCall == null) {
-                android.util.Log.w("StreamCallPlugin", "Attempted to end call but no active call found")
+            val activeCall = streamVideoClient?.state?.activeCall?.value
+            val ringingCall = streamVideoClient?.state?.ringingCall?.value
+            
+            val callToEnd = activeCall ?: ringingCall
+            
+            if (callToEnd == null) {
+                android.util.Log.w("StreamCallPlugin", "Attempted to end call but no active or ringing call found")
                 call.reject("No active call to end")
                 return
             }
 
+            android.util.Log.d("StreamCallPlugin", "Ending call: activeCall=${activeCall?.id}, ringingCall=${ringingCall?.id}, callToEnd=${callToEnd.id}")
+
             kotlinx.coroutines.GlobalScope.launch {
                 try {
-                    activeCall.value?.let { endCallRaw(it) }
+                    endCallRaw(callToEnd)
                     call.resolve(JSObject().apply {
                         put("success", true)
                     })

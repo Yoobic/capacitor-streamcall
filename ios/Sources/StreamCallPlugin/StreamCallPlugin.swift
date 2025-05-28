@@ -524,9 +524,43 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                 let activeCall = streamVideo?.state.activeCall
                 let viewModelCall = await callViewModel?.call
                 
+                // Helper function to determine if we should end or leave the call
+                func shouldEndCall(for streamCall: Call) async throws -> Bool {
+                    do {
+                        let callInfo = try await streamCall.get()
+                        let currentUserId = streamVideo?.user.id
+                        let createdBy = callInfo.call.createdBy.id
+                        let isCreator = createdBy == currentUserId
+                        
+                        // Use call.state.participants.count to get participant count (as per StreamVideo iOS SDK docs)
+                        let totalParticipants = await streamCall.state.participants.count
+                        let shouldEnd = isCreator || totalParticipants <= 2
+                        
+                        print("Call \(streamCall.cId) - Creator: \(createdBy), CurrentUser: \(currentUserId ?? "nil"), IsCreator: \(isCreator), TotalParticipants: \(totalParticipants), ShouldEnd: \(shouldEnd)")
+                        
+                        return shouldEnd
+                    } catch {
+                        print("Error getting call info for \(streamCall.cId), defaulting to leave: \(error)")
+                        return false // Fallback to leave if we can't determine
+                    }
+                }
+                
                 if let activeCall = activeCall {
-                    // There's an active call, end it normally
-                    activeCall.leave()
+                    // There's an active call, check if we should end or leave
+                    do {
+                        let shouldEnd = try await shouldEndCall(for: activeCall)
+                        
+                        if shouldEnd {
+                            print("Ending active call \(activeCall.cId) for all participants")
+                            try await activeCall.end()
+                        } else {
+                            print("Leaving active call \(activeCall.cId)")
+                            try await activeCall.leave()
+                        }
+                    } catch {
+                        print("Error ending/leaving active call: \(error)")
+                        try await activeCall.leave() // Fallback to leave
+                    }
                     
                     await MainActor.run {
                         self.overlayView?.isHidden = true
@@ -537,8 +571,21 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         "success": true
                     ])
                 } else if let viewModelCall = viewModelCall {
-                    // There's a call in the viewModel (likely outgoing/ringing), end it
-                    viewModelCall.leave()
+                    // There's a call in the viewModel (likely outgoing/ringing), check if we should end or leave
+                    do {
+                        let shouldEnd = try await shouldEndCall(for: viewModelCall)
+                        
+                        if shouldEnd {
+                            print("Ending viewModel call \(viewModelCall.cId) for all participants")
+                            try await viewModelCall.end()
+                        } else {
+                            print("Leaving viewModel call \(viewModelCall.cId)")
+                            try await viewModelCall.leave()
+                        }
+                    } catch {
+                        print("Error ending/leaving viewModel call: \(error)")
+                        try await viewModelCall.leave() // Fallback to leave
+                    }
                     
                     // Also hang up to reset the calling state
                     await callViewModel?.hangUp()
