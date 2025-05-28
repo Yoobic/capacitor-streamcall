@@ -467,8 +467,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     print("- Should Ring: \(shouldRing)")
                     print("- Team: \(team)")
 
-                    // Update the CallOverlayView with the active call
-                    // Create the call object
+                    // Create the call object and get member information
                     await self.callViewModel?.startCall(
                         callType: callType,
                         callId: callId,
@@ -476,28 +475,22 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         ring: shouldRing
                     )
                     
-                    // Notify about call creation with members information
-                    let membersData = members.map { userId in
-                        [
-                            "userId": userId,
-                            "name": "",  // We don't have name info here, will be populated when call connects
-                            "imageURL": "",
-                            "role": ""
-                        ]
-                    }
+                    // Get member information from the created call
+                    let callStream = streamVideo!.call(callType: callType, callId: callId)
                     
-                    // Add current user to members if not already included
-                    var allMembers = membersData
-                    if let currentUser = self.streamVideo?.user {
-                        let currentUserExists = allMembers.contains { $0["userId"] as? String == currentUser.id }
-                        if !currentUserExists {
-                            allMembers.append([
-                                "userId": currentUser.id,
-                                "name": currentUser.name,
-                                "imageURL": currentUser.imageURL?.absoluteString ?? "",
-                                "role": ""
-                            ])
-                        }
+                    // Wait a moment for the call to be initialized
+                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                    
+                    // Get member information from call state
+                    let membersList = await callStream.state.members
+                    print("Members list: \(membersList)")
+                    let allMembers = membersList.map { member in
+                        [
+                            "userId": member.user.id,
+                            "name": member.user.name,
+                            "imageURL": member.user.imageURL ?? "",
+                            "role": member.user.role
+                        ]
                     }
                     
                     self.updateCallStatusAndNotify(callId: callId, state: "created", members: allMembers)
