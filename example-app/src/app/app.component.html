@@ -1,7 +1,7 @@
 <ion-app>
   <ion-router-outlet *ngIf="!isInCall"></ion-router-outlet>
   <div *ngIf="isInCall" style="width: 100%; height: 100%; position: relative;">
-    <div style="position: absolute; bottom: 50%; left: 0; width: 100%; height: 40px; display: flex; justify-content: center; align-items: center; gap: 16px;">
+    <div style="position: absolute; bottom: 10%; left: 0; width: 100%; height: 40px; display: flex; justify-content: center; align-items: center; gap: 16px;">
       <ion-button [color]="isMuted ? 'medium' : 'primary'" (click)="toggleMute()">
         <ion-icon [name]="isMuted ? 'mic-off-outline' : 'mic-outline'"></ion-icon>
       </ion-button>

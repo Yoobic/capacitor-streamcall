@@ -44,14 +44,14 @@ export class AppComponent {
   }
 
   async endCall() {
-    await StreamCall.endCall();
     this.isInCall = false;
+    await StreamCall.endCall();
     this.cdr.detectChanges();
   }
 
   async endOutgoingCall() {
-    await StreamCall.endCall();
     this.isOutgoingCall = false;
+    await StreamCall.endCall();
     this.cdr.detectChanges();
   }
 

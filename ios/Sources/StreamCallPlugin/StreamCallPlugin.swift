@@ -282,19 +282,27 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                                 // Notify with caller information
                                 self.updateCallStatusAndNotify(callId: incomingCall.id, state: "ringing", caller: caller, members: members)
                             }
-                        } else if newState == .idle && self.streamVideo?.state.activeCall == nil {
+                        } else if newState == .idle {
                             // Get the call ID that was active before the state changed
                             let endingCallId = viewModel.call?.cId
-                            print("Call ending: \(String(describing: endingCallId))")
+                            print("Call state changed to idle. EndingCallId: \(String(describing: endingCallId)), ActiveCall: \(String(describing: self.streamVideo?.state.activeCall?.cId))")
                             
-                            // Notify that call has ended - use the properly tracked call ID
-                            self.updateCallStatusAndNotify(callId: endingCallId ?? "", state: "left")
-                            
-                            // Reset notification flag when call ends
-                            self.hasNotifiedCallJoined = false
-                            
-                            // Remove the call overlay view when not in a call
-                            self.ensureViewRemoved()
+                            // Only notify about call ending if we have a valid call ID and there's truly no active call
+                            // This prevents false "left" events during normal state transitions
+                            if let callId = endingCallId, !callId.isEmpty, self.streamVideo?.state.activeCall == nil {
+                                print("Call actually ending: \(callId)")
+                                
+                                // Notify that call has ended - use the properly tracked call ID
+                                self.updateCallStatusAndNotify(callId: callId, state: "left")
+                                
+                                // Reset notification flag when call ends
+                                self.hasNotifiedCallJoined = false
+                                
+                                // Remove the call overlay view when not in a call
+                                self.ensureViewRemoved()
+                            } else {
+                                print("Not sending left event - CallId: \(String(describing: endingCallId)), ActiveCall exists: \(self.streamVideo?.state.activeCall != nil)")
+                            }
                         }
                     } catch {
                         log.error("Error handling call state update: \(String(describing: error))")
