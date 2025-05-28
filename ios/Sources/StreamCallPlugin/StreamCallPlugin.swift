@@ -467,7 +467,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     print("- Should Ring: \(shouldRing)")
                     print("- Team: \(team)")
 
-                    // Create the call object and get member information
+                    // Create the call object
                     await self.callViewModel?.startCall(
                         callType: callType,
                         callId: callId,
@@ -475,24 +475,45 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         ring: shouldRing
                     )
                     
-                    // Get member information from the created call
+                    // Wait for call state to be populated by WebSocket events
                     let callStream = streamVideo!.call(callType: callType, callId: callId)
                     
-                    // Wait a moment for the call to be initialized
-                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                    // Wait until we have member data - with timeout to prevent infinite loop
+                    var allMembers: [[String: Any]] = []
+                    var attempts = 0
+                    let maxAttempts = 50 // 5 seconds max
                     
-                    // Get member information from call state
-                    let membersList = await callStream.state.members
-                    print("Members list: \(membersList)")
-                    let allMembers = membersList.map { member in
-                        [
-                            "userId": member.user.id,
-                            "name": member.user.name,
-                            "imageURL": member.user.imageURL ?? "",
-                            "role": member.user.role
-                        ]
+                    while allMembers.isEmpty && attempts < maxAttempts {
+                        let membersList = await callStream.state.members
+                        if !membersList.isEmpty {
+                            allMembers = membersList.map { member in
+                                [
+                                    "userId": member.user.id,
+                                    "name": member.user.name,
+                                    "imageURL": member.user.imageURL?.absoluteString ?? "",
+                                    "role": member.user.role
+                                ]
+                            }
+                        } else {
+                            attempts += 1
+                            // Wait a bit and try again
+                            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
+                        }
                     }
                     
+                    // If we still don't have members after timeout, use basic data
+                    if allMembers.isEmpty {
+                        allMembers = members.map { userId in
+                            [
+                                "userId": userId,
+                                "name": "",
+                                "imageURL": "",
+                                "role": ""
+                            ]
+                        }
+                    }
+                    
+                    // Now send the created event with complete member data
                     self.updateCallStatusAndNotify(callId: callId, state: "created", members: allMembers)
                     
                     // Update UI on main thread
@@ -504,7 +525,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
                     call.resolve([
                         "success": true
-                    ])  
+                    ])
 
                 } catch {
                     log.error("Error making call: \(String(describing: error))")
