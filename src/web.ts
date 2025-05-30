@@ -50,10 +50,10 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
   private ringCallback = (event: AllClientEvents['call.ring']) => {
     console.log('Call ringing', event, this.currentCall);
     this.incomingCall = event.call;
-    
+
     // Extract caller information
     let caller: CallMember | undefined;
-    
+
     if (event.call?.created_by) {
       caller = {
         userId: event.call.created_by.id,
@@ -62,15 +62,15 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
         role: event.call.created_by.role,
       };
     }
-    
+
     if (!this.currentCall) {
       console.log('Creating new call', event.call.id);
       this.currentCall = this.client?.call(event.call.type, event.call.id);
       // this.currentActiveCallId = this.currentCall?.cid;
-      this.notifyListeners('callEvent', { 
-        callId: event.call.id, 
+      this.notifyListeners('callEvent', {
+        callId: event.call.id,
         state: CallingState.RINGING,
-        caller
+        caller,
       });
       // Clear previous responses when a new call starts
       this.participantResponses.clear();
@@ -761,7 +761,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
     try {
       // Get call details
       const callDetails = await this.currentCall.get();
-      
+
       if (callDetails?.call?.created_by) {
         caller = {
           userId: callDetails.call.created_by.id,
