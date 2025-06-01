@@ -238,6 +238,10 @@ public class StreamCallPlugin : Plugin() {
                             
                             // Notify WebView/JS about incoming call so it can render its own UI
                             notifyListeners("incomingCall", payload, true)
+                            
+                            // Delay bringing app to foreground to allow the event to be processed first
+                            kotlinx.coroutines.delay(500) // 500ms delay
+                            bringAppToForeground()
                         } catch (e: Exception) {
                             android.util.Log.e("StreamCallPlugin", "Error getting call info for incoming call", e)
                             // Fallback to basic payload without caller info
@@ -246,10 +250,12 @@ public class StreamCallPlugin : Plugin() {
                                 put("type", "incoming")
                             }
                             notifyListeners("incomingCall", payload, true)
+                            
+                            // Delay bringing app to foreground to allow the event to be processed first
+                            kotlinx.coroutines.delay(500) // 500ms delay
+                            bringAppToForeground()
                         }
                     }
-
-                    bringAppToForeground()
                 } else {
                     android.util.Log.w("StreamCallPlugin", "handleOnNewIntent: INCOMING_CALL - cid is null. Cannot process.")
                 }
