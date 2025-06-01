@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.51](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.50...0.0.51) (2025-06-01)
+
+
+### Bug Fixes
+
+* bringAppToForeground a bit later to make sure the app is ready ([e50a9d4](https://github.com/Cap-go/capacitor-streamcall/commit/e50a9d46f6f6bce101b68d5c388608ee3b01ed2a))
+
 ### [0.0.50](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.49...0.0.50) (2025-05-30)
 
 
