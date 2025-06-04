@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.52](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.51...0.0.52) (2025-06-04)
+
+
+### Features
+
+* add video option ios ([35d7116](https://github.com/Cap-go/capacitor-streamcall/commit/35d71163b662ba6396e40f4802a1011bc052f403))
+
 ### [0.0.51](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.50...0.0.51) (2025-06-01)
 
 
