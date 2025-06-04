@@ -130,6 +130,8 @@ export interface CallOptions {
   ring?: boolean;
   /** Team name to call */
   team?: string;
+  /** Whether to start the call with video enabled, defaults to false */
+  video?: boolean;
 }
 
 /**

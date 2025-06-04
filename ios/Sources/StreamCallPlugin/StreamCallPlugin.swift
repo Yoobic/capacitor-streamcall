@@ -454,6 +454,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             let callType = call.getString("type") ?? "default"
             let shouldRing = call.getBool("ring") ?? true
             let team = call.getString("team")
+            let video = call.getBool("video") ?? false
 
             // Generate a unique call ID
             let callId = UUID().uuidString
@@ -471,6 +472,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     await self.callViewModel?.startCall(
                         callType: callType,
                         callId: callId,
+                        video: video,
                         members: members.map { Member(userId: $0, role: nil, customData: [:], updatedAt: nil) },
                         ring: shouldRing
                     )
