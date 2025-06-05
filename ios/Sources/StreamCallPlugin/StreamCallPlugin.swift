@@ -359,9 +359,12 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
         // Get push notifications config if provided
         if let pushConfig = call.getObject("pushNotificationsConfig") {
+            let pushProviderName = pushConfig["pushProviderName"] as? String ?? "ios-apn"
+            let voipProviderName = pushConfig["voipProviderName"] as? String ?? "ios-voip"
+            
             self.pushNotificationsConfig = PushNotificationsConfig(
-                pushProviderName: pushConfig["pushProviderName"] as? String ?? "",
-                voipProviderName: pushConfig["voipProviderName"] as? String ?? ""
+                pushProviderInfo: PushProviderInfo(name: pushProviderName, pushProvider: .apn),
+                voipPushProviderInfo: PushProviderInfo(name: voipProviderName, pushProvider: .apn)
             )
         }
 
@@ -783,7 +786,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             apiKey: apiKey,
             user: savedCredentials.user,
             token: UserToken(stringLiteral: savedCredentials.tokenValue),
-            pushNotificationsConfig: self.pushNotificationsConfig,
+            pushNotificationsConfig: self.pushNotificationsConfig ?? .default,
             tokenProvider: {completion in
                 guard let savedCredentials = SecureUserRepository.shared.loadCurrentUser() else {
                     print("No saved credentials or API key found, cannot refresh token")
