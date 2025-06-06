@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.58](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.57...0.0.58) (2025-06-06)
+
+
+### Bug Fixes
+
+* bertter app name ([e5e0175](https://github.com/Cap-go/capacitor-streamcall/commit/e5e0175dc77ae314c6ced22efe33d31b8521d3ca))
+
 ### [0.0.57](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.56...0.0.57) (2025-06-06)
 
 
