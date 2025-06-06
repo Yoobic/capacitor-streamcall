@@ -48,6 +48,8 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
     private var streamVideo: StreamVideo?
 
+    private var pushNotificationsConfig: PushNotificationsConfig?
+
     // Store current call info for getCallStatus
     private var currentCallId: String = ""
     private var currentCallState: String = ""
@@ -354,6 +356,17 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             imageURL: imageURL.flatMap { URL(string: $0) },
             customData: [:]
         )
+
+        // Get push notifications config if provided
+        if let pushConfig = call.getObject("pushNotificationsConfig") {
+            let pushProviderName = pushConfig["pushProviderName"] as? String ?? "ios-apn"
+            let voipProviderName = pushConfig["voipProviderName"] as? String ?? "ios-voip"
+            
+            self.pushNotificationsConfig = PushNotificationsConfig(
+                pushProviderInfo: PushProviderInfo(name: pushProviderName, pushProvider: .apn),
+                voipPushProviderInfo: PushProviderInfo(name: voipProviderName, pushProvider: .apn)
+            )
+        }
 
         let credentials = UserCredentials(user: user, tokenValue: token)
         SecureUserRepository.shared.save(user: credentials)
@@ -773,6 +786,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             apiKey: apiKey,
             user: savedCredentials.user,
             token: UserToken(stringLiteral: savedCredentials.tokenValue),
+            pushNotificationsConfig: self.pushNotificationsConfig ?? .default,
             tokenProvider: {completion in
                 guard let savedCredentials = SecureUserRepository.shared.loadCurrentUser() else {
                     print("No saved credentials or API key found, cannot refresh token")

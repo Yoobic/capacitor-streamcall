@@ -21,6 +21,12 @@ export interface LoginOptions {
   apiKey: string;
   /** ID of the HTML element where the video will be rendered */
   magicDivId?: string;
+  pushNotificationsConfig?: PushNotificationsConfig;
+}
+
+export interface PushNotificationsConfig {
+  pushProviderName: string;
+  voipProviderName: string;
 }
 
 /**
