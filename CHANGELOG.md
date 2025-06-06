@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.54](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.53...0.0.54) (2025-06-06)
+
+
+### Features
+
+* **ios:** Add ability ton pass a push config on login ([2018389](https://github.com/Cap-go/capacitor-streamcall/commit/20183891f994664f26fd47a03e7d4958259a2e1d))
+* **ios:** Fix interface for PushNotificationsConfig params ([213f665](https://github.com/Cap-go/capacitor-streamcall/commit/213f66585e2d86c1f6e1e982360d6e7216ff28be))
+
 ### [0.0.53](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.52...0.0.53) (2025-06-06)
 
 
