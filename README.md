@@ -518,14 +518,23 @@ Get detailed information about an active call including caller details
 
 #### LoginOptions
 
-| Prop             | Type                | Description                                             |
-| ---------------- | ------------------- | ------------------------------------------------------- |
-| **`token`**      | <code>string</code> | Stream Video API token                                  |
-| **`userId`**     | <code>string</code> | User ID for the current user                            |
-| **`name`**       | <code>string</code> | Display name for the current user                       |
-| **`imageURL`**   | <code>string</code> | Optional avatar URL for the current user                |
-| **`apiKey`**     | <code>string</code> | Stream Video API key                                    |
-| **`magicDivId`** | <code>string</code> | ID of the HTML element where the video will be rendered |
+| Prop                          | Type                                                                        | Description                                             |
+| ----------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------- |
+| **`token`**                   | <code>string</code>                                                         | Stream Video API token                                  |
+| **`userId`**                  | <code>string</code>                                                         | User ID for the current user                            |
+| **`name`**                    | <code>string</code>                                                         | Display name for the current user                       |
+| **`imageURL`**                | <code>string</code>                                                         | Optional avatar URL for the current user                |
+| **`apiKey`**                  | <code>string</code>                                                         | Stream Video API key                                    |
+| **`magicDivId`**              | <code>string</code>                                                         | ID of the HTML element where the video will be rendered |
+| **`pushNotificationsConfig`** | <code><a href="#pushnotificationsconfig">PushNotificationsConfig</a></code> |                                                         |
+
+
+#### PushNotificationsConfig
+
+| Prop                   | Type                |
+| ---------------------- | ------------------- |
+| **`pushProviderName`** | <code>string</code> |
+| **`voipProviderName`** | <code>string</code> |
 
 
 #### CallOptions
