@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.57](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.56...0.0.57) (2025-06-06)
+
+
+### Bug Fixes
+
+* app name and web notif ([f370120](https://github.com/Cap-go/capacitor-streamcall/commit/f3701205e70fcec140d910222d0c31cbcdd5e553))
+
 ### [0.0.56](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.55...0.0.56) (2025-06-06)
 
 
