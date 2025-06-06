@@ -9,6 +9,8 @@ class TouchInterceptView: UIView {
     private var lastTouchPoint: CGPoint?
     private let touchThreshold: CGFloat = 5.0 // pixels
     private let timerDelay: TimeInterval = 0.1 // seconds
+    private var isCallActive: Bool = false
+    private var hasActiveCallCheck: (() -> Bool)?
     
     func setupWithWebView(_ webView: UIView, overlayView: UIView) {
         self.webView = webView
@@ -18,6 +20,34 @@ class TouchInterceptView: UIView {
         self.backgroundColor = .clear
         self.isOpaque = false
         os_log(.debug, "TouchInterceptView: setupWithWebView - webView: %{public}s, overlayView: %{public}s", String(describing: webView), String(describing: overlayView))
+    }
+    
+    func setActiveCallCheck(_ check: @escaping () -> Bool) {
+        self.hasActiveCallCheck = check
+    }
+    
+    func setCallActive(_ active: Bool) {
+        self.isCallActive = active
+        os_log(.debug, "TouchInterceptView: setCallActive - %{public}s", String(describing: active))
+        
+        // Cancel any pending timer when call becomes inactive
+        if !active {
+            forwardTimer?.invalidate()
+            forwardTimer = nil
+            lastTouchPoint = nil
+        }
+    }
+    
+    private func shouldInterceptTouches() -> Bool {
+        // Check both our flag and actual call state
+        let hasActiveCall = hasActiveCallCheck?() ?? false
+        let shouldIntercept = isCallActive && hasActiveCall
+        
+        if isCallActive != hasActiveCall {
+            os_log(.debug, "TouchInterceptView: State mismatch - isCallActive: %{public}s, hasActiveCall: %{public}s", String(describing: isCallActive), String(describing: hasActiveCall))
+        }
+        
+        return shouldIntercept
     }
     
     private func isInteractive(_ view: UIView) -> Bool {
@@ -80,7 +110,19 @@ class TouchInterceptView: UIView {
     }
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        os_log(.debug, "TouchInterceptView: hitTest entry at %{public}s", String(describing: point))
+        
+        // Check if we should intercept touches
+        if !shouldInterceptTouches() {
+            if let webView = self.webView {
+                let webPoint = self.convert(point, to: webView)
+                let result = webView.hitTest(webPoint, with: event)
+                os_log(.debug, "TouchInterceptView: hitTest - Not intercepting, direct WebView result %{public}s at %{public}s", String(describing: result), String(describing: webPoint))
+                return result
+            }
+            return nil
+        }
+        
+        os_log(.debug, "TouchInterceptView: hitTest entry at %{public}s, callActive: %{public}s", String(describing: point), String(describing: isCallActive))
         
         // Check if this is same touch location continuing
         if let lastPoint = lastTouchPoint {
@@ -120,6 +162,17 @@ class TouchInterceptView: UIView {
     }
     
     override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        // Check if we should intercept touches
+        if !shouldInterceptTouches() {
+            guard let webView = self.webView else {
+                return super.point(inside: point, with: event)
+            }
+            let webViewPoint = self.convert(point, to: webView)
+            let result = webView.point(inside: webViewPoint, with: event)
+            os_log(.debug, "TouchInterceptView: point(inside) - Not intercepting, WebView only (%{public}s at %{public}s) for original point %{public}s = %s", String(describing: result), String(describing: webViewPoint), String(describing: point), String(describing: result))
+            return result
+        }
+        
         guard let webView = self.webView else {
             os_log(.debug, "TouchInterceptView: point(inside) - webView is nil for point %{public}s. Checking overlay or deferring to super.", String(describing: point))
             if let overlayView = self.overlayView, !overlayView.isHidden {

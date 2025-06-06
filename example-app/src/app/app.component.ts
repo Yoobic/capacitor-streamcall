@@ -45,14 +45,14 @@ export class AppComponent {
 
   async endCall() {
     this.isInCall = false;
-    await StreamCall.endCall();
     this.cdr.detectChanges();
+    await StreamCall.endCall();
   }
 
   async endOutgoingCall() {
     this.isOutgoingCall = false;
-    await StreamCall.endCall();
     this.cdr.detectChanges();
+    await StreamCall.endCall();
   }
 
   async toggleMute() {
@@ -165,6 +165,7 @@ export class AppComponent {
     document.head.appendChild(styleElement);
 
     // register event listeners
+    console.log('Registering call event listener');
     StreamCall.addListener('callEvent', async(event: any) => {
       console.log('Call event received:', event);
       
@@ -208,8 +209,10 @@ export class AppComponent {
         await this.stopWaitingCallToast();
         this.cdr.detectChanges();
       } else if (event.state === 'ringing') {
+        console.log('Call ringing2', event);
         // Only mark as incoming call if we don't already have an outgoing call in progress
         if (!this.isOutgoingCall) {
+          console.log('Call ringing3', event);
           // This is an incoming call
           this.isIncomingCall = true;
           this.isOutgoingCall = false;
