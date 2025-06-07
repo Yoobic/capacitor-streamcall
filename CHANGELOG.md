@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.59](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.58...0.0.59) (2025-06-07)
+
+
+### Bug Fixes
+
+* ringtone playing 2 times + lockscreen hijacking ([1f9b475](https://github.com/Cap-go/capacitor-streamcall/commit/1f9b47585c16d3d9e4630f8c703e331ce557d426))
+
 ### [0.0.58](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.57...0.0.58) (2025-06-06)
 
 
