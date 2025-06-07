@@ -1580,6 +1580,8 @@ public class StreamCallPlugin : Plugin() {
         runOnMainThread {
             android.util.Log.d("StreamCallPlugin", "Hiding UI elements for call $callCid (one-time cleanup)")
             overlayView?.isVisible = false
+            // here we will also make sure we don't show on lock screen
+            changeActivityAsVisibleOnLockScreen(this.activity, false)
         }
 
         android.util.Log.d("StreamCallPlugin", "Cleaned up resources for ended call: $callCid")
