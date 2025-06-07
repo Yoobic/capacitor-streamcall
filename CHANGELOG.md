@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.61](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.60...0.0.61) (2025-06-07)
+
+
+### Bug Fixes
+
+* improve TouchInterceptView.swift ([34112d0](https://github.com/Cap-go/capacitor-streamcall/commit/34112d065194f969ead90787118d3757cb58ae34))
+
 ### [0.0.60](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.59...0.0.60) (2025-06-07)
 
 
