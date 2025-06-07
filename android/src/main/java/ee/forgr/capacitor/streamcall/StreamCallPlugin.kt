@@ -1,45 +1,42 @@
 package ee.forgr.capacitor.streamcall
 
 import TouchInterceptWrapper
+import android.Manifest
 import android.app.Activity
 import android.app.Application
 import android.app.KeyguardManager
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.media.RingtoneManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.FrameLayout
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.ComposeView
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import com.getcapacitor.BridgeActivity
+import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
-import io.getstream.android.push.permissions.ActivityLifecycleCallbacks
-import io.getstream.video.android.core.Call
-import io.getstream.video.android.core.GEO
-import io.getstream.video.android.core.StreamVideo
-import io.getstream.video.android.core.StreamVideoBuilder
-import io.getstream.video.android.core.notifications.NotificationConfig
-import io.getstream.video.android.core.notifications.NotificationHandler
-import io.getstream.video.android.core.sounds.toSounds
-import io.getstream.video.android.model.StreamCallId
-import io.getstream.video.android.model.User
-import io.getstream.video.android.model.streamCallId
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.launch
-import io.getstream.video.android.model.Device
-import kotlinx.coroutines.tasks.await
 import com.google.firebase.messaging.FirebaseMessaging
 import io.getstream.android.push.PushProvider
 import io.getstream.android.push.firebase.FirebasePushDeviceGenerator
+import io.getstream.android.push.permissions.ActivityLifecycleCallbacks
 import io.getstream.android.video.generated.models.CallAcceptedEvent
 import io.getstream.android.video.generated.models.CallCreatedEvent
 import io.getstream.android.video.generated.models.CallEndedEvent
@@ -47,26 +44,36 @@ import io.getstream.android.video.generated.models.CallMissedEvent
 import io.getstream.android.video.generated.models.CallRejectedEvent
 import io.getstream.android.video.generated.models.CallRingEvent
 import io.getstream.android.video.generated.models.CallSessionEndedEvent
+import io.getstream.android.video.generated.models.CallSessionParticipantLeftEvent
 import io.getstream.android.video.generated.models.CallSessionStartedEvent
-import io.getstream.video.android.core.sounds.RingingConfig
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import android.Manifest
-import android.content.pm.PackageManager
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import io.getstream.android.video.generated.models.VideoEvent
+import io.getstream.log.Priority
 import io.getstream.video.android.compose.theme.VideoTheme
 import io.getstream.video.android.compose.ui.components.call.activecall.CallContent
-import androidx.compose.runtime.collectAsState
+import io.getstream.video.android.core.Call
 import io.getstream.video.android.core.CameraDirection
-import android.content.BroadcastReceiver
-import android.content.Intent
-import android.content.IntentFilter
-import com.getcapacitor.JSArray
-import io.getstream.android.video.generated.models.CallSessionParticipantLeftEvent
+import io.getstream.video.android.core.GEO
 import io.getstream.video.android.core.RealtimeConnection
+import io.getstream.video.android.core.StreamVideo
+import io.getstream.video.android.core.StreamVideoBuilder
+import io.getstream.video.android.core.call.CallType
 import io.getstream.video.android.core.events.ParticipantLeftEvent
+import io.getstream.video.android.core.logging.LoggingLevel
+import io.getstream.video.android.core.notifications.NotificationConfig
+import io.getstream.video.android.core.notifications.NotificationHandler
+import io.getstream.video.android.core.notifications.internal.service.CallServiceConfigRegistry
+import io.getstream.video.android.core.notifications.internal.service.DefaultCallConfigurations
+import io.getstream.video.android.core.sounds.RingingConfig
+import io.getstream.video.android.core.sounds.toSounds
+import io.getstream.video.android.model.Device
+import io.getstream.video.android.model.StreamCallId
+import io.getstream.video.android.model.User
+import io.getstream.video.android.model.streamCallId
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 // I am not a religious pearson, but at this point, I am not sure even god himself would understand this code
 // It's a spaghetti-like, tangled, unreadable mess and frankly, I am deeply sorry for the code crimes commited in the Android impl
@@ -76,7 +83,6 @@ public class StreamCallPlugin : Plugin() {
     private var state: State = State.NOT_INITIALIZED
     private var overlayView: ComposeView? = null
     private var barrierView: View? = null
-    private var ringtonePlayer: RingtonePlayer? = null
     private val mainHandler = Handler(Looper.getMainLooper())
     private var savedContext: Context? = null
     private var bootedToHandleCall: Boolean = false
@@ -112,62 +118,15 @@ public class StreamCallPlugin : Plugin() {
     }
 
     override fun handleOnPause() {
-        this.ringtonePlayer.let { it?.pauseRinging() }
         super.handleOnPause()
     }
 
     override fun handleOnResume() {
-        this.ringtonePlayer.let { it?.resumeRinging() }
         super.handleOnResume()
     }
 
     override fun load() {
         // general init
-        ringtonePlayer = RingtonePlayer(
-            this.activity.application,
-            cancelIncomingCallService = {
-                val streamVideoClient = this.streamVideoClient
-                if (streamVideoClient == null) {
-                    android.util.Log.d("StreamCallPlugin", "StreamVideo SDK client is null, no incoming call notification can be constructed")
-                    return@RingtonePlayer
-                }
-
-                try {
-                    val callServiceClass = Class.forName("io.getstream.video.android.core.notifications.internal.service.CallService")
-                    val companionClass = callServiceClass.declaredClasses.first { it.simpleName == "Companion" }
-                    // Instead of getting INSTANCE, we'll get the companion object through the enclosing class
-                    val companionField = callServiceClass.getDeclaredField("Companion")
-                    companionField.isAccessible = true
-                    val companionInstance = companionField.get(null)
-
-                    val removeIncomingCallMethod = companionClass.getDeclaredMethod(
-                        "removeIncomingCall",
-                        Context::class.java,
-                        Class.forName("io.getstream.video.android.model.StreamCallId"),
-                        Class.forName("io.getstream.video.android.core.notifications.internal.service.CallServiceConfig")
-                    )
-                    removeIncomingCallMethod.isAccessible = true
-
-                    // Get the default config using reflection
-                    val defaultConfigClass = Class.forName("io.getstream.video.android.core.notifications.internal.service.DefaultCallConfigurations")
-                    val defaultField = defaultConfigClass.getDeclaredField("INSTANCE")
-                    val defaultInstance = defaultField.get(null)
-                    val defaultMethod = defaultConfigClass.getDeclaredMethod("getDefault")
-                    val defaultConfig = defaultMethod.invoke(defaultInstance)
-
-                    val app = this.activity.application
-                    val cId = streamVideoClient.state.ringingCall.value?.cid?.let { StreamCallId.fromCallCid(it) }
-                    if (app == null || cId == null || defaultConfig == null) {
-                        android.util.Log.e("StreamCallPlugin", "Some required parameters are null - app: ${app == null}, cId: ${cId == null}, defaultConfig: ${defaultConfig == null}")
-                    }
-
-                    // Call the method
-                    removeIncomingCallMethod.invoke(companionInstance, app, cId, defaultConfig)
-                } catch (e : Throwable) {
-                    android.util.Log.e("StreamCallPlugin", "Reflecting streamNotificationManager and the config DID NOT work", e);
-                }
-            }
-        )
         initializeStreamVideo()
         setupViews()
         super.load()
@@ -206,6 +165,8 @@ public class StreamCallPlugin : Plugin() {
 
         if (action === "io.getstream.video.android.action.INCOMING_CALL") {
             android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: Matched INCOMING_CALL action")
+            // We need to make sure the activity is visible on locked screen in such case
+            changeActivityAsVisibleOnLockScreen(this@StreamCallPlugin.activity, true)
             activity?.runOnUiThread {
                 val cid = intent.streamCallId(NotificationHandler.INTENT_EXTRA_CALL_CID)
                 android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: INCOMING_CALL - Extracted cid: $cid")
@@ -213,8 +174,6 @@ public class StreamCallPlugin : Plugin() {
                     android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: INCOMING_CALL - cid is not null, processing.")
                     val call = streamVideoClient?.call(id = cid.id, type = cid.type)
                     android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: INCOMING_CALL - Got call object: ${call?.id}")
-                    // Start ringtone only; UI handled in web layer
-                    ringtonePlayer?.startRinging()
 
                     // Try to get caller information from the call
                     kotlinx.coroutines.GlobalScope.launch {
@@ -296,9 +255,7 @@ public class StreamCallPlugin : Plugin() {
         kotlinx.coroutines.GlobalScope.launch {
             try {
                 call.reject()
-
-                // Stop ringtone
-                ringtonePlayer?.stopRinging()
+                changeActivityAsVisibleOnLockScreen(this@StreamCallPlugin.activity, false)
 
                 // Notify that call has ended using our helper
                 updateCallStatusAndNotify(call.id, "rejected")
@@ -547,6 +504,7 @@ public class StreamCallPlugin : Plugin() {
             )
 
             val soundsConfig = incomingOnlyRingingConfig()
+
             // Initialize StreamVideo client
             streamVideoClient = StreamVideoBuilder(
                 context = contextToUse,
@@ -555,8 +513,8 @@ public class StreamCallPlugin : Plugin() {
                 user = savedCredentials.user,
                 token = savedCredentials.tokenValue,
                 notificationConfig = notificationConfig,
-                sounds = soundsConfig.toSounds()
-                //, loggingLevel = LoggingLevel(priority = Priority.VERBOSE)
+                sounds = soundsConfig.toSounds(),
+                // loggingLevel = LoggingLevel(priority = Priority.DEBUG)
             ).build()
 
             // don't do event handler registration when activity may be null
@@ -758,7 +716,6 @@ public class StreamCallPlugin : Plugin() {
                         val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
                         if (keyguardManager.isKeyguardLocked) {
                             android.util.Log.d("StreamCallPlugin", "Stop ringing and move to background")
-                            this.ringtonePlayer?.stopRinging()
                             moveAllActivitiesToBackgroundOrKill(context)
                         }
 
@@ -865,9 +822,12 @@ public class StreamCallPlugin : Plugin() {
                         // Notify that a call has started or state updated (e.g., participants changed but still active)
                         // The actual check for "last participant" is now handled by CallSessionParticipantLeftEvent
                         updateCallStatusAndNotify(call.cid, "joined")
+                        // Make sure activity is visible on lock screen
+                        changeActivityAsVisibleOnLockScreen(this@StreamCallPlugin.activity, true)
                     } ?: run {
                         // Notify that call has ended using our helper
                         updateCallStatusAndNotify("", "left")
+                        changeActivityAsVisibleOnLockScreen(this@StreamCallPlugin.activity, false)
                     }
                 }
             }
@@ -967,9 +927,6 @@ public class StreamCallPlugin : Plugin() {
         kotlinx.coroutines.GlobalScope.launch {
             try {
                 android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Coroutine started for call ${call.id}")
-                // Stop ringtone
-                ringtonePlayer?.stopRinging()
-                android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Ringtone player stopped for call ${call.id}")
 
                 // Hide incoming call view first
                 runOnMainThread {
@@ -1274,6 +1231,12 @@ public class StreamCallPlugin : Plugin() {
                 android.util.Log.d("StreamCallPlugin", "Leaving call $callId (not creator, >2 participants)")
                 call.leave()
             }
+
+            // Here, we'll also mark the activity as not-visible on lock screen
+            this@StreamCallPlugin.savedActivity?.let {
+                changeActivityAsVisibleOnLockScreen(it, false)
+            }
+
         } catch (e: Exception) {
             android.util.Log.e("StreamCallPlugin", "Error getting call info for $callId, defaulting to leave()", e)
             // Fallback to leave if we can't determine the call info
@@ -1328,7 +1291,6 @@ public class StreamCallPlugin : Plugin() {
             }
             overlayView?.isVisible = false
             bridge?.webView?.setBackgroundColor(Color.WHITE) // Restore webview opacity
-            this@StreamCallPlugin.ringtonePlayer?.stopRinging()
 
             // Also hide incoming call view if visible
             android.util.Log.d("StreamCallPlugin", "Hiding incoming call view for call $callId")
@@ -1337,6 +1299,29 @@ public class StreamCallPlugin : Plugin() {
 
         // Notify that call has ended using helper
         updateCallStatusAndNotify(callId, "left")
+    }
+
+    private fun changeActivityAsVisibleOnLockScreen(activity: Activity, visible: Boolean) {
+        if (visible) {
+            // Ensure the activity is visible over the lock screen when launched via full-screen intent
+            android.util.Log.d("StreamCallPlugin", "Mark the mainActivity as visible on the lockscreen")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                activity.setShowWhenLocked(true)
+                activity.setTurnScreenOn(true)
+            } else {
+                activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
+            }
+        } else {
+            // Ensure the activity is NOT visible over the lock screen when launched via full-screen intent
+            android.util.Log.d("StreamCallPlugin", "Clear the flag for the mainActivity for visible on the lockscreen")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                activity.setShowWhenLocked(false)
+                activity.setTurnScreenOn(false)
+            } else {
+                activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
+            }
+        }
+
     }
 
     @OptIn(DelicateCoroutinesApi::class)
@@ -1595,8 +1580,6 @@ public class StreamCallPlugin : Plugin() {
         runOnMainThread {
             android.util.Log.d("StreamCallPlugin", "Hiding UI elements for call $callCid (one-time cleanup)")
             overlayView?.isVisible = false
-            ringtonePlayer?.stopRinging()
-            // No dedicated incoming-call native view anymore; UI handled by web layer
         }
 
         android.util.Log.d("StreamCallPlugin", "Cleaned up resources for ended call: $callCid")

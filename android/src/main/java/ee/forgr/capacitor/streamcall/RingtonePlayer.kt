@@ -31,26 +31,26 @@ class RingtonePlayer(
 
     fun pauseRinging() {
         Log.d("RingtonePlayer", "Pause ringing")
-        try {
-            if (!isStopped) {
-                mediaPlayer?.pause()
-                isPaused = true
-            }
-        } catch (e: Exception) {
-            Log.e("RingtonePlayer", "Error pausing ringtone: ${e.message}")
-        }
+//        try {
+//            if (!isStopped) {
+//                mediaPlayer?.pause()
+//                isPaused = true
+//            }
+//        } catch (e: Exception) {
+//            Log.e("RingtonePlayer", "Error pausing ringtone: ${e.message}")
+//        }
     }
 
     fun resumeRinging() {
         Log.d("RingtonePlayer", "Resume ringing")
-        try {
-            if (!isStopped && isPaused) {
-                mediaPlayer?.start()
-                isPaused = false
-            }
-        } catch (e: Exception) {
-            Log.e("RingtonePlayer", "Error resuming ringtone: ${e.message}")
-        }
+//        try {
+//            if (!isStopped && isPaused) {
+//                mediaPlayer?.start()
+//                isPaused = false
+//            }
+//        } catch (e: Exception) {
+//            Log.e("RingtonePlayer", "Error resuming ringtone: ${e.message}")
+//        }
     }
 
     fun isPaused(): Boolean {
@@ -59,103 +59,103 @@ class RingtonePlayer(
 
     fun startRinging() {
         Log.d("RingtonePlayer", "Start ringing")
-        try {
-            isStopped = false
-            isPaused = false
-            if (mediaPlayer == null) {
-                val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-                mediaPlayer = MediaPlayer().apply {
-                    setDataSource(application, uri)
-                    isLooping = true
-                    setAudioAttributes(
-                        AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
-                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                            .build()
-                    )
-                    prepare()
-                }
-            }
-
-            val notificationManager = application.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            val notifs = notificationManager.activeNotifications.toList()
-            var notificationTime = 0L
-
-            for (notification in notifs) {
-                // First check if it's our notification
-                val isOurs = isOurNotification(notification)
-
-                // Only proceed with ringtone if it's our notification
-                if (!isOurs) {
-                    Log.d("RingtonePlayer", "Skipping notification as it's not our incoming call notification")
-                    continue
-                }
-
-                // Cancel our notification
-                try {
-                    Log.d("RingtonePlayer", "Canceling notification/service with id: ${notification.id}")
-                    this.cancelIncomingCallService()
-                } catch (e: Exception) {
-                    Log.e("RingtonePlayer", "Error cancelling notification: ${e.message}")
-                }
-                notificationTime = notification.postTime
-            }
-
-            if (notificationTime > 0) {
-                val currentTime = System.currentTimeMillis()
-                val elapsedTime = currentTime - notificationTime
-
-                // Only start playing if we're within the ringtone duration
-                if (elapsedTime < DEFAULT_RINGTONE_DURATION) {
-                    // Get the ringtone duration
-                    val ringtoneDuration = mediaPlayer?.duration?.toLong() ?: DEFAULT_RINGTONE_DURATION
-                    
-                    // Calculate the position to seek to
-                    val seekPosition = (elapsedTime % ringtoneDuration).toInt()
-                    Log.d("RingtonePlayer", "Seeking to position: $seekPosition ms in ringtone")
-                    
-                    mediaPlayer?.seekTo(seekPosition)
-                    mediaPlayer?.start()
-
-                    // Schedule stop at the remaining duration
-                    val remainingDuration = DEFAULT_RINGTONE_DURATION - elapsedTime
-                    stopRingtoneRunnable = Runnable { stopRinging() }
-                    handler.postDelayed(stopRingtoneRunnable!!, remainingDuration)
-                    
-                    Log.d("RingtonePlayer", "Starting ringtone with offset: $elapsedTime ms, will play for $remainingDuration ms")
-                } else {
-                    Log.d("RingtonePlayer", "Not starting ringtone as elapsed time ($elapsedTime ms) exceeds duration")
-                }
-            } else {
-                // If no notification time found, just play normally
-                mediaPlayer?.start()
-                
-                // Schedule stop at the default duration
-                stopRingtoneRunnable = Runnable { stopRinging() }
-                handler.postDelayed(stopRingtoneRunnable!!, DEFAULT_RINGTONE_DURATION)
-                
-                Log.d("RingtonePlayer", "Starting ringtone with default duration")
-            }
-        } catch (e: Exception) {
-            Log.e("RingtonePlayer", "Error playing ringtone: ${e.message}")
-        }
+//        try {
+//            isStopped = false
+//            isPaused = false
+//            if (mediaPlayer == null) {
+//                val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+//                mediaPlayer = MediaPlayer().apply {
+//                    setDataSource(application, uri)
+//                    isLooping = true
+//                    setAudioAttributes(
+//                        AudioAttributes.Builder()
+//                            .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+//                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+//                            .build()
+//                    )
+//                    prepare()
+//                }
+//            }
+//
+//            val notificationManager = application.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+//            val notifs = notificationManager.activeNotifications.toList()
+//            var notificationTime = 0L
+//
+//            for (notification in notifs) {
+//                // First check if it's our notification
+//                val isOurs = isOurNotification(notification)
+//
+//                // Only proceed with ringtone if it's our notification
+//                if (!isOurs) {
+//                    Log.d("RingtonePlayer", "Skipping notification as it's not our incoming call notification")
+//                    continue
+//                }
+//
+//                // Cancel our notification
+//                try {
+//                    Log.d("RingtonePlayer", "Canceling notification/service with id: ${notification.id}")
+//                    this.cancelIncomingCallService()
+//                } catch (e: Exception) {
+//                    Log.e("RingtonePlayer", "Error cancelling notification: ${e.message}")
+//                }
+//                notificationTime = notification.postTime
+//            }
+//
+//            if (notificationTime > 0) {
+//                val currentTime = System.currentTimeMillis()
+//                val elapsedTime = currentTime - notificationTime
+//
+//                // Only start playing if we're within the ringtone duration
+//                if (elapsedTime < DEFAULT_RINGTONE_DURATION) {
+//                    // Get the ringtone duration
+//                    val ringtoneDuration = mediaPlayer?.duration?.toLong() ?: DEFAULT_RINGTONE_DURATION
+//
+//                    // Calculate the position to seek to
+//                    val seekPosition = (elapsedTime % ringtoneDuration).toInt()
+//                    Log.d("RingtonePlayer", "Seeking to position: $seekPosition ms in ringtone")
+//
+//                    mediaPlayer?.seekTo(seekPosition)
+//                    mediaPlayer?.start()
+//
+//                    // Schedule stop at the remaining duration
+//                    val remainingDuration = DEFAULT_RINGTONE_DURATION - elapsedTime
+//                    stopRingtoneRunnable = Runnable { stopRinging() }
+//                    handler.postDelayed(stopRingtoneRunnable!!, remainingDuration)
+//
+//                    Log.d("RingtonePlayer", "Starting ringtone with offset: $elapsedTime ms, will play for $remainingDuration ms")
+//                } else {
+//                    Log.d("RingtonePlayer", "Not starting ringtone as elapsed time ($elapsedTime ms) exceeds duration")
+//                }
+//            } else {
+//                // If no notification time found, just play normally
+//                mediaPlayer?.start()
+//
+//                // Schedule stop at the default duration
+//                stopRingtoneRunnable = Runnable { stopRinging() }
+//                handler.postDelayed(stopRingtoneRunnable!!, DEFAULT_RINGTONE_DURATION)
+//
+//                Log.d("RingtonePlayer", "Starting ringtone with default duration")
+//            }
+//        } catch (e: Exception) {
+//            Log.e("RingtonePlayer", "Error playing ringtone: ${e.message}")
+//        }
     }
 
     fun stopRinging() {
         Log.d("RingtonePlayer", "Stop ringing")
-        try {
-            isStopped = true
-            isPaused = false
-            stopRingtoneRunnable?.let { handler.removeCallbacks(it) }
-            stopRingtoneRunnable = null
-            
-            mediaPlayer?.stop()
-            mediaPlayer?.reset()
-            mediaPlayer?.release()
-            mediaPlayer = null
-        } catch (e: Exception) {
-            Log.e("RingtonePlayer", "Error stopping ringtone: ${e.message}")
-        }
+//        try {
+//            isStopped = true
+//            isPaused = false
+//            stopRingtoneRunnable?.let { handler.removeCallbacks(it) }
+//            stopRingtoneRunnable = null
+//
+//            mediaPlayer?.stop()
+//            mediaPlayer?.reset()
+//            mediaPlayer?.release()
+//            mediaPlayer = null
+//        } catch (e: Exception) {
+//            Log.e("RingtonePlayer", "Error stopping ringtone: ${e.message}")
+//        }
     }
 
 

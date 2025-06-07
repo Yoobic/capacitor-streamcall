@@ -13,7 +13,8 @@ import io.getstream.video.android.core.RingingState
 import io.getstream.video.android.core.notifications.DefaultNotificationHandler
 import io.getstream.video.android.core.notifications.NotificationHandler
 import io.getstream.video.android.model.StreamCallId
- 
+import io.getstream.video.android.model.streamCallId
+
 // declare "incoming_calls_custom" as a constant
 const val INCOMING_CALLS_CUSTOM = "incoming_calls_custom"
  
@@ -76,7 +77,7 @@ class CustomNotificationHandler(
             }
             acceptCallIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
 
-            Log.d("CustomNotificationHandler", "Constructed Accept Call Intent for PI: action=${acceptCallIntent.action}, cid=${acceptCallIntent.getStringExtra(NotificationHandler.INTENT_EXTRA_CALL_CID)}, package=${acceptCallIntent.getPackage()}, component=${acceptCallIntent.component?.flattenToString()}, flags=${acceptCallIntent.flags}")
+            Log.d("CustomNotificationHandler", "Constructed Accept Call Intent for PI: action=${acceptCallIntent.action}, cid=${acceptCallIntent.streamCallId(NotificationHandler.INTENT_EXTRA_CALL_CID)}, package=${acceptCallIntent.getPackage()}, component=${acceptCallIntent.component?.flattenToString()}, flags=${acceptCallIntent.flags}")
 
             // Create PendingIntent for Accept action using getActivity to launch the app
             val requestCodeAccept = callId.cid.hashCode() + 1 // Unique request code for the PendingIntent with offset to avoid collisions
@@ -150,7 +151,7 @@ class CustomNotificationHandler(
         )
     }
  
-    fun buildNotification(
+    private fun buildNotification(
         fullScreenPendingIntent: PendingIntent,
         acceptCallPendingIntent: PendingIntent,
         rejectCallPendingIntent: PendingIntent,

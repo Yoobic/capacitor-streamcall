@@ -44,14 +44,6 @@ public class MainActivity extends BridgeActivity {
     // Log the initial intent
     Intent intent = getIntent();
     logIntent(intent);
-
-    // Ensure the activity is visible over the lock screen when launched via full-screen intent
-    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
-      setShowWhenLocked(true);
-      setTurnScreenOn(true);
-    } else {
-      getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED | android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
-    }
   }
 
   @Override
