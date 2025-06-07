@@ -138,8 +138,12 @@ class TouchInterceptView: UIView {
         lastTouchPoint = point
         forwardTimer?.invalidate()
         forwardTimer = Timer.scheduledTimer(withTimeInterval: timerDelay, repeats: false) { [weak self] _ in
+            guard let self = self, self.shouldInterceptTouches() else {
+                os_log(.debug, "TouchInterceptView: Timer fired but no longer in call, skipping web forward")
+                return
+            }
             os_log(.debug, "TouchInterceptView: Timer fired, forwarding click to web at %{public}s", String(describing: point))
-            self?.forwardClickToWeb(at: point)
+            self.forwardClickToWeb(at: point)
         }
         
         // 1. interactive hit on overlay (including root)
