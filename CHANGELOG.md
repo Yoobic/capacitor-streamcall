@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.60](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.59...0.0.60) (2025-06-07)
+
+
+### Bug Fixes
+
+* when receiving a call from another user, and then the other user has cancelled the call, incoming screen is not hiding and app stays open ([13c2f25](https://github.com/Cap-go/capacitor-streamcall/commit/13c2f253fe6ef219ee1b71574c548dc528a22175))
+
 ### [0.0.59](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.58...0.0.59) (2025-06-07)
 
 
