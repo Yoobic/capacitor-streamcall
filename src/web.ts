@@ -64,18 +64,18 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
     }
 
     // if (!this.currentCall) {
-      console.log('Creating new call', event.call.id);
-      this.currentCall = this.client?.call(event.call.type, event.call.id);
-      // this.currentActiveCallId = this.currentCall?.cid;
-      setTimeout(() => {
-        this.notifyListeners('callEvent', {
-          callId: event.call.id,
-          state: CallingState.RINGING,
-          caller,
-        });
-      }, 100);
-      // Clear previous responses when a new call starts
-      this.participantResponses.clear();
+    console.log('Creating new call', event.call.id);
+    this.currentCall = this.client?.call(event.call.type, event.call.id);
+    // this.currentActiveCallId = this.currentCall?.cid;
+    setTimeout(() => {
+      this.notifyListeners('callEvent', {
+        callId: event.call.id,
+        state: CallingState.RINGING,
+        caller,
+      });
+    }, 100);
+    // Clear previous responses when a new call starts
+    this.participantResponses.clear();
     // }
     if (this.currentCall) {
       console.log('Call found', this.currentCall.id);
