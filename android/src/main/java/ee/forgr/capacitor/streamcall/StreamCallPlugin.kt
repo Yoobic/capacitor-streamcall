@@ -21,11 +21,19 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.FrameLayout
+import androidx.compose.foundation.layout.fillMaxSize
+
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.getcapacitor.BridgeActivity
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
@@ -50,6 +58,10 @@ import io.getstream.android.video.generated.models.VideoEvent
 import io.getstream.log.Priority
 import io.getstream.video.android.compose.theme.VideoTheme
 import io.getstream.video.android.compose.ui.components.call.activecall.CallContent
+import io.getstream.video.android.compose.ui.components.call.renderer.FloatingParticipantVideo
+import io.getstream.video.android.compose.ui.components.call.renderer.ParticipantVideo
+import io.getstream.video.android.compose.ui.components.call.renderer.RegularVideoRendererStyle
+import io.getstream.video.android.compose.ui.components.video.VideoScalingType
 import io.getstream.video.android.core.Call
 import io.getstream.video.android.core.CameraDirection
 import io.getstream.video.android.core.GEO
@@ -58,6 +70,7 @@ import io.getstream.video.android.core.StreamVideo
 import io.getstream.video.android.core.StreamVideoBuilder
 import io.getstream.video.android.core.call.CallType
 import io.getstream.video.android.core.events.ParticipantLeftEvent
+import io.getstream.video.android.core.internal.InternalStreamVideoApi
 import io.getstream.video.android.core.logging.LoggingLevel
 import io.getstream.video.android.core.notifications.NotificationConfig
 import io.getstream.video.android.core.notifications.NotificationHandler
@@ -285,6 +298,7 @@ public class StreamCallPlugin : Plugin() {
         }
     }
 
+    @OptIn(InternalStreamVideoApi::class)
     private fun setupViews() {
         val context = context
         val originalParent = bridge?.webView?.parent as? ViewGroup ?: return
@@ -316,9 +330,51 @@ public class StreamCallPlugin : Plugin() {
                 VideoTheme {
                     val activeCall = streamVideoClient?.state?.activeCall?.collectAsState()?.value
                     if (activeCall != null) {
+                        val participants by activeCall.state.participants.collectAsStateWithLifecycle()
+                        val sortedParticipants by activeCall.state.sortedParticipants.collectAsStateWithLifecycle(emptyList())
+                        val callParticipants by remember(participants) {
+                            derivedStateOf {
+                                if (sortedParticipants.size > 6) {
+                                    sortedParticipants
+                                } else {
+                                    participants
+                                }
+                            }
+                        }
+
+                        val currentLocal by activeCall.state.me.collectAsStateWithLifecycle()
+
                         CallContent(
                             call = activeCall,
-                            onBackPressed = { /* Handle back press if needed */ }
+                            onBackPressed = { /* Handle back press if needed */ },
+                            videoRenderer = { videoModifier, videoCall, videoParticipant, videoStyle ->
+                                ParticipantVideo(
+                                    modifier = videoModifier,
+                                    call = videoCall,
+                                    participant = videoParticipant,
+                                    style = videoStyle,
+                                    actionsContent = {_, _, _ -> {}}
+                                )
+                            },
+                            floatingVideoRenderer = { call, parentSize ->
+                                FloatingParticipantVideo(
+                                    call = call,
+                                    participant = currentLocal!!,
+                                    style = RegularVideoRendererStyle().copy(isShowingConnectionQualityIndicator = false),
+                                    parentBounds = parentSize,
+                                    videoRenderer = { _ ->
+                                        ParticipantVideo(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .clip(VideoTheme.shapes.dialog),
+                                            call = call,
+                                            participant = currentLocal!!,
+                                            style = RegularVideoRendererStyle().copy(isShowingConnectionQualityIndicator = false),
+                                            actionsContent = {_, _, _ -> {}},
+                                        )
+                                    }
+                                )
+                            }
                         )
                     }
                 }
@@ -921,7 +977,7 @@ public class StreamCallPlugin : Plugin() {
         }
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
+    @OptIn(DelicateCoroutinesApi::class, InternalStreamVideoApi::class)
     internal fun internalAcceptCall(call: Call) {
         android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Entered for call: ${call.id}")
         kotlinx.coroutines.GlobalScope.launch {
@@ -981,11 +1037,55 @@ public class StreamCallPlugin : Plugin() {
                         VideoTheme {
                             if (call != null) {
                                 android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Setting CallContent with active call ${call.id}")
+                                
+                                val participants by call.state.participants.collectAsStateWithLifecycle()
+                                val sortedParticipants by call.state.sortedParticipants.collectAsStateWithLifecycle(emptyList())
+                                val callParticipants by remember(participants) {
+                                    derivedStateOf {
+                                        if (sortedParticipants.size > 6) {
+                                            sortedParticipants
+                                        } else {
+                                            participants
+                                        }
+                                    }
+                                }
+
+                                val currentLocal by call.state.me.collectAsStateWithLifecycle()
+
                                 CallContent(
                                     call = call,
                                     onBackPressed = { /* ... */ },
                                     controlsContent = { /* ... */ },
-                                    appBarContent = { /* ... */ }
+                                    appBarContent = { /* ... */ },
+                                    videoRenderer = { videoModifier, videoCall, videoParticipant, videoStyle ->
+                                        ParticipantVideo(
+                                            modifier = videoModifier,
+                                            call = videoCall,
+                                            participant = videoParticipant,
+                                            style = videoStyle,
+                                            actionsContent = {_, _, _ -> {}},
+                                            scalingType = VideoScalingType.SCALE_ASPECT_FIT
+                                        )
+                                    },
+                                    floatingVideoRenderer = { call, parentSize ->
+                                        FloatingParticipantVideo(
+                                            call = call,
+                                            participant = currentLocal!!,
+                                            style = RegularVideoRendererStyle().copy(isShowingConnectionQualityIndicator = false),
+                                            parentBounds = parentSize,
+                                            videoRenderer = { _ ->
+                                                ParticipantVideo(
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .clip(VideoTheme.shapes.dialog),
+                                                    call = call,
+                                                    participant = currentLocal!!,
+                                                    style = RegularVideoRendererStyle().copy(isShowingConnectionQualityIndicator = false),
+                                                    actionsContent = {_, _, _ -> {}},
+                                                )
+                                            }
+                                        )
+                                    }
                                 )
                             } else {
                                 android.util.Log.w("StreamCallPlugin", "internalAcceptCall: Active call is null, cannot set CallContent for call ${call.id}")
@@ -1014,11 +1114,55 @@ public class StreamCallPlugin : Plugin() {
                                 overlayView?.setContent {
                                     VideoTheme {
                                         android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Force refreshing CallContent with active call ${activeCall.id}")
+                                        
+                                        val participants by activeCall.state.participants.collectAsStateWithLifecycle()
+                                        val sortedParticipants by activeCall.state.sortedParticipants.collectAsStateWithLifecycle(emptyList())
+                                        val callParticipants by remember(participants) {
+                                            derivedStateOf {
+                                                if (sortedParticipants.size > 6) {
+                                                    sortedParticipants
+                                                } else {
+                                                    participants
+                                                }
+                                            }
+                                        }
+
+                                        val currentLocal by activeCall.state.me.collectAsStateWithLifecycle()
+
                                         CallContent(
                                             call = activeCall,
                                             onBackPressed = { /* ... */ },
                                             controlsContent = { /* ... */ },
-                                            appBarContent = { /* ... */ }
+                                            appBarContent = { /* ... */ },
+                                            videoRenderer = { videoModifier, videoCall, videoParticipant, videoStyle ->
+                                                ParticipantVideo(
+                                                    modifier = videoModifier,
+                                                    call = videoCall,
+                                                    participant = videoParticipant,
+                                                    style = videoStyle,
+                                                    actionsContent = {_, _, _ -> {}},
+                                                    scalingType = VideoScalingType.SCALE_ASPECT_FIT
+                                                )
+                                            },
+                                            floatingVideoRenderer = { call, parentSize ->
+                                                FloatingParticipantVideo(
+                                                    call = call,
+                                                    participant = currentLocal!!,
+                                                    style = RegularVideoRendererStyle().copy(isShowingConnectionQualityIndicator = false),
+                                                    parentBounds = parentSize,
+                                                    videoRenderer = { _ ->
+                                                        ParticipantVideo(
+                                                            modifier = Modifier
+                                                                .fillMaxSize()
+                                                                .clip(VideoTheme.shapes.dialog),
+                                                            call = call,
+                                                            participant = currentLocal!!,
+                                                            style = RegularVideoRendererStyle().copy(isShowingConnectionQualityIndicator = false),
+                                                            actionsContent = {_, _, _ -> {}},
+                                                        )
+                                                    }
+                                                )
+                                            }
                                         )
                                     }
                                 }
@@ -1204,6 +1348,7 @@ public class StreamCallPlugin : Plugin() {
         }
     }
 
+    @OptIn(InternalStreamVideoApi::class)
     private suspend fun endCallRaw(call: Call) {
         val callId = call.id
         android.util.Log.d("StreamCallPlugin", "Attempting to end call $callId")
@@ -1281,11 +1426,54 @@ public class StreamCallPlugin : Plugin() {
 
             overlayView?.setContent {
                 VideoTheme {
+                    val participants by call.state.participants.collectAsStateWithLifecycle()
+                    val sortedParticipants by call.state.sortedParticipants.collectAsStateWithLifecycle(emptyList())
+                    val callParticipants by remember(participants) {
+                        derivedStateOf {
+                            if (sortedParticipants.size > 6) {
+                                sortedParticipants
+                            } else {
+                                participants
+                            }
+                        }
+                    }
+
+                    val currentLocal by call.state.me.collectAsStateWithLifecycle()
+
                     CallContent(
                         call = call,
                         onBackPressed = { /* Handle back press if needed */ },
                         controlsContent = { /* Empty to disable native controls */ },
-                        appBarContent = { /* Empty to disable app bar with stop call button */ }
+                        appBarContent = { /* Empty to disable app bar with stop call button */ },
+                        videoRenderer = { videoModifier, videoCall, videoParticipant, videoStyle ->
+                            ParticipantVideo(
+                                modifier = videoModifier,
+                                call = videoCall,
+                                participant = videoParticipant,
+                                style = videoStyle,
+                                actionsContent = {_, _, _ -> {}},
+                                scalingType = VideoScalingType.SCALE_ASPECT_FIT
+                            )
+                        },
+                        floatingVideoRenderer = { call, parentSize ->
+                            FloatingParticipantVideo(
+                                call = call,
+                                participant = currentLocal!!,
+                                style = RegularVideoRendererStyle().copy(isShowingConnectionQualityIndicator = false),
+                                parentBounds = parentSize,
+                                videoRenderer = { _ ->
+                                    ParticipantVideo(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(VideoTheme.shapes.dialog),
+                                        call = call,
+                                        participant = currentLocal!!,
+                                        style = RegularVideoRendererStyle().copy(isShowingConnectionQualityIndicator = false),
+                                        actionsContent = {_, _, _ -> {}},
+                                    )
+                                }
+                            )
+                        }
                     )
                 }
             }
@@ -1389,7 +1577,7 @@ public class StreamCallPlugin : Plugin() {
         }
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
+    @OptIn(DelicateCoroutinesApi::class, InternalStreamVideoApi::class)
     @PluginMethod
     fun call(call: PluginCall) {
         val userIds = call.getArray("userIds")?.toList<String>()
@@ -1461,11 +1649,54 @@ public class StreamCallPlugin : Plugin() {
                         overlayView?.setContent {
                             VideoTheme {
                                 if (streamCall != null) {
+
+                                    val participants by streamCall.state.participants.collectAsStateWithLifecycle()
+                                    val sortedParticipants by streamCall.state.sortedParticipants.collectAsStateWithLifecycle(emptyList())
+                                    val callParticipants by remember(participants) {
+                                        derivedStateOf {
+                                            if (sortedParticipants.size > 6) {
+                                                sortedParticipants
+                                            } else {
+                                                participants
+                                            }
+                                        }
+                                    }
+
+                                    val currentLocal by streamCall.state.me.collectAsStateWithLifecycle()
+
                                     CallContent(
                                         call = streamCall,
                                         onBackPressed = { /* Handle back press if needed */ },
                                         controlsContent = { /* Empty to disable native controls */ },
-                                        appBarContent = { /* Empty to disable app bar with stop call button */ }
+                                        appBarContent = { /* Empty to disable app bar with stop call button */ },
+                                        videoRenderer = { videoModifier, videoCall, videoParticipant, videoStyle ->
+                                            ParticipantVideo(
+                                                modifier = videoModifier,
+                                                call = videoCall,
+                                                participant = videoParticipant,
+                                                style = videoStyle,
+                                                actionsContent = {_, _, _ -> {}},
+                                                scalingType = VideoScalingType.SCALE_ASPECT_FIT
+                                            )
+                                        },
+                                        floatingVideoRenderer = { call, parentSize ->
+                                            FloatingParticipantVideo(
+                                                call = call,
+                                                participant = currentLocal!!,
+                                                style = RegularVideoRendererStyle().copy(isShowingConnectionQualityIndicator = false),
+                                                parentBounds = parentSize,
+                                                videoRenderer = { _ ->
+                                                    ParticipantVideo(
+                                                        modifier = Modifier
+                                                            .fillMaxSize()
+                                                            .clip(VideoTheme.shapes.dialog),
+                                                        call = call,
+                                                        participant = currentLocal!!,
+                                                        style = RegularVideoRendererStyle().copy(isShowingConnectionQualityIndicator = false),
+                                                    )
+                                                }
+                                            )
+                                        }
                                     )
                                 }
                             }
