@@ -1081,7 +1081,7 @@ public class StreamCallPlugin : Plugin() {
                                                     call = call,
                                                     participant = currentLocal!!,
                                                     style = RegularVideoRendererStyle().copy(isShowingConnectionQualityIndicator = false),
-                                                    actionsContent = {_, _, _ -> {}},
+                                                    actionsContent = {_, _, _ ->},
                                                 )
                                             }
                                         )
@@ -1693,6 +1693,7 @@ public class StreamCallPlugin : Plugin() {
                                                         call = call,
                                                         participant = currentLocal!!,
                                                         style = RegularVideoRendererStyle().copy(isShowingConnectionQualityIndicator = false),
+                                                        actionsContent = {_, _, _ -> {}}
                                                     )
                                                 }
                                             )
