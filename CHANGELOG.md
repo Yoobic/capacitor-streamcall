@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.65](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.64...0.0.65) (2025-06-19)
+
+
+### Features
+
+* remove pin button iOS ([8daebb9](https://github.com/Cap-go/capacitor-streamcall/commit/8daebb9b53df99f16d7907f9b02e5632ed921b71))
+
 ### [0.0.64](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.63...0.0.64) (2025-06-18)
 
 
