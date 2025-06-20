@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.66](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.65...0.0.66) (2025-06-20)
+
+
+### Bug Fixes
+
+* improve flow for accepting call on Android && improve UI ([5df81bc](https://github.com/Cap-go/capacitor-streamcall/commit/5df81bc41481fced59fb4e7ab5b6511f2540a8e9))
+
 ### [0.0.65](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.64...0.0.65) (2025-06-19)
 
 
