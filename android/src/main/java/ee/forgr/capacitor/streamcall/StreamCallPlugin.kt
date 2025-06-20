@@ -155,14 +155,42 @@ public class StreamCallPlugin : Plugin() {
         activity.startService(serviceIntent)
         android.util.Log.d("StreamCallPlugin", "Started StreamCallBackgroundService to keep app alive")
 
-        // Handle initial intent if present
-        activity?.intent?.let { handleOnNewIntent(it) }
-
-        // process the very first intent that started the app (if any)
-        pendingIntent?.let {
-            android.util.Log.d("StreamCallPlugin","Processing saved initial intent")
-            handleOnNewIntent(it)
-            pendingIntent = null
+        // Handle intents, but avoid processing the same intent twice
+        val currentIntent = activity?.intent
+        val savedIntent = pendingIntent
+        
+        // Check if both intents are the same (common when app is killed and restarted)
+        val areSameIntent = currentIntent != null && savedIntent != null && 
+                           currentIntent.action == savedIntent.action &&
+                           try {
+                               val currentCid = currentIntent.streamCallId(NotificationHandler.INTENT_EXTRA_CALL_CID)
+                               val savedCid = savedIntent.streamCallId(NotificationHandler.INTENT_EXTRA_CALL_CID)
+                               currentCid?.cid == savedCid?.cid
+                           } catch (e: Exception) {
+                               android.util.Log.w("StreamCallPlugin", "Error comparing call CIDs: ${e.message}")
+                               false
+                           }
+        
+        when {
+            areSameIntent -> {
+                android.util.Log.d("StreamCallPlugin", "Current intent and saved intent are identical, processing only once")
+                if (currentIntent != null) {
+                    handleOnNewIntent(currentIntent)
+                }
+                pendingIntent = null // Clear to prevent double processing
+            }
+            savedIntent != null -> {
+                android.util.Log.d("StreamCallPlugin", "Processing saved initial intent")
+                handleOnNewIntent(savedIntent)
+                pendingIntent = null
+            }
+            currentIntent != null -> {
+                android.util.Log.d("StreamCallPlugin", "Processing current activity intent")
+                handleOnNewIntent(currentIntent)
+            }
+            else -> {
+                android.util.Log.d("StreamCallPlugin", "No intents to process")
+            }
         }
     }
 
@@ -240,6 +268,12 @@ public class StreamCallPlugin : Plugin() {
                 android.util.Log.d("StreamCallPlugin", "handleOnNewIntent: ACCEPT_CALL - Accepting call with cid: $cid")
                 val call = streamVideoClient?.call(id = cid.id, type = cid.type)
                 if (call != null) {
+                    // Log the full stack trace to see exactly where this is called from
+                    val stackTrace = Thread.currentThread().stackTrace
+                    android.util.Log.d("StreamCallPlugin", "internalAcceptCall STACK TRACE:")
+                    stackTrace.forEachIndexed { index, element ->
+                        android.util.Log.d("StreamCallPlugin", "  [$index] ${element.className}.${element.methodName}(${element.fileName}:${element.lineNumber})")
+                    }
                     kotlinx.coroutines.GlobalScope.launch {
                         internalAcceptCall(call)
                     }
@@ -989,6 +1023,7 @@ public class StreamCallPlugin : Plugin() {
     @OptIn(DelicateCoroutinesApi::class, InternalStreamVideoApi::class)
     internal fun internalAcceptCall(call: Call) {
         android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Entered for call: ${call.id}")
+
         kotlinx.coroutines.GlobalScope.launch {
             try {
                 android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Coroutine started for call ${call.id}")
