@@ -78,44 +78,6 @@ public class MainActivity extends BridgeActivity {
       super.onNewIntent(intent);
       logIntent(intent);
       setIntent(intent);
-      // Check for accept call action
-      String action = intent.getAction();
-      Log.d("MainActivity", "onNewIntent: Received intent with action: " + action);
-      if ("io.getstream.video.android.action.ACCEPT_CALL".equals(action)) {
-          Log.d("MainActivity", "onNewIntent: ACCEPT_CALL action received");
-
-          android.app.KeyguardManager km = (android.app.KeyguardManager) getSystemService(KEYGUARD_SERVICE);
-          if (km != null && km.isKeyguardLocked()) {
-              Log.d("MainActivity", "Device is locked – requesting dismiss before handling call");
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-              km.requestDismissKeyguard(this, new KeyguardManager.KeyguardDismissCallback() {
-                  @Override
-                  public void onDismissSucceeded() {
-                      Log.d("MainActivity", "Keyguard dismissed, forwarding intent to StreamCallPlugin");
-                      forwardAcceptIntent(intent);
-                  }
-
-                  @Override
-                  public void onDismissCancelled() {
-                      Log.d("MainActivity", "Keyguard dismiss cancelled");
-                  }
-              });
-            }
-          } else {
-              forwardAcceptIntent(intent);
-          }
-      }
-  }
-
-  private void forwardAcceptIntent(Intent intent) {
-      ee.forgr.capacitor.streamcall.StreamCallPlugin.saveInitialIntent(intent);
-      PluginHandle pluginHandle = getBridge().getPlugin("StreamCall");
-      if (pluginHandle != null) {
-          com.getcapacitor.Plugin pluginInstance = pluginHandle.getInstance();
-          if (pluginInstance instanceof ee.forgr.capacitor.streamcall.StreamCallPlugin) {
-              ((ee.forgr.capacitor.streamcall.StreamCallPlugin) pluginInstance).handleAcceptCallIntent(intent);
-          }
-      }
   }
 
   private void logIntent(Intent intent) {

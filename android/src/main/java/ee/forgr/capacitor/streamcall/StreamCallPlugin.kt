@@ -255,13 +255,6 @@ public class StreamCallPlugin : Plugin() {
         android.util.Log.d("StreamCallPlugin", "New Intent - Extras: $extras")
     }
 
-    // Public method to handle ACCEPT_CALL intent from MainActivity
-    @JvmOverloads
-    public fun handleAcceptCallIntent(intent: android.content.Intent) {
-        android.util.Log.d("StreamCallPlugin", "handleAcceptCallIntent called: action=${intent.action}")
-        handleOnNewIntent(intent)
-    }
-
     @OptIn(DelicateCoroutinesApi::class)
     private fun declineCall(call: Call) {
         android.util.Log.d("StreamCallPlugin", "declineCall called for call: ${call.id}")
@@ -326,61 +319,11 @@ public class StreamCallPlugin : Plugin() {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
-            setContent {
-                VideoTheme {
-                    val activeCall = streamVideoClient?.state?.activeCall?.collectAsState()?.value
-                    if (activeCall != null) {
-                        val participants by activeCall.state.participants.collectAsStateWithLifecycle()
-                        val sortedParticipants by activeCall.state.sortedParticipants.collectAsStateWithLifecycle(emptyList())
-                        val callParticipants by remember(participants) {
-                            derivedStateOf {
-                                if (sortedParticipants.size > 6) {
-                                    sortedParticipants
-                                } else {
-                                    participants
-                                }
-                            }
-                        }
-
-                        val currentLocal by activeCall.state.me.collectAsStateWithLifecycle()
-
-                        CallContent(
-                            call = activeCall,
-                            onBackPressed = { /* Handle back press if needed */ },
-                            videoRenderer = { videoModifier, videoCall, videoParticipant, videoStyle ->
-                                ParticipantVideo(
-                                    modifier = videoModifier,
-                                    call = videoCall,
-                                    participant = videoParticipant,
-                                    style = videoStyle,
-                                    actionsContent = {_, _, _ -> {}}
-                                )
-                            },
-                            floatingVideoRenderer = { call, parentSize ->
-                                FloatingParticipantVideo(
-                                    call = call,
-                                    participant = currentLocal!!,
-                                    style = RegularVideoRendererStyle().copy(isShowingConnectionQualityIndicator = false),
-                                    parentBounds = parentSize,
-                                    videoRenderer = { _ ->
-                                        ParticipantVideo(
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .clip(VideoTheme.shapes.dialog),
-                                            call = call,
-                                            participant = currentLocal!!,
-                                            style = RegularVideoRendererStyle().copy(isShowingConnectionQualityIndicator = false),
-                                            actionsContent = {_, _, _ -> {}},
-                                        )
-                                    }
-                                )
-                            }
-                        )
-                    }
-                }
-            }
         }
         parent.addView(overlayView, 0)  // Add at index 0 to ensure it's below WebView
+
+        // Initialize with active call content
+        setOverlayContent()
 
         // Create barrier view (above webview for blocking interaction during call setup)
         barrierView = View(context).apply {
@@ -392,6 +335,72 @@ public class StreamCallPlugin : Plugin() {
             setBackgroundColor(Color.parseColor("#1a242c"))
         }
         parent.addView(barrierView, parent.indexOfChild(bridge?.webView) + 1) // Add above WebView
+    }
+
+    /**
+     * Centralized function to set the overlay content with call UI.
+     * This handles all the common Compose UI setup for video calls.
+     */
+    private fun setOverlayContent(call: Call? = null) {
+        overlayView?.setContent {
+            VideoTheme {
+                val activeCall = call ?: streamVideoClient?.state?.activeCall?.collectAsState()?.value
+                if (activeCall != null) {
+                    val participants by activeCall.state.participants.collectAsStateWithLifecycle()
+                    val sortedParticipants by activeCall.state.sortedParticipants.collectAsStateWithLifecycle(emptyList())
+                    val callParticipants by remember(participants) {
+                        derivedStateOf {
+                            if (sortedParticipants.size > 6) {
+                                sortedParticipants
+                            } else {
+                                participants
+                            }
+                        }
+                    }
+
+                    val currentLocal by activeCall.state.me.collectAsStateWithLifecycle()
+
+                    CallContent(
+                        call = activeCall,
+                        onBackPressed = { /* Handle back press if needed */ },
+                        controlsContent = { /* Empty to disable native controls */ },
+                        appBarContent = { /* Empty to disable app bar with stop call button */ },
+                        videoRenderer = { videoModifier, videoCall, videoParticipant, videoStyle ->
+                            ParticipantVideo(
+                                modifier = videoModifier,
+                                call = videoCall,
+                                participant = videoParticipant,
+                                style = videoStyle,
+                                actionsContent = {_, _, _ -> {}},
+                                scalingType = VideoScalingType.SCALE_ASPECT_FIT
+                            )
+                        },
+                        floatingVideoRenderer = { call, parentSize ->
+                            currentLocal?.let {
+                                FloatingParticipantVideo(
+                                    call = call,
+                                    participant = currentLocal!!,
+                                    style = RegularVideoRendererStyle().copy(isShowingConnectionQualityIndicator = false),
+                                    parentBounds = parentSize,
+                                    videoRenderer = { _ ->
+                                        ParticipantVideo(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .clip(VideoTheme.shapes.dialog),
+                                            call = call,
+                                            participant = it,
+                                            style = RegularVideoRendererStyle().copy(isShowingConnectionQualityIndicator = false),
+                                            actionsContent = {_, _, _ -> {}},
+                                        )
+                                    }
+                                )
+                            }
+
+                        }
+                    )
+                }
+            }
+        }
     }
 
     @PluginMethod
@@ -1033,65 +1042,8 @@ public class StreamCallPlugin : Plugin() {
                     call.microphone?.setEnabled(true)
                     call.camera?.setEnabled(true)
                     android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Microphone and camera enabled for call ${call.id}")
-                    overlayView?.setContent {
-                        VideoTheme {
-                            if (call != null) {
-                                android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Setting CallContent with active call ${call.id}")
-                                
-                                val participants by call.state.participants.collectAsStateWithLifecycle()
-                                val sortedParticipants by call.state.sortedParticipants.collectAsStateWithLifecycle(emptyList())
-                                val callParticipants by remember(participants) {
-                                    derivedStateOf {
-                                        if (sortedParticipants.size > 6) {
-                                            sortedParticipants
-                                        } else {
-                                            participants
-                                        }
-                                    }
-                                }
-
-                                val currentLocal by call.state.me.collectAsStateWithLifecycle()
-
-                                CallContent(
-                                    call = call,
-                                    onBackPressed = { /* ... */ },
-                                    controlsContent = { /* ... */ },
-                                    appBarContent = { /* ... */ },
-                                    videoRenderer = { videoModifier, videoCall, videoParticipant, videoStyle ->
-                                        ParticipantVideo(
-                                            modifier = videoModifier,
-                                            call = videoCall,
-                                            participant = videoParticipant,
-                                            style = videoStyle,
-                                            actionsContent = {_, _, _ -> {}},
-                                            scalingType = VideoScalingType.SCALE_ASPECT_FIT
-                                        )
-                                    },
-                                    floatingVideoRenderer = { call, parentSize ->
-                                        FloatingParticipantVideo(
-                                            call = call,
-                                            participant = currentLocal!!,
-                                            style = RegularVideoRendererStyle().copy(isShowingConnectionQualityIndicator = false),
-                                            parentBounds = parentSize,
-                                            videoRenderer = { _ ->
-                                                ParticipantVideo(
-                                                    modifier = Modifier
-                                                        .fillMaxSize()
-                                                        .clip(VideoTheme.shapes.dialog),
-                                                    call = call,
-                                                    participant = currentLocal!!,
-                                                    style = RegularVideoRendererStyle().copy(isShowingConnectionQualityIndicator = false),
-                                                    actionsContent = {_, _, _ ->},
-                                                )
-                                            }
-                                        )
-                                    }
-                                )
-                            } else {
-                                android.util.Log.w("StreamCallPlugin", "internalAcceptCall: Active call is null, cannot set CallContent for call ${call.id}")
-                            }
-                        }
-                    }
+                    android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Setting CallContent with active call ${call.id}")
+                    setOverlayContent(call)
                     android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Content set for overlayView for call ${call.id}")
                     overlayView?.isVisible = true
                     android.util.Log.d("StreamCallPlugin", "internalAcceptCall: OverlayView set to visible for call ${call.id}, isVisible: ${overlayView?.isVisible}")
@@ -1111,61 +1063,8 @@ public class StreamCallPlugin : Plugin() {
                             // Force refresh with active call from client
                             val activeCall = streamVideoClient?.state?.activeCall?.value
                             if (activeCall != null) {
-                                overlayView?.setContent {
-                                    VideoTheme {
-                                        android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Force refreshing CallContent with active call ${activeCall.id}")
-                                        
-                                        val participants by activeCall.state.participants.collectAsStateWithLifecycle()
-                                        val sortedParticipants by activeCall.state.sortedParticipants.collectAsStateWithLifecycle(emptyList())
-                                        val callParticipants by remember(participants) {
-                                            derivedStateOf {
-                                                if (sortedParticipants.size > 6) {
-                                                    sortedParticipants
-                                                } else {
-                                                    participants
-                                                }
-                                            }
-                                        }
-
-                                        val currentLocal by activeCall.state.me.collectAsStateWithLifecycle()
-
-                                        CallContent(
-                                            call = activeCall,
-                                            onBackPressed = { /* ... */ },
-                                            controlsContent = { /* ... */ },
-                                            appBarContent = { /* ... */ },
-                                            videoRenderer = { videoModifier, videoCall, videoParticipant, videoStyle ->
-                                                ParticipantVideo(
-                                                    modifier = videoModifier,
-                                                    call = videoCall,
-                                                    participant = videoParticipant,
-                                                    style = videoStyle,
-                                                    actionsContent = {_, _, _ -> {}},
-                                                    scalingType = VideoScalingType.SCALE_ASPECT_FIT
-                                                )
-                                            },
-                                            floatingVideoRenderer = { call, parentSize ->
-                                                FloatingParticipantVideo(
-                                                    call = call,
-                                                    participant = currentLocal!!,
-                                                    style = RegularVideoRendererStyle().copy(isShowingConnectionQualityIndicator = false),
-                                                    parentBounds = parentSize,
-                                                    videoRenderer = { _ ->
-                                                        ParticipantVideo(
-                                                            modifier = Modifier
-                                                                .fillMaxSize()
-                                                                .clip(VideoTheme.shapes.dialog),
-                                                            call = call,
-                                                            participant = currentLocal!!,
-                                                            style = RegularVideoRendererStyle().copy(isShowingConnectionQualityIndicator = false),
-                                                            actionsContent = {_, _, _ -> {}},
-                                                        )
-                                                    }
-                                                )
-                                            }
-                                        )
-                                    }
-                                }
+                                android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Force refreshing CallContent with active call ${activeCall.id}")
+                                setOverlayContent(activeCall)
                                 android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Content force refreshed for call ${activeCall.id}")
                             } else {
                                 android.util.Log.w("StreamCallPlugin", "internalAcceptCall: Active call is null during force refresh for call ${call.id}")
@@ -1424,59 +1323,7 @@ public class StreamCallPlugin : Plugin() {
                 return@runOnMainThread
             }
 
-            overlayView?.setContent {
-                VideoTheme {
-                    val participants by call.state.participants.collectAsStateWithLifecycle()
-                    val sortedParticipants by call.state.sortedParticipants.collectAsStateWithLifecycle(emptyList())
-                    val callParticipants by remember(participants) {
-                        derivedStateOf {
-                            if (sortedParticipants.size > 6) {
-                                sortedParticipants
-                            } else {
-                                participants
-                            }
-                        }
-                    }
-
-                    val currentLocal by call.state.me.collectAsStateWithLifecycle()
-
-                    CallContent(
-                        call = call,
-                        onBackPressed = { /* Handle back press if needed */ },
-                        controlsContent = { /* Empty to disable native controls */ },
-                        appBarContent = { /* Empty to disable app bar with stop call button */ },
-                        videoRenderer = { videoModifier, videoCall, videoParticipant, videoStyle ->
-                            ParticipantVideo(
-                                modifier = videoModifier,
-                                call = videoCall,
-                                participant = videoParticipant,
-                                style = videoStyle,
-                                actionsContent = {_, _, _ -> {}},
-                                scalingType = VideoScalingType.SCALE_ASPECT_FIT
-                            )
-                        },
-                        floatingVideoRenderer = { call, parentSize ->
-                            FloatingParticipantVideo(
-                                call = call,
-                                participant = currentLocal!!,
-                                style = RegularVideoRendererStyle().copy(isShowingConnectionQualityIndicator = false),
-                                parentBounds = parentSize,
-                                videoRenderer = { _ ->
-                                    ParticipantVideo(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .clip(VideoTheme.shapes.dialog),
-                                        call = call,
-                                        participant = currentLocal!!,
-                                        style = RegularVideoRendererStyle().copy(isShowingConnectionQualityIndicator = false),
-                                        actionsContent = {_, _, _ -> {}},
-                                    )
-                                }
-                            )
-                        }
-                    )
-                }
-            }
+            setOverlayContent(call)
             overlayView?.isVisible = false
             bridge?.webView?.setBackgroundColor(Color.WHITE) // Restore webview opacity
 
@@ -1646,62 +1493,7 @@ public class StreamCallPlugin : Plugin() {
 
                         bridge?.webView?.setBackgroundColor(Color.TRANSPARENT) // Make webview transparent
                         bridge?.webView?.bringToFront() // Ensure WebView is on top and transparent
-                        overlayView?.setContent {
-                            VideoTheme {
-                                if (streamCall != null) {
-
-                                    val participants by streamCall.state.participants.collectAsStateWithLifecycle()
-                                    val sortedParticipants by streamCall.state.sortedParticipants.collectAsStateWithLifecycle(emptyList())
-                                    val callParticipants by remember(participants) {
-                                        derivedStateOf {
-                                            if (sortedParticipants.size > 6) {
-                                                sortedParticipants
-                                            } else {
-                                                participants
-                                            }
-                                        }
-                                    }
-
-                                    val currentLocal by streamCall.state.me.collectAsStateWithLifecycle()
-
-                                    CallContent(
-                                        call = streamCall,
-                                        onBackPressed = { /* Handle back press if needed */ },
-                                        controlsContent = { /* Empty to disable native controls */ },
-                                        appBarContent = { /* Empty to disable app bar with stop call button */ },
-                                        videoRenderer = { videoModifier, videoCall, videoParticipant, videoStyle ->
-                                            ParticipantVideo(
-                                                modifier = videoModifier,
-                                                call = videoCall,
-                                                participant = videoParticipant,
-                                                style = videoStyle,
-                                                actionsContent = {_, _, _ -> {}},
-                                                scalingType = VideoScalingType.SCALE_ASPECT_FIT
-                                            )
-                                        },
-                                        floatingVideoRenderer = { call, parentSize ->
-                                            FloatingParticipantVideo(
-                                                call = call,
-                                                participant = currentLocal!!,
-                                                style = RegularVideoRendererStyle().copy(isShowingConnectionQualityIndicator = false),
-                                                parentBounds = parentSize,
-                                                videoRenderer = { _ ->
-                                                    ParticipantVideo(
-                                                        modifier = Modifier
-                                                            .fillMaxSize()
-                                                            .clip(VideoTheme.shapes.dialog),
-                                                        call = call,
-                                                        participant = currentLocal!!,
-                                                        style = RegularVideoRendererStyle().copy(isShowingConnectionQualityIndicator = false),
-                                                        actionsContent = {_, _, _ -> {}}
-                                                    )
-                                                }
-                                            )
-                                        }
-                                    )
-                                }
-                            }
-                        }
+                        setOverlayContent(streamCall)
                         overlayView?.isVisible = true
                         // Ensure overlay is behind WebView by adjusting its position in the parent
                         val parent = overlayView?.parent as? ViewGroup
