@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.67](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.66...0.0.67) (2025-06-20)
+
+
+### Bug Fixes
+
+* android acceptCall stability ([0baaccb](https://github.com/Cap-go/capacitor-streamcall/commit/0baaccbf0212473ccdee23a1d25b759d8b0844b2))
+
 ### [0.0.66](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.65...0.0.66) (2025-06-20)
 
 
