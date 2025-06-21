@@ -52,6 +52,7 @@ import io.getstream.android.video.generated.models.CallMissedEvent
 import io.getstream.android.video.generated.models.CallRejectedEvent
 import io.getstream.android.video.generated.models.CallRingEvent
 import io.getstream.android.video.generated.models.CallSessionEndedEvent
+import io.getstream.android.video.generated.models.CallSessionParticipantCountsUpdatedEvent
 import io.getstream.android.video.generated.models.CallSessionParticipantLeftEvent
 import io.getstream.android.video.generated.models.CallSessionStartedEvent
 import io.getstream.android.video.generated.models.VideoEvent
@@ -823,7 +824,7 @@ public class StreamCallPlugin : Plugin() {
                         updateCallStatusAndNotify(event.callCid, "left")
                     }
 
-                    is ParticipantLeftEvent, is CallSessionParticipantLeftEvent -> {
+                    is ParticipantLeftEvent, is CallSessionParticipantLeftEvent, is CallSessionParticipantCountsUpdatedEvent -> {
                         val activeCall = streamVideoClient?.state?.activeCall?.value
 
                         val callId = when (event) {
@@ -831,6 +832,9 @@ public class StreamCallPlugin : Plugin() {
                                 event.callCid
                             }
                             is CallSessionParticipantLeftEvent -> {
+                                event.callCid
+                            }
+                            is CallSessionParticipantCountsUpdatedEvent -> {
                                 event.callCid
                             }
 
@@ -844,7 +848,7 @@ public class StreamCallPlugin : Plugin() {
 
                         if (activeCall != null && activeCall.cid == callId) {
                             val connectionState = activeCall.state.connection.value
-                            if (connectionState == RealtimeConnection.Disconnected) {
+                            if (connectionState != RealtimeConnection.Disconnected) {
                                 val total = activeCall.state.participantCounts.value?.total
                                 android.util.Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: Participant left, remaining: $total");
                                 if (total != null && total <= 2) {
