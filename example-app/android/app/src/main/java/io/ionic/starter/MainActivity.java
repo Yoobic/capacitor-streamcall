@@ -23,9 +23,6 @@ public class MainActivity extends BridgeActivity {
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
-    // Save initial intent for StreamCallPlugin (handles killed-state notification)
-    ee.forgr.capacitor.streamcall.StreamCallPlugin.saveInitialIntent(getIntent());
-
     super.onCreate(savedInstanceState);
 //    StreamCallPlugin pl = (new StreamCallPlugin());
 //    pl.setBridge(this.getBridge());

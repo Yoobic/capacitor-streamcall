@@ -154,44 +154,6 @@ public class StreamCallPlugin : Plugin() {
         val serviceIntent = Intent(activity, StreamCallBackgroundService::class.java)
         activity.startService(serviceIntent)
         android.util.Log.d("StreamCallPlugin", "Started StreamCallBackgroundService to keep app alive")
-
-        // Handle intents, but avoid processing the same intent twice
-        val currentIntent = activity?.intent
-        val savedIntent = pendingIntent
-        
-        // Check if both intents are the same (common when app is killed and restarted)
-        val areSameIntent = currentIntent != null && savedIntent != null && 
-                           currentIntent.action == savedIntent.action &&
-                           try {
-                               val currentCid = currentIntent.streamCallId(NotificationHandler.INTENT_EXTRA_CALL_CID)
-                               val savedCid = savedIntent.streamCallId(NotificationHandler.INTENT_EXTRA_CALL_CID)
-                               currentCid?.cid == savedCid?.cid
-                           } catch (e: Exception) {
-                               android.util.Log.w("StreamCallPlugin", "Error comparing call CIDs: ${e.message}")
-                               false
-                           }
-        
-        when {
-            areSameIntent -> {
-                android.util.Log.d("StreamCallPlugin", "Current intent and saved intent are identical, processing only once")
-                if (currentIntent != null) {
-                    handleOnNewIntent(currentIntent)
-                }
-                pendingIntent = null // Clear to prevent double processing
-            }
-            savedIntent != null -> {
-                android.util.Log.d("StreamCallPlugin", "Processing saved initial intent")
-                handleOnNewIntent(savedIntent)
-                pendingIntent = null
-            }
-            currentIntent != null -> {
-                android.util.Log.d("StreamCallPlugin", "Processing current activity intent")
-                handleOnNewIntent(currentIntent)
-            }
-            else -> {
-                android.util.Log.d("StreamCallPlugin", "No intents to process")
-            }
-        }
     }
 
     @OptIn(DelicateCoroutinesApi::class)
@@ -1886,18 +1848,12 @@ public class StreamCallPlugin : Plugin() {
     }
 
     companion object {
-        private var pendingIntent: Intent? = null
-        @JvmStatic fun saveInitialIntent(it: Intent) {
-            pendingIntent = it
-        }
         @JvmStatic fun preLoadInit(ctx: Context, app: Application) {
             holder ?: run {
                 val p = StreamCallPlugin()
                 p.savedContext = ctx
                 p.initializeStreamVideo(ctx, app)
                 holder = p
-                // record the intent that started the process
-                if (ctx is Activity) saveInitialIntent((ctx as Activity).intent)
             }
         }
         private var holder: StreamCallPlugin? = null
