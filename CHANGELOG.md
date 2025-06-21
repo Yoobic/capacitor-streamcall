@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.68](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.67...0.0.68) (2025-06-21)
+
+
+### Features
+
+* remove intent handling on 'load' on Android ([bf86973](https://github.com/Cap-go/capacitor-streamcall/commit/bf86973ec9703ade21f3561685f2ea88789c83c2))
+
 ### [0.0.67](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.66...0.0.67) (2025-06-20)
 
 
