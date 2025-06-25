@@ -52,7 +52,6 @@ import io.getstream.android.video.generated.models.CallMissedEvent
 import io.getstream.android.video.generated.models.CallRejectedEvent
 import io.getstream.android.video.generated.models.CallRingEvent
 import io.getstream.android.video.generated.models.CallSessionEndedEvent
-import io.getstream.android.video.generated.models.CallSessionParticipantCountsUpdatedEvent
 import io.getstream.android.video.generated.models.CallSessionParticipantLeftEvent
 import io.getstream.android.video.generated.models.CallSessionStartedEvent
 import io.getstream.android.video.generated.models.VideoEvent
@@ -824,7 +823,7 @@ public class StreamCallPlugin : Plugin() {
                         updateCallStatusAndNotify(event.callCid, "left")
                     }
 
-                    is ParticipantLeftEvent, is CallSessionParticipantLeftEvent, is CallSessionParticipantCountsUpdatedEvent -> {
+                    is ParticipantLeftEvent, is CallSessionParticipantLeftEvent -> {
                         val activeCall = streamVideoClient?.state?.activeCall?.value
 
                         val callId = when (event) {
@@ -832,9 +831,6 @@ public class StreamCallPlugin : Plugin() {
                                 event.callCid
                             }
                             is CallSessionParticipantLeftEvent -> {
-                                event.callCid
-                            }
-                            is CallSessionParticipantCountsUpdatedEvent -> {
                                 event.callCid
                             }
 
