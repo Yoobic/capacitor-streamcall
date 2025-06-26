@@ -49,6 +49,10 @@ export type CallState =
   | 'missed'
   | 'accepted'
   | 'ended'
+  | 'camera_enabled'
+  | 'camera_disabled'
+  | 'microphone_enabled'
+  | 'microphone_disabled'
   | 'unknown';
 
 /**

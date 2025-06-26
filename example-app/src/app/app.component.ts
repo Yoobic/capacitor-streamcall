@@ -282,6 +282,22 @@ export class AppComponent {
         this.callerInfo = null;
         this.callMembers = [];
         this.cdr.detectChanges();
+      } else if (event.state === 'camera_enabled' as any) {
+        this.isCameraOff = false;
+        console.log('📹 Camera enabled in call overlay');
+        this.cdr.detectChanges();
+      } else if (event.state === 'camera_disabled' as any) {
+        this.isCameraOff = true;
+        console.log('📹 Camera disabled in call overlay');
+        this.cdr.detectChanges();
+      } else if (event.state === 'microphone_enabled' as any) {
+        this.isMuted = false;
+        console.log('🎤 Microphone enabled in call overlay');
+        this.cdr.detectChanges();
+      } else if (event.state === 'microphone_disabled' as any) {
+        this.isMuted = true;
+        console.log('🎤 Microphone disabled in call overlay');
+        this.cdr.detectChanges();
       } else {
         if (Capacitor.getPlatform() !== 'ios') {
           console.log('Call event', event);

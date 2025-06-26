@@ -13,7 +13,7 @@ import { AppComponent } from '../app.component';
 })
 export class Tab1Page {
   private readonly STYLE_ID = 'magic_transparent_background';
-  private readonly API_URL = 'https://streamcall-20.localcan.dev';
+  private readonly API_URL = 'https://magic-login-srvv2-48.localcan.dev';
   private readonly API_KEY = 'vq4zdsazqxd7';
   transparent = false;
   currentUser: {
