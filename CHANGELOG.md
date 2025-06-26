@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.71](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.70...0.0.71) (2025-06-26)
+
+
+### Features
+
+* improve android permission ([29d4e37](https://github.com/Cap-go/capacitor-streamcall/commit/29d4e3715bdb3e947c35fcea7c94593d3a11df28))
+* perms change part 1 ([1cc827b](https://github.com/Cap-go/capacitor-streamcall/commit/1cc827bc642384dd34c50f12b1aa0093b4aaf2ec))
+
 ### [0.0.70](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.69...0.0.70) (2025-06-26)
 
 
