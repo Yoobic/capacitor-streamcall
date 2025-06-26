@@ -787,7 +787,7 @@ The JSON representation for <a href="#listvalue">`ListValue`</a> is JSON array.
 
 #### CallState
 
-<code>'idle' | 'ringing' | 'joining' | 'reconnecting' | 'joined' | 'leaving' | 'left' | 'created' | 'session_started' | 'rejected' | 'missed' | 'accepted' | 'ended' | 'unknown'</code>
+<code>'idle' | 'ringing' | 'joining' | 'reconnecting' | 'joined' | 'leaving' | 'left' | 'created' | 'session_started' | 'rejected' | 'missed' | 'accepted' | 'ended' | 'camera_enabled' | 'camera_disabled' | 'microphone_enabled' | 'microphone_disabled' | 'unknown'</code>
 
 
 ### Enums
