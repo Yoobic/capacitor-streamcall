@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.70](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.69...0.0.70) (2025-06-26)
+
+
+### Bug Fixes
+
+* remove participant count left event ([2f90c15](https://github.com/Cap-go/capacitor-streamcall/commit/2f90c1551d85115d8f1387f10000dceb0092f17e))
+
 ### [0.0.69](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.68...0.0.69) (2025-06-21)
 
 
