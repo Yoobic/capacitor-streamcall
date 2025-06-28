@@ -10,6 +10,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.media.RingtoneManager
@@ -455,9 +456,10 @@ public class StreamCallPlugin : Plugin() {
         val token = call.getString("token")
         val userId = call.getString("userId")
         val name = call.getString("name")
+        val apiKey = call.getString("apiKey")
 
-        if (token == null || userId == null || name == null) {
-            call.reject("Missing required parameters: token, userId, or name")
+        if (token == null || userId == null || name == null || apiKey == null) {
+            call.reject("Missing required parameters: token, userId, name, or apiKey")
             return
         }
 
@@ -620,7 +622,7 @@ public class StreamCallPlugin : Plugin() {
             // Initialize StreamVideo client
             streamVideoClient = StreamVideoBuilder(
                 context = contextToUse,
-                apiKey = contextToUse.getString(R.string.CAPACITOR_STREAM_VIDEO_APIKEY),
+                apiKey = getEffectiveApiKey(contextToUse),
                 geo = GEO.GlobalEdgeNetwork,
                 user = savedCredentials.user,
                 token = savedCredentials.tokenValue,
@@ -2199,6 +2201,83 @@ public class StreamCallPlugin : Plugin() {
         }
     }
 
+    @PluginMethod
+    fun setDynamicStreamVideoApikey(call: PluginCall) {
+        val apiKey = call.getString("apiKey")
+        if (apiKey == null) {
+            call.reject("Missing required parameter: apiKey")
+            return
+        }
+
+        try {
+            saveDynamicApiKey(apiKey)
+            android.util.Log.d("StreamCallPlugin", "Dynamic API key saved successfully")
+            call.resolve(JSObject().apply {
+                put("success", true)
+            })
+        } catch (e: Exception) {
+            android.util.Log.e("StreamCallPlugin", "Error saving dynamic API key", e)
+            call.reject("Failed to save API key: ${e.message}")
+        }
+    }
+
+    @PluginMethod
+    fun getDynamicStreamVideoApikey(call: PluginCall) {
+        try {
+            val apiKey = getDynamicApiKey()
+            call.resolve(JSObject().apply {
+                if (apiKey != null) {
+                    put("apiKey", apiKey)
+                    put("hasDynamicKey", true)
+                } else {
+                    put("apiKey", null)
+                    put("hasDynamicKey", false)
+                }
+            })
+        } catch (e: Exception) {
+            android.util.Log.e("StreamCallPlugin", "Error getting dynamic API key", e)
+            call.reject("Failed to get API key: ${e.message}")
+        }
+    }
+
+    // Helper functions for managing dynamic API key in SharedPreferences
+    private fun saveDynamicApiKey(apiKey: String) {
+        val sharedPrefs = getApiKeyPreferences()
+        sharedPrefs.edit()
+            .putString(DYNAMIC_API_KEY_PREF, apiKey)
+            .apply()
+    }
+
+    // Helper functions for managing dynamic API key in SharedPreferences
+    private fun clearDynamicApiKey() {
+        val sharedPrefs = getApiKeyPreferences()
+        sharedPrefs.edit()
+            .remove(DYNAMIC_API_KEY_PREF)
+            .apply()
+    }
+
+    private fun getDynamicApiKey(): String? {
+        val sharedPrefs = getApiKeyPreferences()
+        return sharedPrefs.getString(DYNAMIC_API_KEY_PREF, null)
+    }
+
+    private fun getApiKeyPreferences(): SharedPreferences {
+        return context.getSharedPreferences(API_KEY_PREFS_NAME, Context.MODE_PRIVATE)
+    }
+
+    private fun getEffectiveApiKey(context: Context): String {
+        // A) Check if the key exists in the custom preference
+        val dynamicApiKey = getDynamicApiKey()
+        return if (!dynamicApiKey.isNullOrEmpty() && dynamicApiKey.trim().isNotEmpty()) {
+            android.util.Log.d("StreamCallPlugin", "Using dynamic API key")
+            dynamicApiKey
+        } else {
+            // B) If not, use R.string.CAPACITOR_STREAM_VIDEO_APIKEY
+            android.util.Log.d("StreamCallPlugin", "Using static API key from resources")
+            context.getString(R.string.CAPACITOR_STREAM_VIDEO_APIKEY)
+        }
+    }
+
     // Helper method to update call status and notify listeners
     private fun updateCallStatusAndNotify(callId: String, state: String, userId: String? = null, reason: String? = null, members: List<Map<String, Any>>? = null, caller: Map<String, Any>? = null) {
         android.util.Log.d("StreamCallPlugin", "updateCallStatusAndNotify called: callId=$callId, state=$state, userId=$userId, reason=$reason")
@@ -2333,5 +2412,9 @@ public class StreamCallPlugin : Plugin() {
             }
         }
         private var holder: StreamCallPlugin? = null
+        
+        // Constants for SharedPreferences
+        private const val API_KEY_PREFS_NAME = "stream_video_api_key_prefs"
+        private const val DYNAMIC_API_KEY_PREF = "dynamic_api_key"
     }
 }

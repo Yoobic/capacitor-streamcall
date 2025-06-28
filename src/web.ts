@@ -11,6 +11,7 @@ import type {
   CallEvent,
   CallState,
   CallMember,
+  DynamicApiKeyResponse,
 } from './definitions';
 
 export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
@@ -829,5 +830,13 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
       callId: this.currentCall.id,
       state,
     };
+  }
+
+  async setDynamicStreamVideoApikey(_options: { apiKey: string }): Promise<SuccessResponse> {
+    throw new Error('setDynamicStreamVideoApikey is not implemented on web platform');
+  }
+
+  async getDynamicStreamVideoApikey(): Promise<DynamicApiKeyResponse> {
+    throw new Error('getDynamicStreamVideoApikey is not implemented on web platform');
   }
 }

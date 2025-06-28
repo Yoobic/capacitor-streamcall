@@ -252,6 +252,8 @@ export class CallService {
 * [`setSpeaker(...)`](#setspeaker)
 * [`switchCamera(...)`](#switchcamera)
 * [`getCallInfo(...)`](#getcallinfo)
+* [`setDynamicStreamVideoApikey(...)`](#setdynamicstreamvideoapikey)
+* [`getDynamicStreamVideoApikey()`](#getdynamicstreamvideoapikey)
 * [Interfaces](#interfaces)
 * [Type Aliases](#type-aliases)
 * [Enums](#enums)
@@ -502,6 +504,36 @@ Get detailed information about an active call including caller details
 | **`options`** | <code>{ callId: string; }</code> | - Options containing the call ID |
 
 **Returns:** <code>Promise&lt;<a href="#callevent">CallEvent</a>&gt;</code>
+
+--------------------
+
+
+### setDynamicStreamVideoApikey(...)
+
+```typescript
+setDynamicStreamVideoApikey(options: { apiKey: string; }) => Promise<SuccessResponse>
+```
+
+Set a dynamic Stream Video API key that overrides the static one
+
+| Param         | Type                             | Description          |
+| ------------- | -------------------------------- | -------------------- |
+| **`options`** | <code>{ apiKey: string; }</code> | - The API key to set |
+
+**Returns:** <code>Promise&lt;<a href="#successresponse">SuccessResponse</a>&gt;</code>
+
+--------------------
+
+
+### getDynamicStreamVideoApikey()
+
+```typescript
+getDynamicStreamVideoApikey() => Promise<DynamicApiKeyResponse>
+```
+
+Get the currently set dynamic Stream Video API key
+
+**Returns:** <code>Promise&lt;<a href="#dynamicapikeyresponse">DynamicApiKeyResponse</a>&gt;</code>
 
 --------------------
 
@@ -777,6 +809,14 @@ The JSON representation for <a href="#listvalue">`ListValue`</a> is JSON array.
 | Prop          | Type                 |
 | ------------- | -------------------- |
 | **`enabled`** | <code>boolean</code> |
+
+
+#### DynamicApiKeyResponse
+
+| Prop                | Type                        | Description                             |
+| ------------------- | --------------------------- | --------------------------------------- |
+| **`apiKey`**        | <code>string \| null</code> | The dynamic API key if set, null if not |
+| **`hasDynamicKey`** | <code>boolean</code>        | Whether a dynamic key is currently set  |
 
 
 ### Type Aliases

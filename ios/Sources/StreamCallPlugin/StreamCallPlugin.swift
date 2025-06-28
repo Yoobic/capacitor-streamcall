@@ -27,7 +27,9 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "getCallStatus", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setSpeaker", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "switchCamera", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "getCallInfo", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "getCallInfo", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setDynamicStreamVideoApikey", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getDynamicStreamVideoApikey", returnType: CAPPluginReturnPromise)
     ]
 
     private enum State {
@@ -62,6 +64,9 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
     // Declare as optional and initialize in load() method
     private var callViewModel: CallViewModel?
+    
+    // Constants for UserDefaults keys
+    private let dynamicApiKeyKey = "stream.video.dynamic.apikey"
 
     // Helper method to update call status and notify listeners
     private func updateCallStatusAndNotify(callId: String, state: String, userId: String? = nil, reason: String? = nil, caller: [String: Any]? = nil, members: [[String: Any]]? = nil) {
@@ -835,7 +840,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
         // Try to get user credentials from repository
         guard let savedCredentials = SecureUserRepository.shared.loadCurrentUser(),
-              let apiKey = self.apiKey else {
+              let apiKey = getEffectiveApiKey() else {
             print("No saved credentials or API key found, skipping initialization")
             state = .notInitialized
             return
@@ -1027,8 +1032,34 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             ])
         }
     }
-
-    private func ensureViewRemoved() {
+    
+    // MARK: - Dynamic API Key Management
+    
+    func saveDynamicApiKey(_ apiKey: String) {
+        UserDefaults.standard.set(apiKey, forKey: dynamicApiKeyKey)
+    }
+    
+    func getDynamicApiKey() -> String? {
+        return UserDefaults.standard.string(forKey: dynamicApiKeyKey)
+    }
+    
+    func clearDynamicApiKey() {
+        UserDefaults.standard.removeObject(forKey: dynamicApiKeyKey)
+    }
+    
+    func getEffectiveApiKey() -> String? {
+        // A) Check if the key exists in UserDefaults
+        if let dynamicApiKey = getDynamicApiKey(), !dynamicApiKey.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty {
+            print("Using dynamic API key")
+            return dynamicApiKey
+        } else {
+            // B) If not, use static API key from Info.plist
+            print("Using static API key from Info.plist")
+            return self.apiKey
+        }
+    }
+    
+    func ensureViewRemoved() {
         // Disable touch interceptor when overlay is removed
         self.touchInterceptView?.setCallActive(false)
         
@@ -1175,7 +1206,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             call.reject("StreamVideo not initialized")
         }
     }
-
+    
     @objc func switchCamera(_ call: CAPPluginCall) {
         guard let camera = call.getString("camera") else {
             call.reject("Missing required parameter: camera")
@@ -1203,6 +1234,37 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             }
         } catch {
             call.reject("StreamVideo not initialized")
+        }
+    }
+    
+    @objc func setDynamicStreamVideoApikey(_ call: CAPPluginCall) {
+        guard let apiKey = call.getString("apiKey") else {
+            call.reject("Missing required parameter: apiKey")
+            return
+        }
+        
+        do {
+            saveDynamicApiKey(apiKey)
+            print("Dynamic API key saved successfully")
+            call.resolve([
+                "success": true
+            ])
+        } catch {
+            print("Error saving dynamic API key: \(error)")
+            call.reject("Failed to save API key: \(error.localizedDescription)")
+        }
+    }
+    
+    @objc func getDynamicStreamVideoApikey(_ call: CAPPluginCall) {
+        do {
+            let apiKey = getDynamicApiKey()
+            call.resolve([
+                "apiKey": apiKey as Any,
+                "hasDynamicKey": apiKey != nil && !apiKey!.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty
+            ])
+        } catch {
+            print("Error getting dynamic API key: \(error)")
+            call.reject("Failed to get API key: \(error.localizedDescription)")
         }
     }
             

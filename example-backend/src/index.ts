@@ -29,9 +29,15 @@ if (!process.env.STREAM_API_KEY || !process.env.STREAM_API_SECRET) {
 }
 
 const apiKey = process.env.STREAM_API_KEY;
+const apiKeyDev = process.env.STREAM_API_KEY_DEV;
+const devApiKey = process.env.STREAM_API_KEY_DEV!;
 const apiSecret = process.env.STREAM_API_SECRET;
+const apiSecretDev = process.env.STREAM_API_SECRET_DEV;
 const vailidity = 60 * 60 * 6; // Six hours in seconds
 const client = new StreamClient(apiKey, apiSecret, {
+  timeout: 10000,
+});
+const devClient = new StreamClient(apiKeyDev, apiSecretDev, {
   timeout: 10000,
 });
 
@@ -39,6 +45,7 @@ app.get('/user', async (c) => {
   try {
     const userId = c.req.query('user_id');
     const team = c.req.query('team');
+    const environment = c.req.query('environment');
 
     if (!userId) {
       return c.json({ error: 'user_id query parameter is required' }, 400);
@@ -59,8 +66,9 @@ app.get('/user', async (c) => {
     }
 
     console.log('upsertUsers', newUser);
-    await client.upsertUsers([newUser]);
-    const token = client.generateUserToken({ user_id: userId, validity_in_seconds: vailidity });
+    const clientToUse = environment === 'dev' ? devClient : client;
+    await clientToUse.upsertUsers([newUser]);
+    const token = clientToUse.generateUserToken({ user_id: userId, validity_in_seconds: vailidity });
 
     console.log('token', token);
     return c.json({

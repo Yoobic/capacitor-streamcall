@@ -20,6 +20,27 @@
   </ion-header>
 
   <div class="magicDiv">
+    <!-- Environment Status and Switch -->
+    <div class="environment-section">
+      <ion-card>
+        <ion-card-header>
+          <ion-card-title>{{ environmentText }}</ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+          <ion-button 
+            (click)="switchEnvironment()" 
+            [color]="currentEnvironment === 'normal' ? 'secondary' : 'primary'"
+            fill="solid">
+            <ion-icon [name]="currentEnvironment === 'normal' ? 'build-outline' : 'home-outline'"></ion-icon>
+            Switch to {{ currentEnvironment === 'normal' ? 'Dev' : 'Normal' }} Environment
+          </ion-button>
+          <ion-note *ngIf="currentUser" color="warning">
+            <p><ion-icon name="warning-outline"></ion-icon> You need to logout and login again after switching environments</p>
+          </ion-note>
+        </ion-card-content>
+      </ion-card>
+    </div>
+
     <div class="login-buttons">
       <ng-container *ngIf="!currentUser">
         <ion-list>

@@ -114,6 +114,19 @@ export interface CameraEnabledResponse {
 }
 
 /**
+ * @interface DynamicApiKeyResponse
+ * @description Response from getDynamicStreamVideoApikey
+ * @property {string|null} apiKey - The dynamic API key if set, null if not
+ * @property {boolean} hasDynamicKey - Whether a dynamic key is currently set
+ */
+export interface DynamicApiKeyResponse {
+  /** The dynamic API key if set, null if not */
+  apiKey: string | null;
+  /** Whether a dynamic key is currently set */
+  hasDynamicKey: boolean;
+}
+
+/**
  * @interface SuccessResponse
  * @description Standard response indicating operation success/failure
  * @property {boolean} success - Whether the operation succeeded
@@ -301,6 +314,28 @@ export interface StreamCallPlugin {
    * @param options - Options containing the call ID
    */
   getCallInfo(options: { callId: string }): Promise<CallEvent>;
+
+  /**
+   * Set a dynamic Stream Video API key that overrides the static one
+   * @param {{ apiKey: string }} options - The API key to set
+   * @returns {Promise<SuccessResponse>} Success status
+   * @example
+   * await StreamCall.setDynamicStreamVideoApikey({ apiKey: 'new-api-key' });
+   */
+  setDynamicStreamVideoApikey(options: { apiKey: string }): Promise<SuccessResponse>;
+
+  /**
+   * Get the currently set dynamic Stream Video API key
+   * @returns {Promise<DynamicApiKeyResponse>} The dynamic API key and whether it's set
+   * @example
+   * const result = await StreamCall.getDynamicStreamVideoApikey();
+   * if (result.hasDynamicKey) {
+   *   console.log('Dynamic API key:', result.apiKey);
+   * } else {
+   *   console.log('Using static API key from resources');
+   * }
+   */
+  getDynamicStreamVideoApikey(): Promise<DynamicApiKeyResponse>;
 }
 
 /**

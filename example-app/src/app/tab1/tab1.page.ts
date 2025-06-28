@@ -15,6 +15,7 @@ export class Tab1Page {
   private readonly STYLE_ID = 'magic_transparent_background';
   private readonly API_URL = 'https://magic-login-srvv2-48.localcan.dev';
   private readonly API_KEY = 'vq4zdsazqxd7';
+  private readonly DEV_API_KEY = 'm9ueqnjut3qs'; // Replace with actual dev API key
   transparent = false;
   currentUser: {
     userId: string;
@@ -24,14 +25,61 @@ export class Tab1Page {
   } | null = null;
 
   callStatus: string = 'waiting for response from SDK';
+  currentEnvironment: 'normal' | 'dev' = 'normal';
+  environmentText: string = 'Loading...';
 
   constructor(
     private http: HttpClient,
     private toastController: ToastController,
     private appComponent: AppComponent
   ) {
+    void this.loadCurrentEnvironment();
     void this.loadStoredUser();
     this.getCallStatus();
+  }
+
+  private async loadCurrentEnvironment() {
+    try {
+      const result = await StreamCall.getDynamicStreamVideoApikey();
+      if (result.hasDynamicKey) {
+        this.currentEnvironment = 'dev';
+        this.environmentText = 'Environment: Dev (using dynamic API key)';
+      } else {
+        this.currentEnvironment = 'normal';
+        this.environmentText = 'Environment: Normal (using static API key)';
+      }
+    } catch (error) {
+      console.error('Failed to get environment:', error);
+      this.currentEnvironment = 'normal';
+      this.environmentText = 'Environment: Unknown (error getting status)';
+    }
+  }
+
+  async switchEnvironment() {
+    try {
+      if (this.currentEnvironment === 'normal') {
+        // Switch to dev environment
+        await StreamCall.setDynamicStreamVideoApikey({ apiKey: this.DEV_API_KEY });
+        this.currentEnvironment = 'dev';
+        this.environmentText = 'Environment: Dev (using dynamic API key)';
+        await this.presentToast('Switched to Dev environment', 'success');
+              } else {
+          // Switch to normal environment by setting an empty dynamic key
+          // This will cause getEffectiveApiKey to fall back to the static key
+          await StreamCall.setDynamicStreamVideoApikey({ apiKey: '' });
+          this.currentEnvironment = 'normal';
+          this.environmentText = 'Environment: Normal (using static API key)';
+          await this.presentToast('Switched to Normal environment', 'success');
+        }
+      
+      // If user is logged in, show message about re-login
+      if (this.currentUser) {
+        await this.presentToast('Please logout and login again to use the new environment', 'danger');
+      }
+    } catch (error) {
+      console.error('Failed to switch environment:', error);
+      await this.presentToast('Failed to switch environment', 'danger');
+    }
   }
 
   private async getCallStatus() {
@@ -71,18 +119,21 @@ export class Tab1Page {
         name: string;
         imageURL: string;
         teams: string[];
-      }>(`${this.API_URL}/user?user_id=${userId}${!!team ? `&team=${team}` : ''}`));
+      }>(`${this.API_URL}/user?user_id=${userId}${!!team ? `&team=${team}` : ''}${this.currentEnvironment === 'dev' ? '&environment=dev' : ''}`));
 
       if (!response) {
         throw new Error('No response from server');
       }
+
+      // Use appropriate API key based on current environment
+      const apiKeyToUse = this.currentEnvironment === 'dev' ? this.DEV_API_KEY : this.API_KEY;
 
       await StreamCall.login({
         token: response.token,
         userId: response.userId,
         name: response.name,
         imageURL: response.imageURL,
-        apiKey: this.API_KEY,
+        apiKey: apiKeyToUse,
         magicDivId: 'call-container',
         // refreshToken: {
         //   url: `${this.API_URL}/user?user_id=${userId}`,
@@ -103,7 +154,7 @@ export class Tab1Page {
       // Set current user ID in AppComponent for filtering
       this.appComponent.setCurrentUserId(response.userId);
       
-      await this.presentToast('Login successful', 'success');
+      await this.presentToast(`Login successful (${this.currentEnvironment} environment)`, 'success');
       
     } catch (error) {
       console.error('Login failed:', error);
