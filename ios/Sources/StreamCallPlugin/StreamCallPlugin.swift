@@ -474,6 +474,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             let shouldRing = call.getBool("ring") ?? true
             let team = call.getString("team")
             let video = call.getBool("video") ?? false
+            let custom = call.getObject("custom")
 
             // Generate a unique call ID
             let callId = UUID().uuidString
@@ -491,7 +492,61 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     await self.callViewModel?.startCall(
                         callType: callType,
                         callId: callId,
-                        members: members.map { Member(userId: $0, role: nil, customData: [:], updatedAt: nil) }, team: team, ring: shouldRing, video: video
+                        members: members.map { Member(userId: $0, role: nil, customData: [:], updatedAt: nil) },
+                        team: team,
+                        ring: shouldRing,
+                        customData: custom?.compactMapValues { jsValue in
+                            switch jsValue {
+                            case let str as String:
+                                return .string(str)
+                            case let bool as Bool:
+                                return .bool(bool)
+                            case let int as Int:
+                                return .number(Double(int))
+                            case let float as Float:
+                                return .number(Double(float))
+                            case let double as Double:
+                                return .number(double)
+                            case let number as NSNumber:
+                                return .number(number.doubleValue)
+                            case is NSNull:
+                                return .nil
+                            case let date as Date:
+                                let formatter = ISO8601DateFormatter()
+                                return .string(formatter.string(from: date))
+                            case let array as Array<JSValue>:
+                                let mappedArray = array.compactMap { item -> RawJSON? in
+                                    // Recursive conversion for array elements
+                                    switch item {
+                                    case let str as String: return .string(str)
+                                    case let bool as Bool: return .bool(bool)
+                                    case let int as Int: return .number(Double(int))
+                                    case let double as Double: return .number(double)
+                                    case let number as NSNumber: return .number(number.doubleValue)
+                                    case is NSNull: return .nil
+                                    default: return .string(String(describing: item))
+                                    }
+                                }
+                                return .array(mappedArray)
+                            case let dict as Dictionary<String, JSValue>:
+                                let mappedDict = dict.compactMapValues { value -> RawJSON? in
+                                    // Recursive conversion for dictionary values
+                                    switch value {
+                                    case let str as String: return .string(str)
+                                    case let bool as Bool: return .bool(bool)
+                                    case let int as Int: return .number(Double(int))
+                                    case let double as Double: return .number(double)
+                                    case let number as NSNumber: return .number(number.doubleValue)
+                                    case is NSNull: return .nil
+                                    default: return .string(String(describing: value))
+                                    }
+                                }
+                                return .dictionary(mappedDict)
+                            default:
+                                return .string(String(describing: jsValue))
+                            }
+                        },
+                        video: video,
                     )
                     
                     // Wait for call state to be populated by WebSocket events

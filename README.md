@@ -539,13 +539,14 @@ Get detailed information about an active call including caller details
 
 #### CallOptions
 
-| Prop          | Type                                          | Description                                                     |
-| ------------- | --------------------------------------------- | --------------------------------------------------------------- |
-| **`userIds`** | <code>string[]</code>                         | User ID of the person to call                                   |
-| **`type`**    | <code><a href="#calltype">CallType</a></code> | Type of call, defaults to 'default'                             |
-| **`ring`**    | <code>boolean</code>                          | Whether to ring the other user, defaults to true                |
-| **`team`**    | <code>string</code>                           | Team name to call                                               |
-| **`video`**   | <code>boolean</code>                          | Whether to start the call with video enabled, defaults to false |
+| Prop          | Type                                                                                                                                                                                                                 | Description                                                     |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| **`userIds`** | <code>string[]</code>                                                                                                                                                                                                | User ID of the person to call                                   |
+| **`type`**    | <code><a href="#calltype">CallType</a></code>                                                                                                                                                                        | Type of call, defaults to 'default'                             |
+| **`ring`**    | <code>boolean</code>                                                                                                                                                                                                 | Whether to ring the other user, defaults to true                |
+| **`team`**    | <code>string</code>                                                                                                                                                                                                  | Team name to call                                               |
+| **`video`**   | <code>boolean</code>                                                                                                                                                                                                 | Whether to start the call with video enabled, defaults to false |
+| **`custom`**  | <code><a href="#record">Record</a>&lt;string, string \| boolean \| number \| null \| <a href="#record">Record</a>&lt;string, string \| boolean \| number \| null&gt; \| string[] \| boolean[] \| number[]&gt;</code> | Custom data to be passed to the call                            |
 
 
 #### CallEvent
@@ -763,11 +764,12 @@ The JSON representation for <a href="#listvalue">`ListValue`</a> is JSON array.
 
 #### IncomingCallPayload
 
-| Prop         | Type                                              | Description                              |
-| ------------ | ------------------------------------------------- | ---------------------------------------- |
-| **`cid`**    | <code>string</code>                               | Full call CID (e.g. default:123)         |
-| **`type`**   | <code>'incoming'</code>                           | Event type (currently always "incoming") |
-| **`caller`** | <code><a href="#callmember">CallMember</a></code> | Information about the caller             |
+| Prop         | Type                                                                                                                                                                                                                 | Description                              |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| **`cid`**    | <code>string</code>                                                                                                                                                                                                  | Full call CID (e.g. default:123)         |
+| **`type`**   | <code>'incoming'</code>                                                                                                                                                                                              | Event type (currently always "incoming") |
+| **`caller`** | <code><a href="#callmember">CallMember</a></code>                                                                                                                                                                    | Information about the caller             |
+| **`custom`** | <code><a href="#record">Record</a>&lt;string, string \| boolean \| number \| null \| <a href="#record">Record</a>&lt;string, string \| boolean \| number \| null&gt; \| string[] \| boolean[] \| number[]&gt;</code> | Custom data to be passed to the call     |
 
 
 #### CameraEnabledResponse
@@ -783,6 +785,13 @@ The JSON representation for <a href="#listvalue">`ListValue`</a> is JSON array.
 #### CallType
 
 <code>'default' | 'audio_room' | 'livestream' | 'development'</code>
+
+
+#### Record
+
+Construct a type with a set of properties K of type T
+
+<code>{ [P in K]: T; }</code>
 
 
 #### CallState

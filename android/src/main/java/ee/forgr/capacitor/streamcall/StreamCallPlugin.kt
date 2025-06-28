@@ -83,6 +83,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import androidx.core.net.toUri
+import org.json.JSONObject
 
 // I am not a religious pearson, but at this point, I am not sure even god himself would understand this code
 // It's a spaghetti-like, tangled, unreadable mess and frankly, I am deeply sorry for the code crimes commited in the Android impl
@@ -228,6 +229,7 @@ public class StreamCallPlugin : Plugin() {
                         try {
                             val callInfo = call?.get()
                             val callerInfo = callInfo?.getOrNull()?.call?.createdBy
+                            val custom = callInfo?.getOrNull()?.call?.custom
                             
                             val payload = com.getcapacitor.JSObject().apply {
                                 put("cid", cid.cid)
@@ -240,6 +242,9 @@ public class StreamCallPlugin : Plugin() {
                                         put("role", callerInfo.role ?: "")
                                     }
                                     put("caller", caller)
+                                }
+                                if (custom != null) {
+                                    put("custom", JSONObject(custom))
                                 }
                             }
                             

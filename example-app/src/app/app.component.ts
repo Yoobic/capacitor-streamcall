@@ -309,7 +309,7 @@ export class AppComponent {
     // Android lock-screen full-screen intent
     if (Capacitor.getPlatform() === 'android') {
       StreamCall.addListener('incomingCall', async (payload: any) => {
-        console.log('[incomingCall] lock-screen payload', payload);
+        console.log('[incomingCall] lock-screen payload', JSON.stringify(payload));
         
         // Mark this as an incoming call to prevent conflicts
         this.isIncomingCall = true;
@@ -323,6 +323,7 @@ export class AppComponent {
             name: payload.caller.name,
             imageURL: payload.caller.imageURL
           };
+          console.log('[incomingCall] callerInfo', JSON.stringify(this.callerInfo));
         }
         
         this.isLockscreenIncoming = true;

@@ -117,7 +117,10 @@ export class Tab1Page {
         userIds: userIds,
         type: 'default',
         video: true,
-        ring: true
+        ring: true,
+        custom: {
+          invitedUsers: userIds,
+        }
       });
     } catch (error) {
       console.error(`Failed to call ${userIds}:`, error);
