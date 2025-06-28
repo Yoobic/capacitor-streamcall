@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.72](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.71...0.0.72) (2025-06-28)
+
+
+### Features
+
+* pass custom data to Android ([b35713b](https://github.com/Cap-go/capacitor-streamcall/commit/b35713b539c048b8902a88bcde701ece344c9d4f))
+
 ### [0.0.71](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.70...0.0.71) (2025-06-26)
 
 
