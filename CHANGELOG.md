@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.74](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.73...0.0.74) (2025-06-28)
+
+
+### Features
+
+* implement dynamic StreamCall API keys ([115dcb8](https://github.com/Cap-go/capacitor-streamcall/commit/115dcb815acfa878186b1eb9e155ba099edac16e))
+
 ### [0.0.73](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.72...0.0.73) (2025-06-28)
 
 
