@@ -122,6 +122,7 @@ public class StreamCallPlugin : Plugin() {
     private var pendingCallType: String? = null
     private var pendingCallShouldRing: Boolean? = null
     private var pendingCallTeam: String? = null
+    private var pendingCustomObject: JSObject? = null
     private var pendingAcceptCall: Call? = null // Store the actual call object for acceptance
 
     private enum class State {
@@ -1360,6 +1361,7 @@ public class StreamCallPlugin : Plugin() {
         val callType = pendingCallType
         val shouldRing = pendingCallShouldRing
         val team = pendingCallTeam
+        val custom = pendingCustomObject
         
         if (call != null && userIds != null && callType != null && shouldRing != null) {
             android.util.Log.d("StreamCallPlugin", "executePendingCall: Executing call with ${userIds.size} users")
@@ -1368,7 +1370,7 @@ public class StreamCallPlugin : Plugin() {
             clearPendingCall()
             
             // Execute the call creation logic
-            createAndStartCall(call, userIds, callType, shouldRing, team)
+            createAndStartCall(call, userIds, callType, shouldRing, team, custom)
         } else {
             android.util.Log.w("StreamCallPlugin", "executePendingCall: Missing pending call data")
             call?.reject("Internal error: missing call parameters")
@@ -1383,11 +1385,14 @@ public class StreamCallPlugin : Plugin() {
         pendingCallShouldRing = null
         pendingCallTeam = null
         pendingAcceptCall = null
+        pendingCallTeam = null
         permissionAttemptCount = 0 // Reset attempt count when clearing
     }
 
+
+
     @OptIn(DelicateCoroutinesApi::class, InternalStreamVideoApi::class)
-    private fun createAndStartCall(call: PluginCall, userIds: List<String>, callType: String, shouldRing: Boolean, team: String?) {
+    private fun createAndStartCall(call: PluginCall, userIds: List<String>, callType: String, shouldRing: Boolean, team: String?, custom: JSObject?) {
         val selfUserId = streamVideoClient?.userId
         if (selfUserId == null) {
             call.reject("No self-user id found. Are you not logged in?")
@@ -1405,11 +1410,12 @@ public class StreamCallPlugin : Plugin() {
                 // Note: We no longer start tracking here - we'll wait for CallSessionStartedEvent
                 // instead, which contains the actual participant list
 
+
                 android.util.Log.d("StreamCallPlugin", "Creating call with members...")
                 // Create the call with all members
                 val createResult = streamCall?.create(
                     memberIds = userIds + selfUserId,
-                    custom = emptyMap(),
+                    custom = custom?.toMap() ?: emptyMap(),
                     ring = shouldRing,
                     team = team,
                 )
@@ -1929,6 +1935,8 @@ public class StreamCallPlugin : Plugin() {
             return
         }
 
+        val custom = call.getObject("custom")
+
         try {
             if (state != State.INITIALIZED) {
                 call.reject("StreamVideo not initialized")
@@ -1951,6 +1959,9 @@ public class StreamCallPlugin : Plugin() {
             android.util.Log.d("StreamCallPlugin", "- Call Type: $callType")
             android.util.Log.d("StreamCallPlugin", "- Users: $userIds")
             android.util.Log.d("StreamCallPlugin", "- Should Ring: $shouldRing")
+            if (custom != null) {
+                android.util.Log.d("StreamCallPlugin", "- Custom data: $custom")
+            }
 
             // Check permissions before creating the call
             if (!checkPermissions()) {
@@ -1961,6 +1972,9 @@ public class StreamCallPlugin : Plugin() {
                 pendingCallType = callType
                 pendingCallShouldRing = shouldRing
                 pendingCallTeam = team
+                custom?.let {
+                    pendingCustomObject = it
+                }
                 // Reset attempt count for new permission flow
                 permissionAttemptCount = 0
                 requestPermissions()
@@ -1968,7 +1982,7 @@ public class StreamCallPlugin : Plugin() {
             }
 
             // Execute call creation immediately if permissions are granted
-            createAndStartCall(call, userIds, callType, shouldRing, team)
+            createAndStartCall(call, userIds, callType, shouldRing, team, custom)
         } catch (e: Exception) {
             call.reject("Failed to make call: ${e.message}")
         }
