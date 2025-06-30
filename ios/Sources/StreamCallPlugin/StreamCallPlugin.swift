@@ -551,7 +551,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                                 return .string(String(describing: jsValue))
                             }
                         },
-                        video: video,
+                        video: video
                     )
                     
                     // Wait for call state to be populated by WebSocket events
