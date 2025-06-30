@@ -156,7 +156,17 @@ export interface CallOptions {
   /** Whether to start the call with video enabled, defaults to false */
   video?: boolean;
   /** Custom data to be passed to the call */
-  custom?: Record<string, string | boolean | number | null | Record<string, string | boolean | number | null> | string[] | boolean[] | number[]>;
+  custom?: Record<
+    string,
+    | string
+    | boolean
+    | number
+    | null
+    | Record<string, string | boolean | number | null>
+    | string[]
+    | boolean[]
+    | number[]
+  >;
 }
 
 /**
@@ -353,5 +363,15 @@ export interface IncomingCallPayload {
   /** Information about the caller */
   caller?: CallMember;
   /** Custom data to be passed to the call */
-  custom?: Record<string, string | boolean | number | null | Record<string, string | boolean | number | null> | string[] | boolean[] | number[]>;
+  custom?: Record<
+    string,
+    | string
+    | boolean
+    | number
+    | null
+    | Record<string, string | boolean | number | null>
+    | string[]
+    | boolean[]
+    | number[]
+  >;
 }
