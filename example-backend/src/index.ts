@@ -30,7 +30,6 @@ if (!process.env.STREAM_API_KEY || !process.env.STREAM_API_SECRET) {
 
 const apiKey = process.env.STREAM_API_KEY;
 const apiKeyDev = process.env.STREAM_API_KEY_DEV;
-const devApiKey = process.env.STREAM_API_KEY_DEV!;
 const apiSecret = process.env.STREAM_API_SECRET;
 const apiSecretDev = process.env.STREAM_API_SECRET_DEV;
 const vailidity = 60 * 60 * 6; // Six hours in seconds
