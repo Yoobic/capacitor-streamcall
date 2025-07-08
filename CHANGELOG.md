@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.78](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.77...0.0.78) (2025-07-08)
+
+
+### Bug Fixes
+
+* Notif tap to return and DynamicApiKey issue ([ec41fca](https://github.com/Cap-go/capacitor-streamcall/commit/ec41fca9a7a5eabfb96638064a7543c344d3a713))
+* server ([6ca4cd1](https://github.com/Cap-go/capacitor-streamcall/commit/6ca4cd1f19d83cd43a0fe837d5d0df9bcd0248ff))
+* use mew url ([9deae21](https://github.com/Cap-go/capacitor-streamcall/commit/9deae21f4d27890ce4c667751bf695096aca7cd2))
+
 ### [0.0.77](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.76...0.0.77) (2025-06-30)
 
 
