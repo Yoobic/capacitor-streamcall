@@ -69,6 +69,7 @@ import io.getstream.video.android.core.GEO
 import io.getstream.video.android.core.RealtimeConnection
 import io.getstream.video.android.core.StreamVideo
 import io.getstream.video.android.core.StreamVideoBuilder
+import io.getstream.video.android.core.EventSubscription
 import io.getstream.video.android.core.events.ParticipantLeftEvent
 import io.getstream.video.android.core.internal.InternalStreamVideoApi
 import io.getstream.video.android.core.notifications.NotificationConfig
@@ -81,6 +82,7 @@ import io.getstream.video.android.model.streamCallId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import androidx.core.net.toUri
@@ -102,6 +104,10 @@ public class StreamCallPlugin : Plugin() {
     private var savedActivityPaused = false
     private var savedCallsToEndOnResume = mutableListOf<Call>()
     private val callStates: MutableMap<String, LocalCallState> = mutableMapOf()
+    private var eventSubscription: EventSubscription? = null
+    private var activeCallStateJob: Job? = null
+    private var cameraStatusJob: Job? = null
+    private var microphoneStatusJob: Job? = null
 
     // Store current call info
     private var currentCallId: String = ""
@@ -500,6 +506,10 @@ public class StreamCallPlugin : Plugin() {
         try {
             // Clear stored credentials
             SecureUserRepository.getInstance(context).removeCurrentUser()
+            eventSubscription?.dispose()
+            activeCallStateJob?.cancel()
+            cameraStatusJob?.cancel()
+            microphoneStatusJob?.cancel()
 
             // Properly cleanup the client
             kotlinx.coroutines.GlobalScope.launch {
@@ -511,7 +521,6 @@ public class StreamCallPlugin : Plugin() {
 
                 streamVideoClient = null
                 state = State.NOT_INITIALIZED
-                eventHandlersRegistered = false
 
                 val ret = JSObject()
                 ret.put("success", true)
@@ -552,10 +561,7 @@ public class StreamCallPlugin : Plugin() {
                     android.util.Log.v("StreamCallPlugin", "Plugin's streamVideoClient is null, reusing singleton and registering event handlers")
                     streamVideoClient = StreamVideo.instance()
                     // Register event handlers since streamVideoClient was null
-                    if (!eventHandlersRegistered) {
-                        registerEventHandlers()
-                        eventHandlersRegistered = true
-                    }
+                    registerEventHandlers()
                 } else {
                     android.util.Log.v("StreamCallPlugin", "Plugin already has streamVideoClient, skipping event handler registration")
                 }
@@ -646,10 +652,8 @@ public class StreamCallPlugin : Plugin() {
                 this.state = State.INITIALIZED
                 return
             }
-            if (!eventHandlersRegistered) {
-                registerEventHandlers()
-                eventHandlersRegistered = true
-            }
+
+            registerEventHandlers()
 
             android.util.Log.v("StreamCallPlugin", "Initialization finished")
             initializationTime = System.currentTimeMillis()
@@ -704,9 +708,13 @@ public class StreamCallPlugin : Plugin() {
 
     @OptIn(DelicateCoroutinesApi::class)
     private fun registerEventHandlers() {
+        eventSubscription?.dispose()
+        activeCallStateJob?.cancel()
+        cameraStatusJob?.cancel()
+        microphoneStatusJob?.cancel()
         // Subscribe to call events
         streamVideoClient?.let { client ->
-            client.subscribe { event: VideoEvent ->
+            eventSubscription = client.subscribe { event: VideoEvent ->
                 android.util.Log.v("StreamCallPlugin", "Received an event ${event.getEventType()} $event")
                 when (event) {
                     is CallRingEvent -> {
@@ -907,7 +915,7 @@ public class StreamCallPlugin : Plugin() {
                             if (connectionState != RealtimeConnection.Disconnected) {
                                 val total = activeCall.state.participantCounts.value?.total
                                 android.util.Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: Participant left, remaining: $total");
-                                if (total != null && total < 2) {
+                                if (total != null && total <= 1) {
                                     android.util.Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: All remote participants have left call ${activeCall.cid}. Ending call.")
                                     kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
                                         endCallRaw(activeCall)
@@ -930,7 +938,7 @@ public class StreamCallPlugin : Plugin() {
 
             // Add call state subscription using collect
             // used so that it follows the same patterns as iOS
-            kotlinx.coroutines.GlobalScope.launch {
+            activeCallStateJob = kotlinx.coroutines.GlobalScope.launch {
                 client.state.activeCall.collect { call ->
                     android.util.Log.d("StreamCallPlugin", "Call State Update:")
                     android.util.Log.d("StreamCallPlugin", "- Call is null: ${call == null}")
@@ -946,8 +954,11 @@ public class StreamCallPlugin : Plugin() {
                         // Make sure activity is visible on lock screen
                         changeActivityAsVisibleOnLockScreen(this@StreamCallPlugin.activity, true)
                         
+                        cameraStatusJob?.cancel()
+                        microphoneStatusJob?.cancel()
+                        
                         // Listen to camera status changes
-                        kotlinx.coroutines.GlobalScope.launch {
+                        cameraStatusJob = kotlinx.coroutines.GlobalScope.launch {
                             call.camera.isEnabled.collect { isEnabled ->
                                 android.util.Log.d("StreamCallPlugin", "Camera status changed for call ${call.id}: enabled=$isEnabled")
                                 updateCallStatusAndNotify(call.cid, if (isEnabled) "camera_enabled" else "camera_disabled")
@@ -955,13 +966,15 @@ public class StreamCallPlugin : Plugin() {
                         }
                         
                         // Listen to microphone status changes
-                        kotlinx.coroutines.GlobalScope.launch {
+                        microphoneStatusJob = kotlinx.coroutines.GlobalScope.launch {
                             call.microphone.isEnabled.collect { isEnabled ->
                                 android.util.Log.d("StreamCallPlugin", "Microphone status changed for call ${call.id}: enabled=$isEnabled")
                                 updateCallStatusAndNotify(call.cid, if (isEnabled) "microphone_enabled" else "microphone_disabled")
                             }
                         }
                     } ?: run {
+                        cameraStatusJob?.cancel()
+                        microphoneStatusJob?.cancel()
                         // Notify that call has ended using our helper
                         updateCallStatusAndNotify("", "left")
                         changeActivityAsVisibleOnLockScreen(this@StreamCallPlugin.activity, false)
@@ -1778,12 +1791,12 @@ public class StreamCallPlugin : Plugin() {
             android.util.Log.d("StreamCallPlugin", "Call $callId - Creator: $createdBy, CurrentUser: $currentUserId, IsCreator: $isCreator, TotalParticipants: $totalParticipants, ShouldEnd: $shouldEndCall")
             
             if (shouldEndCall) {
-                // End the call for everyone if I'm the creator or only 2 people
+                // End the call for everyone if I'm the creator or only 1 person
                 android.util.Log.d("StreamCallPlugin", "Ending call $callId for all participants (creator: $isCreator, participants: $totalParticipants)")
                 call.end()
             } else {
-                // Just leave the call if there are more than 2 people and I'm not the creator
-                android.util.Log.d("StreamCallPlugin", "Leaving call $callId (not creator, >2 participants)")
+                // Just leave the call if there are more than 1 person and I'm not the creator
+                android.util.Log.d("StreamCallPlugin", "Leaving call $callId (not creator, >1 participants)")
                 call.leave()
             }
 
@@ -2428,7 +2441,6 @@ public class StreamCallPlugin : Plugin() {
             }
         }
         private var holder: StreamCallPlugin? = null
-        private var eventHandlersRegistered = false
         
         // Constants for SharedPreferences
         private const val API_KEY_PREFS_NAME = "stream_video_api_key_prefs"
