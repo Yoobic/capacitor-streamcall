@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.79](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.78...0.0.79) (2025-07-08)
+
+
+### Bug Fixes
+
+* double event issue ([2cc2d71](https://github.com/Cap-go/capacitor-streamcall/commit/2cc2d712089146089496afa617e8c85662b48d54))
+
 ### [0.0.78](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.77...0.0.78) (2025-07-08)
 
 
