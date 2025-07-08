@@ -68,26 +68,16 @@ class CustomNotificationHandler(
             )
 
             val acceptCallAction = NotificationHandler.ACTION_ACCEPT_CALL
-            val acceptCallIntent = Intent(acceptCallAction)
-                // Pass full Parcelable so both new and old handlers succeed
-                .putExtra(NotificationHandler.INTENT_EXTRA_CALL_CID, callId)
-                .setPackage(application.packageName)
-
-            if (targetComponent != null) {
-                acceptCallIntent.component = targetComponent
+            val acceptCallIntent = Intent(acceptCallAction).apply {
+                putExtra(NotificationHandler.INTENT_EXTRA_CALL_CID, callId)
+                // Explicitly target our manifest-declared receiver
+                setClass(application, AcceptCallReceiver::class.java)
             }
-            acceptCallIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
 
-            Log.d("CustomNotificationHandler", "Constructed Accept Call Intent for PI: action=${acceptCallIntent.action}, cid=${acceptCallIntent.streamCallId(NotificationHandler.INTENT_EXTRA_CALL_CID)}, package=${acceptCallIntent.getPackage()}, component=${acceptCallIntent.component?.flattenToString()}, flags=${acceptCallIntent.flags}")
+            Log.d("CustomNotificationHandler", "Constructed Accept Call Intent for PI: action=${acceptCallIntent.action}, cid=${acceptCallIntent.streamCallId(NotificationHandler.INTENT_EXTRA_CALL_CID)}, component=${acceptCallIntent.component}")
 
-            // Create PendingIntent for Accept action using getActivity to launch the app
             val requestCodeAccept = callId.cid.hashCode() + 1 // Unique request code for the PendingIntent with offset to avoid collisions
-            val acceptCallPendingIntent = PendingIntent.getActivity(
-                application,
-                requestCodeAccept,
-                acceptCallIntent,
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-            )
+            val acceptCallPendingIntent = createAcceptCallPendingIntent(callId, requestCodeAccept, acceptCallIntent)
             Log.d("CustomNotificationHandler", "Created Accept Call PendingIntent with requestCode: $requestCodeAccept")
 
             val rejectCallPendingIntent = intentResolver.searchRejectCallPendingIntent(callId) // Keep using resolver for reject for now, or change it too if needed
@@ -125,6 +115,37 @@ class CustomNotificationHandler(
             }
         } else {
             null
+        }
+    }
+
+    private fun createAcceptCallPendingIntent(
+        callId: StreamCallId,
+        requestCode: Int,
+        acceptCallIntent: Intent
+    ): PendingIntent? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            val launchIntent = application.packageManager.getLaunchIntentForPackage(application.packageName)
+            if (launchIntent != null) {
+                launchIntent.action = NotificationHandler.ACTION_ACCEPT_CALL
+                launchIntent.putExtra(NotificationHandler.INTENT_EXTRA_CALL_CID, callId)
+                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                PendingIntent.getActivity(
+                    application,
+                    requestCode,
+                    launchIntent,
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                )
+            } else {
+                Log.e("CustomNotificationHandler", "Could not get launch intent for package to create Accept PI.")
+                null
+            }
+        } else {
+            PendingIntent.getBroadcast(
+                application,
+                requestCode,
+                acceptCallIntent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
         }
     }
  

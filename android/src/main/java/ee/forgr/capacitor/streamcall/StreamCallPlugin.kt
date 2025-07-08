@@ -410,6 +410,7 @@ public class StreamCallPlugin : Plugin() {
 
                     CallContent(
                         call = activeCall,
+                        enableInPictureInPicture = false,
                         onBackPressed = { /* Handle back press if needed */ },
                         controlsContent = { /* Empty to disable native controls */ },
                         appBarContent = { /* Empty to disable app bar with stop call button */ },
@@ -510,6 +511,7 @@ public class StreamCallPlugin : Plugin() {
 
                 streamVideoClient = null
                 state = State.NOT_INITIALIZED
+                eventHandlersRegistered = false
 
                 val ret = JSObject()
                 ret.put("success", true)
@@ -550,7 +552,10 @@ public class StreamCallPlugin : Plugin() {
                     android.util.Log.v("StreamCallPlugin", "Plugin's streamVideoClient is null, reusing singleton and registering event handlers")
                     streamVideoClient = StreamVideo.instance()
                     // Register event handlers since streamVideoClient was null
-                    registerEventHandlers()
+                    if (!eventHandlersRegistered) {
+                        registerEventHandlers()
+                        eventHandlersRegistered = true
+                    }
                 } else {
                     android.util.Log.v("StreamCallPlugin", "Plugin already has streamVideoClient, skipping event handler registration")
                 }
@@ -641,8 +646,10 @@ public class StreamCallPlugin : Plugin() {
                 this.state = State.INITIALIZED
                 return
             }
-
-            registerEventHandlers()
+            if (!eventHandlersRegistered) {
+                registerEventHandlers()
+                eventHandlersRegistered = true
+            }
 
             android.util.Log.v("StreamCallPlugin", "Initialization finished")
             initializationTime = System.currentTimeMillis()
@@ -900,7 +907,7 @@ public class StreamCallPlugin : Plugin() {
                             if (connectionState != RealtimeConnection.Disconnected) {
                                 val total = activeCall.state.participantCounts.value?.total
                                 android.util.Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: Participant left, remaining: $total");
-                                if (total != null && total <= 2) {
+                                if (total != null && total < 2) {
                                     android.util.Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: All remote participants have left call ${activeCall.cid}. Ending call.")
                                     kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
                                         endCallRaw(activeCall)
@@ -1766,7 +1773,7 @@ public class StreamCallPlugin : Plugin() {
             
             // Use call.state.totalParticipants to get participant count (as per StreamVideo Android SDK docs)
             val totalParticipants = call.state.totalParticipants.value ?: 0
-            val shouldEndCall = isCreator || totalParticipants <= 2
+            val shouldEndCall = isCreator || totalParticipants <= 1
             
             android.util.Log.d("StreamCallPlugin", "Call $callId - Creator: $createdBy, CurrentUser: $currentUserId, IsCreator: $isCreator, TotalParticipants: $totalParticipants, ShouldEnd: $shouldEndCall")
             
@@ -2375,14 +2382,14 @@ public class StreamCallPlugin : Plugin() {
 
     private val acceptCallReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            android.util.Log.d("StreamCallPlugin", "BroadcastReceiver: Received broadcast with action: ${intent?.action}")
             if (intent?.action == "io.getstream.video.android.action.ACCEPT_CALL") {
+                android.util.Log.d("StreamCallPlugin", "BroadcastReceiver: Received broadcast with action: ${intent.action}")
                 val cid = intent.streamCallId(NotificationHandler.INTENT_EXTRA_CALL_CID)
-                android.util.Log.d("StreamCallPlugin", "BroadcastReceiver: ACCEPT_CALL broadcast received with cid: $cid")
                 if (cid != null) {
-                    android.util.Log.d("StreamCallPlugin", "BroadcastReceiver: Accepting call with cid: $cid")
+                    android.util.Log.d("StreamCallPlugin", "BroadcastReceiver: ACCEPT_CALL broadcast received with cid: $cid")
                     val call = streamVideoClient?.call(id = cid.id, type = cid.type)
                     if (call != null) {
+                        android.util.Log.d("StreamCallPlugin", "BroadcastReceiver: Accepting call with cid: $cid")
                         kotlinx.coroutines.GlobalScope.launch {
                             internalAcceptCall(call, requestPermissionsAfter = !checkPermissions())
                         }
@@ -2421,6 +2428,7 @@ public class StreamCallPlugin : Plugin() {
             }
         }
         private var holder: StreamCallPlugin? = null
+        private var eventHandlersRegistered = false
         
         // Constants for SharedPreferences
         private const val API_KEY_PREFS_NAME = "stream_video_api_key_prefs"

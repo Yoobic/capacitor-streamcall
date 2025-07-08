@@ -18,6 +18,15 @@
             android:name="ee.forgr.capacitor.streamcall.StreamCallBackgroundService"
             android:enabled="true"
             android:exported="false" />
+
+        <receiver
+            android:name=".AcceptCallReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="io.getstream.video.android.action.ACCEPT_CALL" />
+            </intent-filter>
+        </receiver>
     </application>
 
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
