@@ -112,11 +112,11 @@ public class StreamCallPlugin : Plugin() {
     private var callFragment: StreamCallFragment? = null
     private var streamVideo: StreamVideo? = null
     private var touchInterceptWrapper: TouchInterceptWrapper? = null
-    
+
     // Track permission request timing and attempts
     private var permissionRequestStartTime: Long = 0
     private var permissionAttemptCount: Int = 0
-    
+
     // Store pending call information for permission handling
     private var pendingCall: PluginCall? = null
     private var pendingCallUserIds: List<String>? = null
@@ -147,13 +147,13 @@ public class StreamCallPlugin : Plugin() {
 
     override fun handleOnResume() {
         super.handleOnResume()
-        
+
         android.util.Log.d("StreamCallPlugin", "handleOnResume: App resumed, checking permissions and pending operations")
         android.util.Log.d("StreamCallPlugin", "handleOnResume: Have pendingCall: ${pendingCall != null}")
         android.util.Log.d("StreamCallPlugin", "handleOnResume: Have pendingCallUserIds: ${pendingCallUserIds != null}")
         android.util.Log.d("StreamCallPlugin", "handleOnResume: Have pendingAcceptCall: ${pendingAcceptCall != null}")
         android.util.Log.d("StreamCallPlugin", "handleOnResume: Permission attempt count: $permissionAttemptCount")
-        
+
         // Check if permissions were granted after returning from settings or permission dialog
         if (checkPermissions()) {
             android.util.Log.d("StreamCallPlugin", "handleOnResume: Permissions are now granted")
@@ -232,7 +232,7 @@ public class StreamCallPlugin : Plugin() {
                             val callInfo = call?.get()
                             val callerInfo = callInfo?.getOrNull()?.call?.createdBy
                             val custom = callInfo?.getOrNull()?.call?.custom
-                            
+
                             val payload = com.getcapacitor.JSObject().apply {
                                 put("cid", cid.cid)
                                 put("type", "incoming")
@@ -249,10 +249,10 @@ public class StreamCallPlugin : Plugin() {
                                     put("custom", JSONObject(custom))
                                 }
                             }
-                            
+
                             // Notify WebView/JS about incoming call so it can render its own UI
                             notifyListeners("incomingCall", payload, true)
-                            
+
                             // Delay bringing app to foreground to allow the event to be processed first
                             kotlinx.coroutines.delay(500) // 500ms delay
                             bringAppToForeground()
@@ -264,7 +264,7 @@ public class StreamCallPlugin : Plugin() {
                                 put("type", "incoming")
                             }
                             notifyListeners("incomingCall", payload, true)
-                            
+
                             // Delay bringing app to foreground to allow the event to be processed first
                             kotlinx.coroutines.delay(500) // 500ms delay
                             bringAppToForeground()
@@ -714,7 +714,7 @@ public class StreamCallPlugin : Plugin() {
                                     val call = streamVideoClient?.call(type = callType, id = callId)
                                     val callInfo = call?.get()
                                     val callerInfo = callInfo?.getOrNull()?.call?.createdBy
-                                    
+
                                     // Pass caller information to the ringing event
                                     if (callerInfo != null) {
                                         val caller = mapOf(
@@ -755,13 +755,13 @@ public class StreamCallPlugin : Plugin() {
                                     val callInfo = call?.get()
                                     val createdBy = callInfo?.getOrNull()?.call?.createdBy
                                     val currentUserId = streamVideoClient?.userId
-                                    
+
                                     android.util.Log.d("StreamCallPlugin", "CallCreatedEvent: Call created by: ${createdBy?.id}, Current user: $currentUserId")
-                                    
+
                                     // Only notify for outgoing calls (where current user is the creator)
                                     if (createdBy?.id == currentUserId) {
                                         android.util.Log.d("StreamCallPlugin", "CallCreatedEvent: This is an outgoing call, sending created event")
-                                        
+
                                         val callParticipants = event.members.filter {
                                             val selfId = this@StreamCallPlugin.streamVideoClient?.userId
                                             val memberId = it.user.id
@@ -938,7 +938,7 @@ public class StreamCallPlugin : Plugin() {
                         updateCallStatusAndNotify(call.cid, "joined")
                         // Make sure activity is visible on lock screen
                         changeActivityAsVisibleOnLockScreen(this@StreamCallPlugin.activity, true)
-                        
+
                         // Listen to camera status changes
                         kotlinx.coroutines.GlobalScope.launch {
                             call.camera.isEnabled.collect { isEnabled ->
@@ -946,7 +946,7 @@ public class StreamCallPlugin : Plugin() {
                                 updateCallStatusAndNotify(call.cid, if (isEnabled) "camera_enabled" else "camera_disabled")
                             }
                         }
-                        
+
                         // Listen to microphone status changes
                         kotlinx.coroutines.GlobalScope.launch {
                             call.microphone.isEnabled.collect { isEnabled ->
@@ -1024,9 +1024,9 @@ public class StreamCallPlugin : Plugin() {
                 call.reject("Ringing call is null")
                 return
             }
-            
+
             android.util.Log.d("StreamCallPlugin", "acceptCall: Accepting call immediately, will handle permissions after")
-            
+
             // Accept call immediately regardless of permissions - time is critical!
             kotlinx.coroutines.GlobalScope.launch {
                 try {
@@ -1098,15 +1098,15 @@ public class StreamCallPlugin : Plugin() {
                     android.util.Log.d("StreamCallPlugin", "internalAcceptCall: WebView background set to transparent for call ${call.id}")
                     bridge?.webView?.bringToFront() // Ensure WebView is on top and transparent
                     android.util.Log.d("StreamCallPlugin", "internalAcceptCall: WebView brought to front for call ${call.id}")
-                    
+
                     // Enable camera/microphone based on permissions
                     val hasPermissions = checkPermissions()
                     android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Has permissions: $hasPermissions for call ${call.id}")
-                    
+
                     call.microphone?.setEnabled(hasPermissions)
                     call.camera?.setEnabled(hasPermissions)
                     android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Microphone and camera set to $hasPermissions for call ${call.id}")
-                    
+
                     android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Setting CallContent with active call ${call.id}")
                     setOverlayContent(call)
                     android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Content set for overlayView for call ${call.id}")
@@ -1118,7 +1118,7 @@ public class StreamCallPlugin : Plugin() {
                     parent?.removeView(overlayView)
                     parent?.addView(overlayView, 0) // Add at index 0 to ensure it's behind other views
                     android.util.Log.d("StreamCallPlugin", "internalAcceptCall: OverlayView re-added to parent at index 0 for call ${call.id}")
-                    
+
                     // Add a small delay to ensure UI refresh
                     mainHandler.postDelayed({
                         android.util.Log.d("StreamCallPlugin", "internalAcceptCall: Delayed UI check, overlay visible: ${overlayView?.isVisible} for call ${call.id}")
@@ -1152,7 +1152,7 @@ public class StreamCallPlugin : Plugin() {
                         requestPermissions()
                     }
                 }
-                
+
             } catch (e: Exception) {
                 android.util.Log.e("StreamCallPlugin", "internalAcceptCall: Error accepting call ${call.id}: ${e.message}", e)
                 runOnMainThread {
@@ -1183,13 +1183,13 @@ public class StreamCallPlugin : Plugin() {
         super.handleRequestPermissionsResult(requestCode, permissions, grantResults)
         android.util.Log.d("StreamCallPlugin", "handleRequestPermissionsResult: Entered. RequestCode: $requestCode, Attempt: $permissionAttemptCount")
         android.util.Log.d("StreamCallPlugin", "handleRequestPermissionsResult: Expected requestCode: 9001")
-        
+
         if (requestCode == 9001) {
             val responseTime = System.currentTimeMillis() - permissionRequestStartTime
             android.util.Log.d("StreamCallPlugin", "handleRequestPermissionsResult: Response time: ${responseTime}ms")
-            
+
             logPermissionResults(permissions, grantResults)
-            
+
             if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
                 android.util.Log.i("StreamCallPlugin", "handleRequestPermissionsResult: All permissions GRANTED.")
                 // Reset attempt count on success
@@ -1216,31 +1216,31 @@ public class StreamCallPlugin : Plugin() {
 
     private fun handlePermissionGranted() {
         android.util.Log.d("StreamCallPlugin", "handlePermissionGranted: Processing granted permissions")
-        
+
         // Reset attempt count since permissions are now granted
         permissionAttemptCount = 0
-        
+
         // Determine what type of pending operation we have
         val hasOutgoingCall = pendingCall != null && pendingCallUserIds != null
         val hasActiveCallNeedingPermissions = pendingAcceptCall != null
-        
+
         android.util.Log.d("StreamCallPlugin", "handlePermissionGranted: hasOutgoingCall=$hasOutgoingCall, hasActiveCallNeedingPermissions=$hasActiveCallNeedingPermissions")
-        
+
         when {
             hasOutgoingCall -> {
                 // Outgoing call creation was waiting for permissions
                 android.util.Log.d("StreamCallPlugin", "handlePermissionGranted: Executing pending outgoing call with ${pendingCallUserIds?.size} users")
                 executePendingCall()
             }
-            
+
             hasActiveCallNeedingPermissions -> {
-                // Active call needing camera/microphone enabled 
+                // Active call needing camera/microphone enabled
                 val callToHandle = pendingAcceptCall!!
                 val activeCall = streamVideoClient?.state?.activeCall?.value
-                
+
                 android.util.Log.d("StreamCallPlugin", "handlePermissionGranted: Processing call ${callToHandle.id}")
                 android.util.Log.d("StreamCallPlugin", "handlePermissionGranted: Active call in state: ${activeCall?.id}")
-                
+
                 if (activeCall != null && activeCall.id == callToHandle.id) {
                     // Call is already active - enable camera/microphone
                     android.util.Log.d("StreamCallPlugin", "handlePermissionGranted: Enabling camera/microphone for active call ${callToHandle.id}")
@@ -1249,7 +1249,7 @@ public class StreamCallPlugin : Plugin() {
                             callToHandle.microphone?.setEnabled(true)
                             callToHandle.camera?.setEnabled(true)
                             android.util.Log.d("StreamCallPlugin", "handlePermissionGranted: Camera and microphone enabled for call ${callToHandle.id}")
-                            
+
                             // Show success message
                             android.widget.Toast.makeText(
                                 context,
@@ -1285,7 +1285,7 @@ public class StreamCallPlugin : Plugin() {
                             callToHandle.microphone?.setEnabled(true)
                             callToHandle.camera?.setEnabled(true)
                             android.util.Log.d("StreamCallPlugin", "handlePermissionGranted: Camera and microphone enabled for stored call ${callToHandle.id}")
-                            
+
                             android.widget.Toast.makeText(
                                 context,
                                 "Camera and microphone enabled",
@@ -1298,13 +1298,13 @@ public class StreamCallPlugin : Plugin() {
                     }
                 }
             }
-            
+
             pendingCall != null -> {
                 // We have a pending call but unclear what type - fallback handling
                 android.util.Log.w("StreamCallPlugin", "handlePermissionGranted: Have pendingCall but unclear operation type")
                 android.util.Log.w("StreamCallPlugin", "  - pendingCallUserIds: ${pendingCallUserIds != null}")
                 android.util.Log.w("StreamCallPlugin", "  - pendingAcceptCall: ${pendingAcceptCall != null}")
-                
+
                 // Try fallback to current ringing call for acceptance
                 val ringingCall = streamVideoClient?.state?.ringingCall?.value
                 if (ringingCall != null) {
@@ -1328,7 +1328,7 @@ public class StreamCallPlugin : Plugin() {
                     clearPendingCall()
                 }
             }
-            
+
             else -> {
                 android.util.Log.d("StreamCallPlugin", "handlePermissionGranted: No pending operations to handle")
             }
@@ -1337,11 +1337,11 @@ public class StreamCallPlugin : Plugin() {
 
     private fun handlePermissionDenied(responseTime: Long) {
         android.util.Log.d("StreamCallPlugin", "handlePermissionDenied: Response time: ${responseTime}ms, Attempt: $permissionAttemptCount")
-        
+
         // Check if the response was instant (< 500ms) indicating "don't ask again"
         val instantDenial = responseTime < 500
         android.util.Log.d("StreamCallPlugin", "handlePermissionDenied: Instant denial detected: $instantDenial")
-        
+
         if (instantDenial) {
             // If it's an instant denial (don't ask again), go straight to settings dialog
             android.util.Log.d("StreamCallPlugin", "handlePermissionDenied: Instant denial, showing settings dialog")
@@ -1364,13 +1364,13 @@ public class StreamCallPlugin : Plugin() {
         val shouldRing = pendingCallShouldRing
         val team = pendingCallTeam
         val custom = pendingCustomObject
-        
+
         if (call != null && userIds != null && callType != null && shouldRing != null) {
             android.util.Log.d("StreamCallPlugin", "executePendingCall: Executing call with ${userIds.size} users")
-            
+
             // Clear pending call data
             clearPendingCall()
-            
+
             // Execute the call creation logic
             createAndStartCall(call, userIds, callType, shouldRing, team, custom)
         } else {
@@ -1457,17 +1457,17 @@ public class StreamCallPlugin : Plugin() {
     private fun requestPermissions() {
         permissionAttemptCount++
         android.util.Log.d("StreamCallPlugin", "requestPermissions: Attempt #$permissionAttemptCount - Requesting RECORD_AUDIO and CAMERA permissions.")
-        
+
         // Record timing for instant denial detection
         permissionRequestStartTime = System.currentTimeMillis()
         android.util.Log.d("StreamCallPlugin", "requestPermissions: Starting permission request at $permissionRequestStartTime")
-        
+
         ActivityCompat.requestPermissions(
             activity,
             arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.CAMERA),
             9001 // Use high request code to avoid Capacitor conflicts
         )
-        
+
         android.util.Log.d("StreamCallPlugin", "requestPermissions: Permission request initiated with code 9001")
     }
 
@@ -1475,10 +1475,10 @@ public class StreamCallPlugin : Plugin() {
         activity?.runOnUiThread {
             val activeCall = streamVideoClient?.state?.activeCall?.value
             val hasActiveCall = activeCall != null && pendingAcceptCall != null && activeCall.id == pendingAcceptCall?.id
-            
+
             val builder = AlertDialog.Builder(activity)
             builder.setTitle("Enable Permissions")
-            
+
             if (hasActiveCall) {
                 builder.setMessage("Your call is active but camera and microphone are disabled.\n\nWould you like to open Settings to enable video and audio?")
                 builder.setNegativeButton("Continue without") { _, _ ->
@@ -1492,13 +1492,13 @@ public class StreamCallPlugin : Plugin() {
                     showPermissionRequiredMessage()
                 }
             }
-            
+
             builder.setPositiveButton("Open Settings") { _, _ ->
                 android.util.Log.d("StreamCallPlugin", "User chose to open app settings")
                 openAppSettings()
                 // Don't reject the call yet - let them go to settings and come back
             }
-            
+
             builder.setCancelable(false)
             builder.show()
         }
@@ -1508,16 +1508,16 @@ public class StreamCallPlugin : Plugin() {
         activity?.runOnUiThread {
             val activeCall = streamVideoClient?.state?.activeCall?.value
             val hasActiveCall = activeCall != null && pendingAcceptCall != null && activeCall.id == pendingAcceptCall?.id
-            
+
             val builder = AlertDialog.Builder(activity)
             builder.setTitle("Permissions Required")
-            
+
             if (hasActiveCall) {
                 builder.setMessage("Camera and microphone permissions are required for video calling. Your call will continue without camera/microphone.")
             } else {
                 builder.setMessage("Camera/microphone permission is required for the calling functionality of this app")
             }
-            
+
             builder.setPositiveButton("OK") { dialog, _ ->
                 dialog.dismiss()
                 handleFinalPermissionDenial()
@@ -1529,11 +1529,11 @@ public class StreamCallPlugin : Plugin() {
 
     private fun handleFinalPermissionDenial() {
         android.util.Log.d("StreamCallPlugin", "handleFinalPermissionDenial: Processing final permission denial")
-        
+
         val hasOutgoingCall = pendingCall != null && pendingCallUserIds != null
         val hasIncomingCall = pendingCall != null && pendingAcceptCall != null
         val activeCall = streamVideoClient?.state?.activeCall?.value
-        
+
         when {
             hasOutgoingCall -> {
                 // Outgoing call that couldn't be created due to permissions
@@ -1541,11 +1541,11 @@ public class StreamCallPlugin : Plugin() {
                 pendingCall?.reject("Permissions required for call. Please grant them.")
                 clearPendingCall()
             }
-            
+
             hasIncomingCall && activeCall != null && activeCall.id == pendingAcceptCall?.id -> {
                 // Incoming call that's already active - DON'T end the call, just keep it without camera/mic
                 android.util.Log.d("StreamCallPlugin", "handleFinalPermissionDenial: Incoming call already active, keeping call without camera/mic")
-                
+
                 // Ensure camera and microphone are disabled since no permissions
                 try {
                     activeCall.microphone?.setEnabled(false)
@@ -1554,13 +1554,13 @@ public class StreamCallPlugin : Plugin() {
                 } catch (e: Exception) {
                     android.util.Log.w("StreamCallPlugin", "handleFinalPermissionDenial: Error disabling camera/mic", e)
                 }
-                
+
                 android.widget.Toast.makeText(
                     context,
                     "Call continues without camera/microphone",
                     android.widget.Toast.LENGTH_LONG
                 ).show()
-                
+
                 // Resolve the pending call since the call itself was successful (just no permissions)
                 pendingCall?.resolve(JSObject().apply {
                     put("success", true)
@@ -1568,14 +1568,14 @@ public class StreamCallPlugin : Plugin() {
                 })
                 clearPendingCall()
             }
-            
+
             hasIncomingCall -> {
                 // Incoming call that wasn't accepted yet (old flow)
                 android.util.Log.d("StreamCallPlugin", "handleFinalPermissionDenial: Rejecting incoming call acceptance")
                 pendingCall?.reject("Permissions required for call. Please grant them.")
                 clearPendingCall()
             }
-            
+
             else -> {
                 android.util.Log.d("StreamCallPlugin", "handleFinalPermissionDenial: No pending operations to handle")
                 clearPendingCall()
@@ -1594,7 +1594,7 @@ public class StreamCallPlugin : Plugin() {
                     intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     context.startActivity(intent)
                     android.util.Log.d("StreamCallPlugin", "Opened app details settings (Android 11+)")
-                    
+
                     // Show toast with specific instructions
                     runOnMainThread {
                         android.widget.Toast.makeText(
@@ -1608,7 +1608,7 @@ public class StreamCallPlugin : Plugin() {
                     android.util.Log.w("StreamCallPlugin", "Failed to open app details, falling back", e)
                 }
             }
-            
+
             // Fallback for older Android versions or if the above fails
             val intent = android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                 data = Uri.fromParts("package", context.packageName, null)
@@ -1616,7 +1616,7 @@ public class StreamCallPlugin : Plugin() {
             }
             context.startActivity(intent)
             android.util.Log.d("StreamCallPlugin", "Opened app settings via fallback")
-            
+
             // Show more specific instructions for older versions
             runOnMainThread {
                 android.widget.Toast.makeText(
@@ -1625,10 +1625,10 @@ public class StreamCallPlugin : Plugin() {
                     android.widget.Toast.LENGTH_LONG
                 ).show()
             }
-            
+
         } catch (e: Exception) {
             android.util.Log.e("StreamCallPlugin", "Error opening app settings", e)
-            
+
             // Final fallback - open general settings
             try {
                 val intent = android.content.Intent(android.provider.Settings.ACTION_SETTINGS).apply {
@@ -1636,7 +1636,7 @@ public class StreamCallPlugin : Plugin() {
                 }
                 context.startActivity(intent)
                 android.util.Log.d("StreamCallPlugin", "Opened general settings as final fallback")
-                
+
                 runOnMainThread {
                     android.widget.Toast.makeText(
                         context,
@@ -1755,7 +1755,7 @@ public class StreamCallPlugin : Plugin() {
     private suspend fun endCallRaw(call: Call) {
         val callId = call.id
         android.util.Log.d("StreamCallPlugin", "Attempting to end call $callId")
-        
+
         try {
             // Get call information to make the decision
             val callInfo = call.get()
@@ -1763,13 +1763,13 @@ public class StreamCallPlugin : Plugin() {
             val currentUserId = streamVideoClient?.userId
             val createdBy = callData?.createdBy?.id
             val isCreator = createdBy == currentUserId
-            
+
             // Use call.state.totalParticipants to get participant count (as per StreamVideo Android SDK docs)
             val totalParticipants = call.state.totalParticipants.value ?: 0
             val shouldEndCall = isCreator || totalParticipants <= 2
-            
+
             android.util.Log.d("StreamCallPlugin", "Call $callId - Creator: $createdBy, CurrentUser: $currentUserId, IsCreator: $isCreator, TotalParticipants: $totalParticipants, ShouldEnd: $shouldEndCall")
-            
+
             if (shouldEndCall) {
                 // End the call for everyone if I'm the creator or only 2 people
                 android.util.Log.d("StreamCallPlugin", "Ending call $callId for all participants (creator: $isCreator, participants: $totalParticipants)")
@@ -1901,9 +1901,9 @@ public class StreamCallPlugin : Plugin() {
         try {
             val activeCall = streamVideoClient?.state?.activeCall?.value
             val ringingCall = streamVideoClient?.state?.ringingCall?.value
-            
+
             val callToEnd = activeCall ?: ringingCall
-            
+
             if (callToEnd == null) {
                 android.util.Log.w("StreamCallPlugin", "Attempted to end call but no active or ringing call found")
                 call.reject("No active call to end")
@@ -2256,21 +2256,23 @@ public class StreamCallPlugin : Plugin() {
             .apply()
     }
 
-    private fun getDynamicApiKey(): String? {
-        val sharedPrefs = getApiKeyPreferences()
+    private fun getDynamicApiKey(context: Context? = null): String? {
+        val sharedPrefs = getApiKeyPreferences(context)
         return sharedPrefs.getString(DYNAMIC_API_KEY_PREF, null)
     }
 
-    private fun getApiKeyPreferences(): SharedPreferences {
-        return context.getSharedPreferences(API_KEY_PREFS_NAME, Context.MODE_PRIVATE)
+    private fun getApiKeyPreferences(passedContext: Context? = null): SharedPreferences {
+      val contextToUse = passedContext ?: context;
+      return contextToUse.getSharedPreferences(API_KEY_PREFS_NAME, Context.MODE_PRIVATE)
     }
 
     private fun getEffectiveApiKey(context: Context): String {
         // A) Check if the key exists in the custom preference
-        val dynamicApiKey = getDynamicApiKey()
+        val dynamicApiKey = getDynamicApiKey(context)
         return if (!dynamicApiKey.isNullOrEmpty() && dynamicApiKey.trim().isNotEmpty()) {
             android.util.Log.d("StreamCallPlugin", "Using dynamic API key")
-            dynamicApiKey
+
+          dynamicApiKey
         } else {
             // B) If not, use R.string.CAPACITOR_STREAM_VIDEO_APIKEY
             android.util.Log.d("StreamCallPlugin", "Using static API key from resources")
@@ -2412,7 +2414,7 @@ public class StreamCallPlugin : Plugin() {
             }
         }
         private var holder: StreamCallPlugin? = null
-        
+
         // Constants for SharedPreferences
         private const val API_KEY_PREFS_NAME = "stream_video_api_key_prefs"
         private const val DYNAMIC_API_KEY_PREF = "dynamic_api_key"
