@@ -14,6 +14,7 @@ import io.getstream.video.android.core.notifications.DefaultNotificationHandler
 import io.getstream.video.android.core.notifications.NotificationHandler
 import io.getstream.video.android.model.StreamCallId
 import io.getstream.video.android.model.streamCallId
+import io.getstream.video.android.core.R
 
 // declare "incoming_calls_custom" as a constant
 const val INCOMING_CALLS_CUSTOM = "incoming_calls_custom"
@@ -206,6 +207,45 @@ class CustomNotificationHandler(
         endCall(callId)
         super.onMissedCall(callId, callDisplayName)
     }
+
+    override fun getOngoingCallNotification(
+        callId: StreamCallId,
+        callDisplayName: String?,
+        isOutgoingCall: Boolean,
+        remoteParticipantCount: Int
+    ): Notification? {
+        Log.d("CustomNotificationHandler", "getOngoingCallNotification called: callId=$callId, isOutgoing=$isOutgoingCall, participants=$remoteParticipantCount")
+        createOngoingCallChannel()
+
+        val launchIntent = application.packageManager.getLaunchIntentForPackage(application.packageName)
+        val contentIntent = if (launchIntent != null) {
+            launchIntent.putExtra(NotificationHandler.INTENT_EXTRA_CALL_CID, callId)
+            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            PendingIntent.getActivity(
+                application,
+                callId.cid.hashCode(),
+                launchIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        } else {
+            Log.e("CustomNotificationHandler", "Could not get launch intent for package: ${application.packageName}. Ongoing call notification will not open the app.")
+            null
+        }
+
+        return getNotification {
+            setContentTitle(callDisplayName ?: "Ongoing Call")
+            setContentText("Tap to return to the call")
+            setSmallIcon(R.drawable.stream_video_ic_call)
+            setChannelId("ongoing_calls")
+            setOngoing(true)
+            setAutoCancel(false)
+            setCategory(NotificationCompat.CATEGORY_CALL)
+            setDefaults(0)
+            if (contentIntent != null) {
+                setContentIntent(contentIntent)
+            }
+        }
+    }
  
     private fun customCreateIncomingCallChannel() {
         Log.d("CustomNotificationHandler", "customCreateIncomingCallChannel called")
@@ -229,6 +269,26 @@ class CustomNotificationHandler(
                 }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     this.setAllowBubbles(true)
+                }
+            },
+        )
+    }
+
+    private fun createOngoingCallChannel() {
+        Log.d("CustomNotificationHandler", "createOngoingCallChannel called")
+        maybeCreateChannel(
+            channelId = "ongoing_calls",
+            context = application,
+            configure = {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    name = "Ongoing calls"
+                    description = "Notifications for ongoing calls"
+                    importance = NotificationManager.IMPORTANCE_LOW
+                    this.lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+                    this.setShowBadge(false)
+                    setSound(null, null)
+                    enableVibration(false)
+                    enableLights(false)
                 }
             },
         )
