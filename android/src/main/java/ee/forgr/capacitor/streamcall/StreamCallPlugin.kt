@@ -2256,18 +2256,19 @@ public class StreamCallPlugin : Plugin() {
             .apply()
     }
 
-    private fun getDynamicApiKey(): String? {
-        val sharedPrefs = getApiKeyPreferences()
+    private fun getDynamicApiKey(context: Context? = null): String? {
+        val sharedPrefs = getApiKeyPreferences(context)
         return sharedPrefs.getString(DYNAMIC_API_KEY_PREF, null)
     }
 
-    private fun getApiKeyPreferences(): SharedPreferences {
-        return context.getSharedPreferences(API_KEY_PREFS_NAME, Context.MODE_PRIVATE)
+    private fun getApiKeyPreferences(passedContext: Context? = null): SharedPreferences {
+      val contextToUse = passedContext ?: context;
+      return contextToUse.getSharedPreferences(API_KEY_PREFS_NAME, Context.MODE_PRIVATE)
     }
 
     private fun getEffectiveApiKey(context: Context): String {
         // A) Check if the key exists in the custom preference
-        val dynamicApiKey = getDynamicApiKey()
+        val dynamicApiKey = getDynamicApiKey(context)
         return if (!dynamicApiKey.isNullOrEmpty() && dynamicApiKey.trim().isNotEmpty()) {
             android.util.Log.d("StreamCallPlugin", "Using dynamic API key")
             dynamicApiKey
