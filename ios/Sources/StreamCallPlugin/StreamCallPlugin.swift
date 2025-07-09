@@ -928,7 +928,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             DispatchQueue.main.async {
                 Task { @MainActor in
                     self.callViewModel = CallViewModel(participantsLayout: .grid)
-                    self.callViewModel?.participantAutoLeavePolicy = LastParticipantAutoLeavePolicy()
+                    // self.callViewModel?.participantAutoLeavePolicy = LastParticipantAutoLeavePolicy()
                     
                     // Setup subscriptions for new StreamVideo instance
                     self.setupActiveCallSubscription()
