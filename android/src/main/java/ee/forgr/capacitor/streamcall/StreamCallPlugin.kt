@@ -110,6 +110,7 @@ class StreamCallPlugin : Plugin() {
     private var cameraStatusJob: Job? = null
     private var microphoneStatusJob: Job? = null
     private var lastEventSent: String? = null
+    private var callIsAudioOnly: Boolean = false
 
     // Store current call info
     private var currentCallId: String = ""
@@ -132,6 +133,7 @@ class StreamCallPlugin : Plugin() {
     private var pendingCallTeam: String? = null
     private var pendingCustomObject: JSObject? = null
     private var pendingAcceptCall: Call? = null // Store the actual call object for acceptance
+    private var pendingSetCameraCall: PluginCall? = null
 
     private enum class State {
         NOT_INITIALIZED,
@@ -162,7 +164,7 @@ class StreamCallPlugin : Plugin() {
         Log.d("StreamCallPlugin", "handleOnResume: Permission attempt count: $permissionAttemptCount")
         
         // Check if permissions were granted after returning from settings or permission dialog
-        if (checkPermissions()) {
+        if (checkPermissions(this.callIsAudioOnly)) {
             Log.d("StreamCallPlugin", "handleOnResume: Permissions are now granted")
             // Handle any pending calls that were waiting for permissions
             handlePermissionGranted()
@@ -181,11 +183,11 @@ class StreamCallPlugin : Plugin() {
                 if (pendingAcceptCall != null) {
                     Log.d("StreamCallPlugin", "handleOnResume: Have active call waiting for permissions, requesting now")
                     permissionAttemptCount = 0
-                    requestPermissions()
+                    requestPermissions(this.callIsAudioOnly)
                 } else if (pendingCall != null && pendingCallUserIds != null) {
                     Log.d("StreamCallPlugin", "handleOnResume: Have outgoing call waiting for permissions, requesting now")
                     permissionAttemptCount = 0
-                    requestPermissions()
+                    requestPermissions(this.callIsAudioOnly)
                 }
             }
         } else {
@@ -194,11 +196,20 @@ class StreamCallPlugin : Plugin() {
     }
 
     override fun load() {
+        try {
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            if (packageInfo.firstInstallTime == packageInfo.lastUpdateTime) {
+                Log.d("StreamCallPlugin", "Fresh install detected, clearing user credentials.")
+                SecureUserRepository.getInstance(context).removeCurrentUser()
+            }
+        } catch (e: Exception) {
+            Log.e("StreamCallPlugin", "Error checking for fresh install", e)
+        }
         // general init
         initializeStreamVideo()
         setupViews()
         super.load()
-        checkPermissions()
+        checkPermissions(this.callIsAudioOnly)
         // Register broadcast receiver for ACCEPT_CALL action with high priority
         val filter = IntentFilter("io.getstream.video.android.action.ACCEPT_CALL")
         filter.priority = 999 // Set high priority to ensure it captures the intent
@@ -296,7 +307,9 @@ class StreamCallPlugin : Plugin() {
                         Log.d("StreamCallPlugin", "  [$index] ${element.className}.${element.methodName}(${element.fileName}:${element.lineNumber})")
                     }
                     kotlinx.coroutines.GlobalScope.launch {
-                        internalAcceptCall(call, requestPermissionsAfter = !checkPermissions())
+                        val isAudioOnly = getIsAudioOnly(call)
+                        this@StreamCallPlugin.callIsAudioOnly = isAudioOnly
+                        internalAcceptCall(call, requestPermissionsAfter = !checkPermissions(isAudioOnly))
                     }
                     bringAppToForeground()
                 } else {
@@ -1016,31 +1029,21 @@ class StreamCallPlugin : Plugin() {
 
     @PluginMethod
     fun acceptCall(call: PluginCall) {
-        Log.d("StreamCallPlugin", "acceptCall called")
-        try {
-            val streamVideoCall = streamVideoClient?.state?.ringingCall?.value
-            if (streamVideoCall == null) {
-                call.reject("Ringing call is null")
-                return
-            }
-            
-            Log.d("StreamCallPlugin", "acceptCall: Accepting call immediately, will handle permissions after")
-            
-            // Accept call immediately regardless of permissions - time is critical!
+        val ringingCall = streamVideoClient?.state?.ringingCall?.value
+        if (ringingCall != null) {
             kotlinx.coroutines.GlobalScope.launch {
                 try {
-                    internalAcceptCall(streamVideoCall, requestPermissionsAfter = !checkPermissions())
+                    val isAudioOnly = getIsAudioOnly(ringingCall)
+                    internalAcceptCall(ringingCall, requestPermissionsAfter = !checkPermissions(isAudioOnly))
                     call.resolve(JSObject().apply {
                         put("success", true)
                     })
                 } catch (e: Exception) {
-                    Log.e("StreamCallPlugin", "Error accepting call", e)
                     call.reject("Failed to accept call: ${e.message}")
                 }
             }
-        } catch (t: Throwable) {
-            Log.d("StreamCallPlugin", "JS -> acceptCall fail", t)
-            call.reject("Cannot acceptCall")
+        } else {
+            call.reject("No ringing call")
         }
     }
 
@@ -1068,6 +1071,9 @@ class StreamCallPlugin : Plugin() {
 
         kotlinx.coroutines.GlobalScope.launch {
             try {
+                val isAudioOnly = getIsAudioOnly(call)
+                this@StreamCallPlugin.callIsAudioOnly = isAudioOnly
+
                 Log.d("StreamCallPlugin", "internalAcceptCall: Coroutine started for call ${call.id}")
 
                 // Hide incoming call view first
@@ -1097,15 +1103,15 @@ class StreamCallPlugin : Plugin() {
                     Log.d("StreamCallPlugin", "internalAcceptCall: WebView background set to transparent for call ${call.id}")
                     bridge?.webView?.bringToFront() // Ensure WebView is on top and transparent
                     Log.d("StreamCallPlugin", "internalAcceptCall: WebView brought to front for call ${call.id}")
-                    
+
                     // Enable camera/microphone based on permissions
-                    val hasPermissions = checkPermissions()
+                    val hasPermissions = checkPermissions(isAudioOnly)
                     Log.d("StreamCallPlugin", "internalAcceptCall: Has permissions: $hasPermissions for call ${call.id}")
-                    
+
                     call.microphone.setEnabled(hasPermissions)
-                    call.camera.setEnabled(hasPermissions)
+                    call.camera.setEnabled(hasPermissions && !isAudioOnly)
                     Log.d("StreamCallPlugin", "internalAcceptCall: Microphone and camera set to $hasPermissions for call ${call.id}")
-                    
+
                     Log.d("StreamCallPlugin", "internalAcceptCall: Setting CallContent with active call ${call.id}")
                     setOverlayContent(call)
                     Log.d("StreamCallPlugin", "internalAcceptCall: Content set for overlayView for call ${call.id}")
@@ -1117,7 +1123,7 @@ class StreamCallPlugin : Plugin() {
                     parent?.removeView(overlayView)
                     parent?.addView(overlayView, 0) // Add at index 0 to ensure it's behind other views
                     Log.d("StreamCallPlugin", "internalAcceptCall: OverlayView re-added to parent at index 0 for call ${call.id}")
-                    
+
                     // Add a small delay to ensure UI refresh
                     mainHandler.postDelayed({
                         Log.d("StreamCallPlugin", "internalAcceptCall: Delayed UI check, overlay visible: ${overlayView?.isVisible} for call ${call.id}")
@@ -1148,10 +1154,10 @@ class StreamCallPlugin : Plugin() {
                         pendingAcceptCall = call
                         Log.d("StreamCallPlugin", "internalAcceptCall: Set pendingAcceptCall to ${call.id}, resetting attempt count")
                         permissionAttemptCount = 0
-                        requestPermissions()
+                        requestPermissions(isAudioOnly)
                     }
                 }
-                
+
             } catch (e: Exception) {
                 Log.e("StreamCallPlugin", "internalAcceptCall: Error accepting call ${call.id}: ${e.message}", e)
                 runOnMainThread {
@@ -1166,10 +1172,17 @@ class StreamCallPlugin : Plugin() {
     }
 
     // Function to check required permissions
-    private fun checkPermissions(): Boolean {
-        Log.d("StreamCallPlugin", "checkPermissions: Entered")
+    private fun checkPermissions(isAudioOnly: Boolean = false): Boolean {
+        Log.d("StreamCallPlugin", "checkPermissions: Entered, isAudioOnly: $isAudioOnly")
         val audioPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
         Log.d("StreamCallPlugin", "checkPermissions: RECORD_AUDIO permission status: $audioPermission (Granted=${PackageManager.PERMISSION_GRANTED})")
+
+        if (isAudioOnly) {
+            val allGranted = audioPermission == PackageManager.PERMISSION_GRANTED
+            Log.d("StreamCallPlugin", "checkPermissions: Audio only call, all permissions granted: $allGranted")
+            return allGranted
+        }
+
         val cameraPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
         Log.d("StreamCallPlugin", "checkPermissions: CAMERA permission status: $cameraPermission (Granted=${PackageManager.PERMISSION_GRANTED})")
         val allGranted = audioPermission == PackageManager.PERMISSION_GRANTED && cameraPermission == PackageManager.PERMISSION_GRANTED
@@ -1222,8 +1235,9 @@ class StreamCallPlugin : Plugin() {
         // Determine what type of pending operation we have
         val hasOutgoingCall = pendingCall != null && pendingCallUserIds != null
         val hasActiveCallNeedingPermissions = pendingAcceptCall != null
+        val hasPendingSetCamera = pendingSetCameraCall != null
         
-        Log.d("StreamCallPlugin", "handlePermissionGranted: hasOutgoingCall=$hasOutgoingCall, hasActiveCallNeedingPermissions=$hasActiveCallNeedingPermissions")
+        Log.d("StreamCallPlugin", "handlePermissionGranted: hasOutgoingCall=$hasOutgoingCall, hasActiveCallNeedingPermissions=$hasActiveCallNeedingPermissions, hasPendingSetCamera=$hasPendingSetCamera")
         
         when {
             hasOutgoingCall -> {
@@ -1246,7 +1260,7 @@ class StreamCallPlugin : Plugin() {
                     runOnMainThread {
                         try {
                             callToHandle.microphone.setEnabled(true)
-                            callToHandle.camera.setEnabled(true)
+                            callToHandle.camera.setEnabled(!this.callIsAudioOnly)
                             Log.d("StreamCallPlugin", "handlePermissionGranted: Camera and microphone enabled for call ${callToHandle.id}")
                             
                             // Show success message
@@ -1282,7 +1296,7 @@ class StreamCallPlugin : Plugin() {
                     runOnMainThread {
                         try {
                             callToHandle.microphone.setEnabled(true)
-                            callToHandle.camera.setEnabled(true)
+                            callToHandle.camera.setEnabled(!this.callIsAudioOnly)
                             Log.d("StreamCallPlugin", "handlePermissionGranted: Camera and microphone enabled for stored call ${callToHandle.id}")
                             
                             android.widget.Toast.makeText(
@@ -1295,6 +1309,32 @@ class StreamCallPlugin : Plugin() {
                         }
                         clearPendingCall()
                     }
+                }
+            }
+            
+            hasPendingSetCamera -> {
+                Log.d("StreamCallPlugin", "handlePermissionGranted: Handling pending setCameraEnabled call.")
+                val callToHandle = pendingSetCameraCall!!
+                val activeCall = streamVideoClient?.state?.activeCall?.value
+
+                if (activeCall != null) {
+                    kotlinx.coroutines.GlobalScope.launch {
+                        try {
+                            activeCall.camera.setEnabled(true)
+                            this@StreamCallPlugin.callIsAudioOnly = false
+                            callToHandle.resolve(JSObject().apply {
+                                put("success", true)
+                            })
+                        } catch (e: Exception) {
+                            Log.e("StreamCallPlugin", "Error enabling camera after permission grant", e)
+                            callToHandle.reject("Failed to enable camera after permission grant: ${e.message}")
+                        } finally {
+                            clearPendingCall()
+                        }
+                    }
+                } else {
+                    callToHandle.reject("No active call found to enable camera.")
+                    clearPendingCall()
                 }
             }
             
@@ -1348,7 +1388,7 @@ class StreamCallPlugin : Plugin() {
         } else if (permissionAttemptCount < 2) {
             // Try asking again immediately if this is the first denial
             Log.d("StreamCallPlugin", "handlePermissionDenied: First denial (attempt $permissionAttemptCount), asking again immediately")
-            requestPermissions() // This will increment the attempt count
+            requestPermissions(this.callIsAudioOnly) // This will increment the attempt count
         } else {
             // Second denial - show settings dialog (final ask)
             Log.d("StreamCallPlugin", "handlePermissionDenied: Second denial (attempt $permissionAttemptCount), showing settings dialog (final ask)")
@@ -1371,7 +1411,7 @@ class StreamCallPlugin : Plugin() {
             clearPendingCall()
             
             // Execute the call creation logic
-            createAndStartCall(call, userIds, callType, shouldRing, team, custom)
+            createAndStartCall(call, userIds, callType, shouldRing, team, custom, this.callIsAudioOnly)
         } else {
             Log.w("StreamCallPlugin", "executePendingCall: Missing pending call data")
             call?.reject("Internal error: missing call parameters")
@@ -1386,14 +1426,14 @@ class StreamCallPlugin : Plugin() {
         pendingCallShouldRing = null
         pendingCallTeam = null
         pendingAcceptCall = null
-        pendingCallTeam = null
+        pendingSetCameraCall = null
         permissionAttemptCount = 0 // Reset attempt count when clearing
     }
 
 
 
     @OptIn(DelicateCoroutinesApi::class, InternalStreamVideoApi::class)
-    private fun createAndStartCall(call: PluginCall, userIds: List<String>, callType: String, shouldRing: Boolean, team: String?, custom: JSObject?) {
+    private fun createAndStartCall(call: PluginCall, userIds: List<String>, callType: String, shouldRing: Boolean, team: String?, custom: JSObject?, isAudioOnly: Boolean) {
         val selfUserId = streamVideoClient?.userId
         if (selfUserId == null) {
             call.reject("No self-user id found. Are you not logged in?")
@@ -1419,6 +1459,7 @@ class StreamCallPlugin : Plugin() {
                     custom = custom?.toMap() ?: emptyMap(),
                     ring = shouldRing,
                     team = team,
+                    video = !isAudioOnly
                 )
 
                 if (createResult?.isFailure == true) {
@@ -1429,7 +1470,7 @@ class StreamCallPlugin : Plugin() {
                 // Show overlay view
                 activity?.runOnUiThread {
                     streamCall?.microphone?.setEnabled(true)
-                    streamCall?.camera?.setEnabled(true)
+                    streamCall?.camera?.setEnabled(!isAudioOnly)
 
                     bridge?.webView?.setBackgroundColor(Color.TRANSPARENT) // Make webview transparent
                     bridge?.webView?.bringToFront() // Ensure WebView is on top and transparent
@@ -1453,21 +1494,27 @@ class StreamCallPlugin : Plugin() {
     }
 
     // Function to request required permissions
-    private fun requestPermissions() {
+    private fun requestPermissions(isAudioOnly: Boolean) {
         permissionAttemptCount++
-        Log.d("StreamCallPlugin", "requestPermissions: Attempt #$permissionAttemptCount - Requesting RECORD_AUDIO and CAMERA permissions.")
+        Log.d("StreamCallPlugin", "requestPermissions: Attempt #$permissionAttemptCount - Requesting permissions. isAudioOnly: $isAudioOnly")
         
         // Record timing for instant denial detection
         permissionRequestStartTime = System.currentTimeMillis()
         Log.d("StreamCallPlugin", "requestPermissions: Starting permission request at $permissionRequestStartTime")
         
+        val permissionsToRequest = if (isAudioOnly) {
+            arrayOf(Manifest.permission.RECORD_AUDIO)
+        } else {
+            arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.CAMERA)
+        }
+
         ActivityCompat.requestPermissions(
             activity,
-            arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.CAMERA),
+            permissionsToRequest,
             9001 // Use high request code to avoid Capacitor conflicts
         )
         
-        Log.d("StreamCallPlugin", "requestPermissions: Permission request initiated with code 9001")
+        Log.d("StreamCallPlugin", "requestPermissions: Permission request initiated with code 9001 for permissions: ${permissionsToRequest.joinToString()}")
     }
 
     private fun showPermissionSettingsDialog() {
@@ -1531,6 +1578,7 @@ class StreamCallPlugin : Plugin() {
         
         val hasOutgoingCall = pendingCall != null && pendingCallUserIds != null
         val hasIncomingCall = pendingCall != null && pendingAcceptCall != null
+        val hasPendingSetCamera = pendingSetCameraCall != null
         val activeCall = streamVideoClient?.state?.activeCall?.value
         
         when {
@@ -1538,6 +1586,12 @@ class StreamCallPlugin : Plugin() {
                 // Outgoing call that couldn't be created due to permissions
                 Log.d("StreamCallPlugin", "handleFinalPermissionDenial: Rejecting outgoing call creation")
                 pendingCall?.reject("Permissions required for call. Please grant them.")
+                clearPendingCall()
+            }
+            
+            hasPendingSetCamera -> {
+                Log.d("StreamCallPlugin", "handleFinalPermissionDenial: Rejecting pending setCameraEnabled call")
+                pendingSetCameraCall?.reject("Camera permission is required to enable the camera.")
                 clearPendingCall()
             }
             
@@ -1729,27 +1783,52 @@ class StreamCallPlugin : Plugin() {
             return
         }
 
-        try {
-            val activeCall = streamVideoClient?.state?.activeCall
-            if (activeCall == null) {
-                call.reject("No active call")
-                return
-            }
+        val activeCall = streamVideoClient?.state?.activeCall?.value
+        if (activeCall == null) {
+            call.reject("No active call")
+            return
+        }
 
+        if (!enabled) {
+            // Just disable, no permission needed
             kotlinx.coroutines.GlobalScope.launch {
                 try {
-                    activeCall.value?.camera?.setEnabled(enabled)
+                    activeCall.camera.setEnabled(false)
                     call.resolve(JSObject().apply {
                         put("success", true)
                     })
                 } catch (e: Exception) {
-                    Log.e("StreamCallPlugin", "Error setting camera: ${e.message}")
-                    call.reject("Failed to set camera: ${e.message}")
+                    Log.e("StreamCallPlugin", "Error disabling camera: ${e.message}")
+                    call.reject("Failed to disable camera: ${e.message}")
                 }
             }
-        } catch (e: Exception) {
-            Log.e("StreamCallPlugin", "Error setting camera: ${e.message}")
-            call.reject("StreamVideo not initialized")
+            return
+        }
+
+        // From here, enabled is true. We need to check for permission.
+        val cameraPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+        if (cameraPermission == PackageManager.PERMISSION_GRANTED) {
+            // Permission is already granted
+            kotlinx.coroutines.GlobalScope.launch {
+                try {
+                    activeCall.camera.setEnabled(true)
+                    // When we enable camera, the call is no longer audio-only
+                    this@StreamCallPlugin.callIsAudioOnly = false
+                    call.resolve(JSObject().apply {
+                        put("success", true)
+                    })
+                } catch (e: Exception) {
+                    Log.e("StreamCallPlugin", "Error enabling camera: ${e.message}")
+                    call.reject("Failed to enable camera: ${e.message}")
+                }
+            }
+        } else {
+            // Permission is not granted, request it.
+            Log.d("StreamCallPlugin", "Camera permission not granted. Requesting permission.")
+            this.pendingSetCameraCall = call
+            // we are enabling camera, so it's not an audio only call
+            requestPermissions(false)
+            // The call will be resolved/rejected in the permission result handlers
         }
     }
 
@@ -1768,7 +1847,7 @@ class StreamCallPlugin : Plugin() {
             
             // Use call.state.totalParticipants to get participant count (as per StreamVideo Android SDK docs)
             val totalParticipants = call.state.totalParticipants.value
-            val shouldEndCall = isCreator || totalParticipants <= 1
+            val shouldEndCall = isCreator || totalParticipants <= 2
             
             Log.d("StreamCallPlugin", "Call $callId - Creator: $createdBy, CurrentUser: $currentUserId, IsCreator: $isCreator, TotalParticipants: $totalParticipants, ShouldEnd: $shouldEndCall")
             
@@ -1808,7 +1887,6 @@ class StreamCallPlugin : Plugin() {
                 val keyguardManager = ctx.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
                 if (keyguardManager.isKeyguardLocked) {
                     // we allow kill exclusively here
-                    // the idea is that:
                     // the 'empty' instance of this plugin class gets created in application
                     // then, it handles a notification and setts the context (this.savedContext)
                     // if the context is new
@@ -1958,6 +2036,9 @@ class StreamCallPlugin : Plugin() {
             val shouldRing = call.getBoolean("ring") ?: true
             val callId = java.util.UUID.randomUUID().toString()
             val team = call.getString("team")
+            val isAudioOnly = custom?.getBoolean("audio_only") ?: false
+            this.callIsAudioOnly = isAudioOnly
+
 
             Log.d("StreamCallPlugin", "Creating call:")
             Log.d("StreamCallPlugin", "- Call ID: $callId")
@@ -1969,7 +2050,7 @@ class StreamCallPlugin : Plugin() {
             }
 
             // Check permissions before creating the call
-            if (!checkPermissions()) {
+            if (!checkPermissions(isAudioOnly)) {
                 Log.d("StreamCallPlugin", "Permissions not granted, storing call parameters and requesting permissions")
                 // Store call parameters for later execution
                 pendingCall = call
@@ -1982,12 +2063,12 @@ class StreamCallPlugin : Plugin() {
                 }
                 // Reset attempt count for new permission flow
                 permissionAttemptCount = 0
-                requestPermissions()
+                requestPermissions(isAudioOnly)
                 return // Don't reject immediately, wait for permission result
             }
 
             // Execute call creation immediately if permissions are granted
-            createAndStartCall(call, userIds, callType, shouldRing, team, custom)
+            createAndStartCall(call, userIds, callType, shouldRing, team, custom, isAudioOnly)
         } catch (e: Exception) {
             call.reject("Failed to make call: ${e.message}")
         }
@@ -2341,13 +2422,18 @@ class StreamCallPlugin : Plugin() {
     fun joinCall(call: PluginCall) {
         val fragment = callFragment
         if (fragment != null && fragment.getCall() != null) {
-            if (!checkPermissions()) {
-                requestPermissions()
-                call.reject("Permissions required for call. Please grant them.")
-                return
-            }
+            val activeCall = fragment.getCall()!!
+            // I need to get custom data here, which is async.
+            // The method is not suspend.
+            // Let's launch a coroutine
             CoroutineScope(Dispatchers.Main).launch {
-                fragment.getCall()?.join()
+                val isAudioOnly = getIsAudioOnly(activeCall)
+                if (!checkPermissions(isAudioOnly)) {
+                    requestPermissions(isAudioOnly)
+                    call.reject("Permissions required for call. Please grant them.")
+                    return@launch
+                }
+                activeCall.join()
                 call.resolve()
             }
         } else {
@@ -2386,7 +2472,9 @@ class StreamCallPlugin : Plugin() {
                     if (call != null) {
                         Log.d("StreamCallPlugin", "BroadcastReceiver: Accepting call with cid: $cid")
                         kotlinx.coroutines.GlobalScope.launch {
-                            internalAcceptCall(call, requestPermissionsAfter = !checkPermissions())
+                            val isAudioOnly = getIsAudioOnly(call)
+                            this@StreamCallPlugin.callIsAudioOnly = isAudioOnly
+                            internalAcceptCall(call, requestPermissionsAfter = !checkPermissions(isAudioOnly))
                         }
                         bringAppToForeground()
                     } else {
@@ -2427,5 +2515,15 @@ class StreamCallPlugin : Plugin() {
         // Constants for SharedPreferences
         private const val API_KEY_PREFS_NAME = "stream_video_api_key_prefs"
         private const val DYNAMIC_API_KEY_PREF = "dynamic_api_key"
+    }
+
+    private suspend fun getIsAudioOnly(call: Call): Boolean {
+        val callInfoResult = call.get()
+        return if (callInfoResult.isSuccess) {
+            val audioOnlyValue = callInfoResult.getOrNull()?.call?.custom?.get("audio_only")
+            audioOnlyValue?.toString() == "true"
+        } else {
+            false
+        }
     }
 }
