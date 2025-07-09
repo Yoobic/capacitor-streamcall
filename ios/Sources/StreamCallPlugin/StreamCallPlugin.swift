@@ -420,6 +420,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         activeCallSubscription?.cancel()
         activeCallSubscription = nil
         lastVoIPToken = nil
+        state = .notInitialized
 
         SecureUserRepository.shared.removeCurrentUser()
 
