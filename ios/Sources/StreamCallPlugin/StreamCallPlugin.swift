@@ -19,6 +19,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "login", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "logout", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "call", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "joinCall", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "endCall", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setMicrophoneEnabled", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setCameraEnabled", returnType: CAPPluginReturnPromise),
@@ -451,6 +452,63 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             call.reject("No active call")
         }
     }
+
+    @objc func joinCall(_ call: CAPPluginCall) {
+      guard let callId = call.getString("callId") else {
+          call.reject("Missing required parameter: callId")
+          return
+      }
+    
+      guard let callType = call.getString("callType") else {
+          call.reject("Missing required parameter: callType")
+          return
+      }
+
+      // Initialize if needed
+      if state == .notInitialized {
+          initializeStreamVideo()
+          if state != .initialized {
+              call.reject("Failed to initialize StreamVideo")
+              return
+          }
+      }
+
+      do {
+          try requireInitialized()
+
+
+          Task {
+              do {
+                  print("Joining call:")
+                  print("- Call ID: \(callId)")
+                  print("- Call Type: \(callType)")
+
+                  // Create the call object
+                  await self.callViewModel?.joinCall(
+                      callType: callType,
+                      callId: callId
+                  )
+
+                  // Now send the created event with complete member data
+                  self.updateCallStatusAndNotify(callId: callId, state: "joined")
+                  
+                  // Update UI on main thread
+                  await MainActor.run {
+                      // self.overlayViewModel?.updateCall(streamCall)
+                      self.overlayView?.isHidden = false
+                      self.webView?.isOpaque = false
+                  }
+
+                  call.resolve([
+                      "success": true
+                  ])
+
+              }
+          }
+      } catch {
+          call.reject("StreamVideo not initialized")
+      }
+  }
 
     @objc func call(_ call: CAPPluginCall) {
         guard let members = call.getArray("userIds", String.self) else {

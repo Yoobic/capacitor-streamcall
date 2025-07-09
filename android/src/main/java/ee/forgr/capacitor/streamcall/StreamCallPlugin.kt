@@ -1063,7 +1063,7 @@ class StreamCallPlugin : Plugin() {
     }
 
     @OptIn(DelicateCoroutinesApi::class, InternalStreamVideoApi::class)
-    internal fun internalAcceptCall(call: Call, requestPermissionsAfter: Boolean = false) {
+    internal fun internalAcceptCall(call: Call, requestPermissionsAfter: Boolean = false, noAccept: Boolean = false) {
         Log.d("StreamCallPlugin", "internalAcceptCall: Entered for call: ${call.id}, requestPermissionsAfter: $requestPermissionsAfter")
 
         kotlinx.coroutines.GlobalScope.launch {
@@ -1079,7 +1079,11 @@ class StreamCallPlugin : Plugin() {
 
                 // Accept and join call immediately - don't wait for permissions!
                 Log.d("StreamCallPlugin", "internalAcceptCall: Accepting call immediately for ${call.id}")
-                call.accept()
+
+                if (!noAccept) {
+                    call.accept()
+                }
+
                 Log.d("StreamCallPlugin", "internalAcceptCall: call.accept() completed for call ${call.id}")
                 call.join()
                 Log.d("StreamCallPlugin", "internalAcceptCall: call.join() completed for call ${call.id}")
@@ -1419,6 +1423,7 @@ class StreamCallPlugin : Plugin() {
                     custom = custom?.toMap() ?: emptyMap(),
                     ring = shouldRing,
                     team = team,
+                    video = callType == "default"
                 )
 
                 if (createResult?.isFailure == true) {
@@ -2338,20 +2343,29 @@ class StreamCallPlugin : Plugin() {
     }
 
     @PluginMethod
-    fun joinCall(call: PluginCall) {
-        val fragment = callFragment
-        if (fragment != null && fragment.getCall() != null) {
-            if (!checkPermissions()) {
-                requestPermissions()
-                call.reject("Permissions required for call. Please grant them.")
-                return
-            }
-            CoroutineScope(Dispatchers.Main).launch {
-                fragment.getCall()?.join()
-                call.resolve()
-            }
+    fun joinCall(_call: PluginCall) {
+
+        val callId = _call.getString("callId")
+        val callType = _call.getString("callType")
+        if (callId == null || callType == null) {
+          _call.reject("Missing required parameters: callId or callType")
+          return
+        }
+
+        val call = streamVideoClient?.call(id = callId, type = callType)
+        if (call != null) {
+          // Log the full stack trace to see exactly where this is called from
+          val stackTrace = Thread.currentThread().stackTrace
+          android.util.Log.d("StreamCallPlugin", "internalAcceptCall STACK TRACE:")
+          stackTrace.forEachIndexed { index, element ->
+            android.util.Log.d("StreamCallPlugin", "  [$index] ${element.className}.${element.methodName}(${element.fileName}:${element.lineNumber})")
+          }
+          kotlinx.coroutines.GlobalScope.launch {
+            internalAcceptCall(call, requestPermissionsAfter = !checkPermissions(), true)
+          }
+          bringAppToForeground()
         } else {
-            call.reject("No active call or fragment not initialized")
+          android.util.Log.e("StreamCallPlugin", "JoinCaaL - Call object is null for cid: $callId")
         }
     }
 
