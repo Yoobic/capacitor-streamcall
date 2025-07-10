@@ -2440,8 +2440,8 @@ class StreamCallPlugin : Plugin() {
           stackTrace.forEachIndexed { index, element ->
             android.util.Log.d("StreamCallPlugin", "  [$index] ${element.className}.${element.methodName}(${element.fileName}:${element.lineNumber})")
           }
-          val isAudioOnly = getIsAudioOnly(activeCall)
           kotlinx.coroutines.GlobalScope.launch {
+            val isAudioOnly = getIsAudioOnly(call)
             internalAcceptCall(call, requestPermissionsAfter = !checkPermissions(isAudioOnly))
           }
           bringAppToForeground()
