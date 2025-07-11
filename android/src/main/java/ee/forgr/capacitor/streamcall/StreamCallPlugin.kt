@@ -870,7 +870,7 @@ class StreamCallPlugin : Plugin() {
                             val callCid = event.callCid
                             cleanupCall(callCid)
                         }
-                        updateCallStatusAndNotify(event.callCid, "left")
+                        updateCallStatusAndNotify(event.callCid, "ended")
                     }
 
                     is CallSessionEndedEvent -> {
