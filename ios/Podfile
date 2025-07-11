@@ -5,8 +5,8 @@ def capacitor_pods
   use_frameworks!
   pod 'Capacitor', :path => '../node_modules/@capacitor/ios'
   pod 'CapacitorCordova', :path => '../node_modules/@capacitor/ios'
-  pod 'StreamVideo', :git => 'https://github.com/GetStream/stream-video-swift.git', :branch => 'audio-callkit-fix'
-  pod 'StreamVideoSwiftUI', :git => 'https://github.com/GetStream/stream-video-swift.git', :branch => 'audio-callkit-fix'
+  pod 'StreamVideo', :git => 'https://github.com/GetStream/stream-video-swift.git', :tag => '1.28.1'
+  pod 'StreamVideoSwiftUI', :git => 'https://github.com/GetStream/stream-video-swift.git', :tag => '1.28.1'
 
 target 'Plugin' do
   capacitor_pods
@@ -18,7 +18,7 @@ end
 
 # post_install do |installer|
 #   puts "\n\n=== Starting post install script ==="
-  
+
 #   installer.pods_project.targets.each do |target|
 #     puts "Processing target: #{target.name}"
 #     target.build_configurations.each do |config|
@@ -30,7 +30,7 @@ end
 #       end
 #     end
 #   end
-  
+
 #   # Patch the pod files
 #   def patch_file(file_path, search_text, replace_text)
 #     puts "\nChecking file: #{file_path}"
@@ -62,7 +62,7 @@ end
 #   puts "\n=== Searching for Swift files ==="
 #   swift_files = Dir.glob('Pods/StreamVideo/**/*.swift')
 #   puts "Found #{swift_files.length} Swift files"
-  
+
 #   swift_files.each do |file|
 #     puts "\n--- Processing #{File.basename(file)} ---"
 #     was_patched = patch_file(
@@ -70,12 +70,12 @@ end
 #       '@available(iOS, introduced: 13, obsoleted: 14)',
 #       '#if !DISABLE_BACKPORT\n@available(iOS, introduced: 13)\n'
 #     )
-    
+
 #     if was_patched
 #       puts "Adding #endif to #{file}"
 #       File.write(file, File.read(file) + "\n#endif\n")
 #     end
 #   end
-  
+
 #   puts "\n=== Post install script completed ===\n\n"
 # end
