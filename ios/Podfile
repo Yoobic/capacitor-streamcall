@@ -6,8 +6,7 @@ def capacitor_pods
   pod 'Capacitor', :path => '../node_modules/@capacitor/ios'
   pod 'CapacitorCordova', :path => '../node_modules/@capacitor/ios'
   pod 'StreamVideo', :git => 'https://github.com/GetStream/stream-video-swift.git', :branch => 'audio-callkit-fix'
-  pod 'StreamVideoSwiftUI', :git => 'https://github.com/GetStream/stream-video-swift.git', :tag => '1.28.0'
-end
+  pod 'StreamVideoSwiftUI', :git => 'https://github.com/GetStream/stream-video-swift.git', :branch => 'audio-callkit-fix'
 
 target 'Plugin' do
   capacitor_pods
