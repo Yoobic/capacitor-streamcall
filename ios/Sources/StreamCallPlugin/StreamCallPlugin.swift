@@ -204,6 +204,36 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             // while the subscription is active
             let viewModel = callViewModel
             
+            let callEvents = streamVideo
+                .eventPublisher()
+                .sink { [weak self] event in
+                    guard let self else { return }
+                    switch event {
+                    case let .typeCallEndedEvent(response):
+                        self.updateCallStatusAndNotify(callId: response.callCid, state: "left")
+                    case let .typeCallSessionParticipantCountsUpdatedEvent(response):
+                            let activeCall = streamVideo.state.activeCall;
+                            let callDropped = self.currentCallId == response.callCid && activeCall == nil;
+                            let onlyOneParticipant = activeCall?.cId == response.callCid && activeCall?.state.participantCount == 1;
+                            if onlyOneParticipant || callDropped {
+                                self.endCallInternal()
+                            } else {
+                                print("""
+                                onlyOneParticipant check:
+                                - activeCall?.cId: \(String(describing: activeCall?.cId))
+                                - response.callCid: \(response.callCid)
+                                - activeCall?.state.participantCount: \(String(describing: activeCall?.state.participantCount))
+                                - Result (onlyOneParticipant): \(onlyOneParticipant)
+                                """)
+                            }
+                        
+
+                    default:
+                        break
+                    }
+                }
+            
+
             // Subscribe to streamVideo.state.$activeCall to handle CallKit integration
             let callPublisher = streamVideo.state.$activeCall
                 .receive(on: DispatchQueue.main)
@@ -211,7 +241,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     guard let self = self, let viewModel = viewModel else { return }
                     
                     print("Active call update from streamVideo: \(String(describing: activeCall?.cId))")
-                    
+
                     if let activeCall = activeCall {
                         // Sync callViewModel with activeCall from streamVideo state
                         // This ensures CallKit integration works properly
@@ -326,6 +356,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             self.activeCallSubscription = AnyCancellable {
                 callPublisher.cancel()
                 statePublisher.cancel()
+                callEvents.cancel()
             }
             
             print("Active call subscription setup completed")
@@ -674,6 +705,91 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             call.reject("StreamVideo not initialized")
         }
     }
+    
+    private func endCallInternal() {
+        do {
+            try requireInitialized()
+
+            Task {
+                // Check both active call and callViewModel's call state to handle outgoing calls
+                let activeCall = streamVideo?.state.activeCall
+                let viewModelCall = await callViewModel?.call
+                
+                // Helper function to determine if we should end or leave the call
+                func shouldEndCall(for streamCall: Call) async throws -> Bool {
+                    do {
+                        let callInfo = try await streamCall.get()
+                        let currentUserId = streamVideo?.user.id
+                        let createdBy = callInfo.call.createdBy.id
+                        let isCreator = createdBy == currentUserId
+                        
+                        // Use call.state.participants.count to get participant count (as per StreamVideo iOS SDK docs)
+                        let totalParticipants = await streamCall.state.participants.count
+                        let shouldEnd = isCreator || totalParticipants <= 2
+                        
+                        print("Call \(streamCall.cId) - Creator: \(createdBy), CurrentUser: \(currentUserId ?? "nil"), IsCreator: \(isCreator), TotalParticipants: \(totalParticipants), ShouldEnd: \(shouldEnd)")
+                        
+                        return shouldEnd
+                    } catch {
+                        print("Error getting call info for \(streamCall.cId), defaulting to leave: \(error)")
+                        return false // Fallback to leave if we can't determine
+                    }
+                }
+                
+                if let activeCall = activeCall {
+                    // There's an active call, check if we should end or leave
+                    do {
+                        let shouldEnd = try await shouldEndCall(for: activeCall)
+                        
+                        if shouldEnd {
+                            print("Ending active call \(activeCall.cId) for all participants")
+                            try await activeCall.end()
+                        } else {
+                            print("Leaving active call \(activeCall.cId)")
+                            try await activeCall.leave()
+                        }
+                    } catch {
+                        print("Error ending/leaving active call: \(error)")
+                        try await activeCall.leave() // Fallback to leave
+                    }
+                    
+                    await MainActor.run {
+                        self.touchInterceptView?.setCallActive(false)
+                        self.overlayView?.isHidden = true
+                        self.webView?.isOpaque = true
+                    }
+                    
+                } else if let viewModelCall = viewModelCall {
+                    // There's a call in the viewModel (likely outgoing/ringing), check if we should end or leave
+                    do {
+                        let shouldEnd = try await shouldEndCall(for: viewModelCall)
+                        
+                        if shouldEnd {
+                            print("Ending viewModel call \(viewModelCall.cId) for all participants")
+                            try await viewModelCall.end()
+                        } else {
+                            print("Leaving viewModel call \(viewModelCall.cId)")
+                            try await viewModelCall.leave()
+                        }
+                    } catch {
+                        print("Error ending/leaving viewModel call: \(error)")
+                        try await viewModelCall.leave() // Fallback to leave
+                    }
+                    
+                    // Also hang up to reset the calling state
+                    await callViewModel?.hangUp()
+                    
+                    await MainActor.run {
+                        self.touchInterceptView?.setCallActive(false)
+                        self.overlayView?.isHidden = true
+                        self.webView?.isOpaque = true
+                    }
+                }
+            }
+        } catch {
+            log.error("StreamVideo not initialized")
+        }
+    }
 
     @objc func endCall(_ call: CAPPluginCall) {
         do {
@@ -929,7 +1045,6 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                 Task { @MainActor in
                     self.callViewModel = CallViewModel(participantsLayout: .grid)
                     // self.callViewModel?.participantAutoLeavePolicy = LastParticipantAutoLeavePolicy()
-                    
                     // Setup subscriptions for new StreamVideo instance
                     self.setupActiveCallSubscription()
                 }
