@@ -209,8 +209,18 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                 .sink { [weak self] event in
                     guard let self else { return }
                     switch event {
+                    case let .typeCallRejectedEvent(response):
+                        let data: [String: Any] = [
+                            "callId": response.callCid,
+                            "state": "rejected"
+                        ]
+                        notifyListeners("callEvent", data: data)
                     case let .typeCallEndedEvent(response):
-                        self.updateCallStatusAndNotify(callId: response.callCid, state: "left")
+                        let data: [String: Any] = [
+                            "callId": response.callCid,
+                            "state": "left"
+                        ]
+                        notifyListeners("callEvent", data: data)
                     case let .typeCallSessionParticipantCountsUpdatedEvent(response):
                             let activeCall = streamVideo.state.activeCall;
                             let callDropped = self.currentCallId == response.callCid && activeCall == nil;
