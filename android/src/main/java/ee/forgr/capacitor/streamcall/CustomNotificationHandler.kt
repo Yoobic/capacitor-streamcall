@@ -123,7 +123,7 @@ class CustomNotificationHandler(
         requestCode: Int,
         acceptCallIntent: Intent
     ): PendingIntent? {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val launchIntent = application.packageManager.getLaunchIntentForPackage(application.packageName)
             if (launchIntent != null) {
                 launchIntent.action = NotificationHandler.ACTION_ACCEPT_CALL
