@@ -205,11 +205,6 @@ class StreamCallPlugin : Plugin() {
         } catch (e: Exception) {
             Log.e("StreamCallPlugin", "Error checking for fresh install", e)
         }
-        // general init
-        initializeStreamVideo()
-        setupViews()
-        super.load()
-        checkPermissions(this.callIsAudioOnly)
         // Register broadcast receiver for ACCEPT_CALL action with high priority
         val filter = IntentFilter("io.getstream.video.android.action.ACCEPT_CALL")
         filter.priority = 999 // Set high priority to ensure it captures the intent
@@ -220,6 +215,12 @@ class StreamCallPlugin : Plugin() {
         val serviceIntent = Intent(activity, StreamCallBackgroundService::class.java)
         activity.startService(serviceIntent)
         Log.d("StreamCallPlugin", "Started StreamCallBackgroundService to keep app alive")
+        // general init
+        initializeStreamVideo()
+        setupViews()
+        super.load()
+        checkPermissions(this.callIsAudioOnly)
+
     }
 
     @OptIn(DelicateCoroutinesApi::class)
@@ -307,7 +308,7 @@ class StreamCallPlugin : Plugin() {
                         Log.d("StreamCallPlugin", "  [$index] ${element.className}.${element.methodName}(${element.fileName}:${element.lineNumber})")
                     }
                     kotlinx.coroutines.GlobalScope.launch {
-                        val isAudioOnly = getIsAudioOnly(call)
+                        val isAudioOnly = !call.state.settings.value?.video?.enabled!!;
                         this@StreamCallPlugin.callIsAudioOnly = isAudioOnly
                         internalAcceptCall(call, requestPermissionsAfter = !checkPermissions(isAudioOnly))
                     }

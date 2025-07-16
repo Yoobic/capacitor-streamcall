@@ -189,7 +189,7 @@ class CustomNotificationHandler(
             setContentText("Incoming call")
             setChannelId(channelId)
             setOngoing(true)
-            setAutoCancel(false)
+            setAutoCancel(true)
             setCategory(NotificationCompat.CATEGORY_CALL)
  
             // Clear all defaults first
