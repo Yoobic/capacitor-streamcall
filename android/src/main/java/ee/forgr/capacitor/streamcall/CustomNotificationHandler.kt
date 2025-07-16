@@ -226,7 +226,7 @@ class CustomNotificationHandler(
     override fun onMissedCall(callId: StreamCallId, callDisplayName: String) {
         Log.d("CustomNotificationHandler", "onMissedCall called: callId=$callId, callDisplayName=$callDisplayName")
         endCall(callId)
-        super.onMissedCall(callId, callDisplayName)
+//        super.onMissedCall(callId, callDisplayName)
     }
 
     override fun getOngoingCallNotification(

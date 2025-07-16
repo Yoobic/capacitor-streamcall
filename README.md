@@ -249,6 +249,7 @@ export class CallService {
 * [`rejectCall()`](#rejectcall)
 * [`isCameraEnabled()`](#iscameraenabled)
 * [`getCallStatus()`](#getcallstatus)
+* [`toggleViews()`](#toggleviews)
 * [`setSpeaker(...)`](#setspeaker)
 * [`switchCamera(...)`](#switchcamera)
 * [`getCallInfo(...)`](#getcallinfo)
@@ -457,6 +458,19 @@ Get the current call status
 --------------------
 
 
+### toggleViews()
+
+```typescript
+toggleViews() => Promise<{ newLayout: string; }>
+```
+
+Get the current call status
+
+**Returns:** <code>Promise&lt;{ newLayout: string; }&gt;</code>
+
+--------------------
+
+
 ### setSpeaker(...)
 
 ```typescript
@@ -583,14 +597,15 @@ Get the currently set dynamic Stream Video API key
 
 #### CallEvent
 
-| Prop          | Type                                              | Description                                                    |
-| ------------- | ------------------------------------------------- | -------------------------------------------------------------- |
-| **`callId`**  | <code>string</code>                               | ID of the call                                                 |
-| **`state`**   | <code><a href="#callstate">CallState</a></code>   | Current state of the call                                      |
-| **`userId`**  | <code>string</code>                               | User ID of the participant in the call who triggered the event |
-| **`reason`**  | <code>string</code>                               | Reason for the call state change, if applicable                |
-| **`caller`**  | <code><a href="#callmember">CallMember</a></code> | Information about the caller (for incoming calls)              |
-| **`members`** | <code>CallMember[]</code>                         | List of call members                                           |
+| Prop          | Type                                                                                                                                                                                                                      | Description                                                    |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| **`callId`**  | <code>string</code>                                                                                                                                                                                                       | ID of the call                                                 |
+| **`state`**   | <code><a href="#callstate">CallState</a></code>                                                                                                                                                                           | Current state of the call                                      |
+| **`userId`**  | <code>string</code>                                                                                                                                                                                                       | User ID of the participant in the call who triggered the event |
+| **`reason`**  | <code>string</code>                                                                                                                                                                                                       | Reason for the call state change, if applicable                |
+| **`caller`**  | <code><a href="#callmember">CallMember</a></code>                                                                                                                                                                         | Information about the caller (for incoming calls)              |
+| **`members`** | <code>CallMember[]</code>                                                                                                                                                                                                 | List of call members                                           |
+| **`custom`**  | <code><a href="#record">Record</a>&lt; string, \| string \| boolean \| number \| null \| <a href="#record">Record</a>&lt;string, string \| boolean \| number \| null&gt; \| string[] \| boolean[] \| number[] &gt;</code> |                                                                |
 
 
 #### CallState

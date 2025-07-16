@@ -211,19 +211,11 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     guard let self else { return }
                     switch event {
                     case let .typeCallRejectedEvent(response):
-                        if response.callCid == self.currentCallId,
-                           let call = self.callViewModel?.call,
-                           call.state.createdBy?.id == self.streamVideo?.user.id,
-                           let typeValue = call.state.custom["type"],
-                           case let .string(typeString) = typeValue,
-                           typeString == "direct" {
-                            
-                            let data: [String: Any] = [
-                                "callId": response.callCid,
-                                "state": "rejected"
-                            ]
-                            notifyListeners("callEvent", data: data)
-                        }
+                        let data: [String: Any] = [
+                            "callId": response.callCid,
+                            "state": "rejected"
+                        ]
+                        notifyListeners("callEvent", data: data)
                     case let .typeCallEndedEvent(response):
                         let data: [String: Any] = [
                             "callId": response.callCid,
@@ -1293,18 +1285,30 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func getCallStatus(_ call: CAPPluginCall) {
+    @objc func getCallStatus(_ call: CAPPluginCall) async {
         // If not in a call, reject
         if currentCallId.isEmpty || currentCallState == "left" {
             call.reject("Not in a call")
             return
         }
 
-        call.resolve([
+        // Get caller and custom safely on main actor
+        let (caller, custom): (User?, [String: Any]?) = await MainActor.run {
+            guard let streamVideo = streamVideo else { return (nil, nil) }
+            let callState = streamVideo.state.activeCall?.state
+            return (callState?.createdBy, callState?.custom)
+        }
+
+        let result: [String: Any] = [
             "callId": currentCallId,
-            "state": currentCallState
-        ])
+            "state": currentCallState,
+            "caller": caller as Any,
+            "custom": custom as Any
+        ].compactMapValues { $0 }
+
+        call.resolve(result)
     }
+
     
     @objc func getCallInfo(_ call: CAPPluginCall) {
         guard let callId = call.getString("callId") else {

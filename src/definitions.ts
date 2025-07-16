@@ -107,6 +107,18 @@ export interface CallEvent {
   caller?: CallMember;
   /** List of call members */
   members?: CallMember[];
+
+  custom?: Record<
+    string,
+    | string
+    | boolean
+    | number
+    | null
+    | Record<string, string | boolean | number | null>
+    | string[]
+    | boolean[]
+    | number[]
+  >;
 }
 
 export interface CameraEnabledResponse {
@@ -300,6 +312,16 @@ export interface StreamCallPlugin {
    * console.log(callStatus);
    */
   getCallStatus(): Promise<CallEvent>;
+
+
+  /**
+   * Get the current call status
+   * @returns {Promise<CallEvent>} Current call status as a CallEvent
+   * @example
+   * const callStatus = await StreamCall.getCallStatus();
+   * console.log(callStatus);
+   */
+  toggleViews?(): Promise<{ newLayout: string}>;
 
   /**
    * Set speakerphone on

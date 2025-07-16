@@ -1492,7 +1492,6 @@ class StreamCallPlugin : Plugin() {
                 activity?.runOnUiThread {
                     streamCall?.microphone?.setEnabled(true)
                     streamCall?.camera?.setEnabled(!isAudioOnly)
-
                     bridge?.webView?.setBackgroundColor(Color.TRANSPARENT) // Make webview transparent
                     bridge?.webView?.bringToFront() // Ensure WebView is on top and transparent
                     setOverlayContent(streamCall)
@@ -2266,6 +2265,30 @@ class StreamCallPlugin : Plugin() {
         val result = JSObject()
         result.put("callId", currentCallId)
         result.put("state", currentCallState)
+
+        if (streamVideoClient?.state?.activeCall?.value?.cid == currentCallId) {
+            val custom = JSObject();
+            val caller = JSObject();
+
+            val customMap = streamVideoClient?.state?.activeCall?.value?.state?.custom?.value;
+            if (customMap != null) {
+                for (entry in customMap) {
+                    custom.put(entry.key, entry.value)
+                }
+            }
+            val callerMap = streamVideoClient?.state?.activeCall?.value?.state?.createdBy?.value;
+            if (callerMap != null) {
+                caller.put("userId", callerMap.id)
+                caller.put("name", callerMap.name ?: "")
+                caller.put("imageURL", callerMap.image ?: "")
+                caller.put("role", callerMap.role)
+            }
+
+            result.put("caller", caller)
+            result.put("custom", custom)
+        }
+
+
 
         // No additional fields to ensure compatibility with CallEvent interface
 
