@@ -20,6 +20,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "logout", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "call", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "joinCall", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "toggleViews", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "endCall", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setMicrophoneEnabled", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setCameraEnabled", returnType: CAPPluginReturnPromise),
@@ -210,11 +211,19 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     guard let self else { return }
                     switch event {
                     case let .typeCallRejectedEvent(response):
-                        let data: [String: Any] = [
-                            "callId": response.callCid,
-                            "state": "rejected"
-                        ]
-                        notifyListeners("callEvent", data: data)
+                        if response.callCid == self.currentCallId,
+                           let call = self.callViewModel?.call,
+                           call.state.createdBy?.id == self.streamVideo?.user.id,
+                           let typeValue = call.state.custom["type"],
+                           case let .string(typeString) = typeValue,
+                           typeString == "direct" {
+                            
+                            let data: [String: Any] = [
+                                "callId": response.callCid,
+                                "state": "rejected"
+                            ]
+                            notifyListeners("callEvent", data: data)
+                        }
                     case let .typeCallEndedEvent(response):
                         let data: [String: Any] = [
                             "callId": response.callCid,
@@ -494,6 +503,31 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             call.reject("No active call")
         }
     }
+    
+    @objc func toggleViews(_ call: CAPPluginCall) {
+        Task { @MainActor in
+            guard let viewModel = self.callViewModel else {
+                call.reject("ViewModel is not initialized.")
+                return
+            }
+
+            let layouts: [ParticipantsLayout] = [.spotlight, .fullScreen, .grid]
+            let currentLayout = viewModel.participantsLayout
+
+            // If currentLayout is not in layouts, default to .grid index
+            let currentIndex = layouts.firstIndex(of: currentLayout) ?? layouts.firstIndex(of: .grid) ?? 0
+            let nextIndex = (currentIndex + 1) % layouts.count
+            let nextLayout = layouts[nextIndex]
+
+            viewModel.update(participantsLayout: nextLayout)
+
+            call.resolve([
+                "newLayout": "\(nextLayout)"
+            ])
+        }
+    }
+
+
 
     @objc func joinCall(_ call: CAPPluginCall) {
       guard let callId = call.getString("callId") else {
