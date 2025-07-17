@@ -465,6 +465,9 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         state = .notInitialized
 
         SecureUserRepository.shared.removeCurrentUser()
+        self.callViewModel = nil
+        self.overlayView = nil
+        self.touchInterceptView = nil
 
         // Update the CallOverlayView with nil StreamVideo instance
         Task { @MainActor in
