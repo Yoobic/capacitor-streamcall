@@ -222,6 +222,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                             "state": "left"
                         ]
                         notifyListeners("callEvent", data: data)
+                    
                     case let .typeCallSessionParticipantCountsUpdatedEvent(response):
                             let activeCall = streamVideo.state.activeCall;
                             let callDropped = self.currentCallId == response.callCid && activeCall == nil;
@@ -291,50 +292,51 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                                 print("Notifying call joined: \(callId)")
                                 self.updateCallStatusAndNotify(callId: callId, state: "joined")
                                 self.hasNotifiedCallJoined = true
+   
                             }
                         } else if case .incoming(let incomingCall) = newState {
                             // Extract caller information
-                            Task {
-                                var caller: [String: Any]? = nil
-                                var members: [[String: Any]]? = nil
-                                
-                                do {
-                                    // Get the call from StreamVideo to access detailed information
-                                    if let streamVideo = self.streamVideo {
-                                        let call = streamVideo.call(callType: incomingCall.type, callId: incomingCall.id)
-                                        let callInfo = try await call.get()
-                                        
-                                        // Extract caller information
-                                        let createdBy = callInfo.call.createdBy
-                                        var callerData: [String: Any] = [:]
-                                        callerData["userId"] = createdBy.id
-                                        callerData["name"] = createdBy.name
-                                        callerData["imageURL"] = createdBy.image
-                                        callerData["role"] = createdBy.role
-                                        caller = callerData
-                                        
-                                        // Extract members information from current participants if available
-                                        var membersArray: [[String: Any]] = []
-                                        if let activeCall = streamVideo.state.activeCall {
-                                            let participants = activeCall.state.participants
-                                            for participant in participants {
-                                                var memberData: [String: Any] = [:]
-                                                memberData["userId"] = participant.userId
-                                                memberData["name"] = participant.name
-                                                memberData["imageURL"] = participant.profileImageURL?.absoluteString ?? ""
-                                                memberData["role"] = participant.roles.first ?? ""
-                                                membersArray.append(memberData)
-                                            }
-                                        }
-                                        members = membersArray.isEmpty ? nil : membersArray
-                                    }
-                                } catch {
-                                    print("Failed to get call info for caller details: \(error)")
-                                }
-                                
+//                            Task {
+//                                var caller: [String: Any]? = nil
+//                                var members: [[String: Any]]? = nil
+//                                
+//                                do {
+//                                    // Get the call from StreamVideo to access detailed information
+//                                    if let streamVideo = self.streamVideo {
+//                                        let call = streamVideo.call(callType: incomingCall.type, callId: incomingCall.id)
+//                                        let callInfo = try await call.get()
+//                                        
+//                                        // Extract caller information
+//                                        let createdBy = callInfo.call.createdBy
+//                                        var callerData: [String: Any] = [:]
+//                                        callerData["userId"] = createdBy.id
+//                                        callerData["name"] = createdBy.name
+//                                        callerData["imageURL"] = createdBy.image
+//                                        callerData["role"] = createdBy.role
+//                                        caller = callerData
+//                                        
+//                                        // Extract members information from current participants if available
+//                                        var membersArray: [[String: Any]] = []
+//                                        if let activeCall = streamVideo.state.activeCall {
+//                                            let participants = activeCall.state.participants
+//                                            for participant in participants {
+//                                                var memberData: [String: Any] = [:]
+//                                                memberData["userId"] = participant.userId
+//                                                memberData["name"] = participant.name
+//                                                memberData["imageURL"] = participant.profileImageURL?.absoluteString ?? ""
+//                                                memberData["role"] = participant.roles.first ?? ""
+//                                                membersArray.append(memberData)
+//                                            }
+//                                        }
+//                                        members = membersArray.isEmpty ? nil : membersArray
+//                                    }
+//                                } catch {
+//                                    print("Failed to get call info for caller details: \(error)")
+//                                }
+//                                
                                 // Notify with caller information
-                                self.updateCallStatusAndNotify(callId: incomingCall.id, state: "ringing", caller: caller, members: members)
-                            }
+                                self.updateCallStatusAndNotify(callId: incomingCall.id, state: "ringing")
+//                            }
                         } else if newState == .idle {
                             print("Call state changed to idle. CurrentCallId: \(self.currentCallId), ActiveCall: \(String(describing: self.streamVideo?.state.activeCall?.cId))")
                             
@@ -1288,26 +1290,17 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @objc func getCallStatus(_ call: CAPPluginCall) async {
+    @objc func getCallStatus(_ call: CAPPluginCall) {
         // If not in a call, reject
         if currentCallId.isEmpty || currentCallState == "left" {
             call.reject("Not in a call")
             return
         }
 
-        // Get caller and custom safely on main actor
-        let (caller, custom): (User?, [String: Any]?) = await MainActor.run {
-            guard let streamVideo = streamVideo else { return (nil, nil) }
-            let callState = streamVideo.state.activeCall?.state
-            return (callState?.createdBy, callState?.custom)
-        }
-
         let result: [String: Any] = [
             "callId": currentCallId,
-            "state": currentCallState,
-            "caller": caller as Any,
-            "custom": custom as Any
-        ].compactMapValues { $0 }
+            "state": currentCallState
+        ]
 
         call.resolve(result)
     }
@@ -1386,6 +1379,15 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     }
                     
                     result["members"] = members
+                    
+                    // Get caller and custom safely on main actor
+                    let (custom): ([String: Any]?) = await MainActor.run {
+                        guard let streamVideo = streamVideo else { return (nil) }
+                        let callState = streamVideo.state.activeCall?.state
+                        return (callState?.custom)
+                    }
+                    
+                    result["custom"] = custom
                     
                     call.resolve(result)
                 } catch {

@@ -229,6 +229,17 @@ export interface StreamCallPlugin {
    */
   endCall(): Promise<SuccessResponse>;
 
+
+  /**
+   * Join an existing call
+   * @param {{  callId: string, callType: string  }} options - Microphone state
+   * @returns {Promise<SuccessResponse>} Success status
+   * @example
+   * await StreamCall.joinCall({ callId: 'call001', callType: 'default' });
+   */
+  joinCall(options: { callId: string, callType: string }): Promise<SuccessResponse>;
+
+
   /**
    * Enable or disable microphone
    * @param {{ enabled: boolean }} options - Microphone state

@@ -2255,6 +2255,47 @@ class StreamCallPlugin : Plugin() {
     }
 
     @PluginMethod
+    fun getCallInfo(call: PluginCall) {
+
+        val callId = call.getString("callId")
+        if (callId == null) {
+            call.reject("Missing required parameters: callId")
+            return
+        }
+
+        // If not in a call, reject
+        if (streamVideoClient?.state?.activeCall?.value?.cid != callId) {
+            call.reject("Call ID does not match active call")
+            return
+        }
+
+        val result = JSObject()
+        result.put("callId", currentCallId)
+
+        val custom = JSObject();
+        val caller = JSObject();
+
+        val customMap = streamVideoClient?.state?.activeCall?.value?.state?.custom?.value;
+        if (customMap != null) {
+            for (entry in customMap) {
+                custom.put(entry.key, entry.value)
+            }
+        }
+        val callerMap = streamVideoClient?.state?.activeCall?.value?.state?.createdBy?.value;
+        if (callerMap != null) {
+            caller.put("userId", callerMap.id)
+            caller.put("name", callerMap.name ?: "")
+            caller.put("imageURL", callerMap.image ?: "")
+            caller.put("role", callerMap.role)
+        }
+
+        result.put("caller", caller)
+        result.put("custom", custom)
+
+        call.resolve(result)
+    }
+
+    @PluginMethod
     fun getCallStatus(call: PluginCall) {
         // If not in a call, reject
         if (currentCallId.isEmpty() || currentCallState == "left") {
@@ -2266,32 +2307,7 @@ class StreamCallPlugin : Plugin() {
         result.put("callId", currentCallId)
         result.put("state", currentCallState)
 
-        if (streamVideoClient?.state?.activeCall?.value?.cid == currentCallId) {
-            val custom = JSObject();
-            val caller = JSObject();
-
-            val customMap = streamVideoClient?.state?.activeCall?.value?.state?.custom?.value;
-            if (customMap != null) {
-                for (entry in customMap) {
-                    custom.put(entry.key, entry.value)
-                }
-            }
-            val callerMap = streamVideoClient?.state?.activeCall?.value?.state?.createdBy?.value;
-            if (callerMap != null) {
-                caller.put("userId", callerMap.id)
-                caller.put("name", callerMap.name ?: "")
-                caller.put("imageURL", callerMap.image ?: "")
-                caller.put("role", callerMap.role)
-            }
-
-            result.put("caller", caller)
-            result.put("custom", custom)
-        }
-
-
-
         // No additional fields to ensure compatibility with CallEvent interface
-
         call.resolve(result)
     }
 
