@@ -1104,10 +1104,10 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         guard let webView = self.webView, let parent = webView.superview else { return }
         
         // Create the touch intercept view as an overlay for touch passthrough
-        let touchInterceptView = TouchInterceptView(frame: parent.bounds)
-        touchInterceptView.translatesAutoresizingMaskIntoConstraints = false
-        touchInterceptView.backgroundColor = .clear
-        touchInterceptView.isOpaque = false
+        // let touchInterceptView = TouchInterceptView(frame: parent.bounds)
+        // touchInterceptView.translatesAutoresizingMaskIntoConstraints = false
+        // touchInterceptView.backgroundColor = .clear
+        // touchInterceptView.isOpaque = false
         
         // Create SwiftUI view with view model if not already created
         if self.overlayView == nil, let callViewModel = self.callViewModel {
@@ -1134,32 +1134,32 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             }
         }
         
-        // Setup touch intercept view with references to webview and overlay
-        if let overlayView = self.overlayView {
-            touchInterceptView.setupWithWebView(webView, overlayView: overlayView)
-            // Insert touchInterceptView above webView
-            parent.insertSubview(touchInterceptView, aboveSubview: webView)
-        } else {
-            // If overlayView is not present, just add on top of webView
-            touchInterceptView.setupWithWebView(webView, overlayView: webView)
-            parent.insertSubview(touchInterceptView, aboveSubview: webView)
-        }
+        // // Setup touch intercept view with references to webview and overlay
+        // if let overlayView = self.overlayView {
+        //     touchInterceptView.setupWithWebView(webView, overlayView: overlayView)
+        //     // Insert touchInterceptView above webView
+        //     parent.insertSubview(touchInterceptView, aboveSubview: webView)
+        // } else {
+        //     // If overlayView is not present, just add on top of webView
+        //     touchInterceptView.setupWithWebView(webView, overlayView: webView)
+        //     parent.insertSubview(touchInterceptView, aboveSubview: webView)
+        // }
         
         // Set up active call check function
-        touchInterceptView.setActiveCallCheck { [weak self] in
-            return self?.streamVideo?.state.activeCall != nil
-        }
+        // touchInterceptView.setActiveCallCheck { [weak self] in
+        //     return self?.streamVideo?.state.activeCall != nil
+        // }
         
         // Store reference to touch intercept view
-        self.touchInterceptView = touchInterceptView
+        // self.touchInterceptView = touchInterceptView
         
         // Setup constraints for touchInterceptView to cover the entire parent
-        NSLayoutConstraint.activate([
-            touchInterceptView.topAnchor.constraint(equalTo: parent.topAnchor),
-            touchInterceptView.bottomAnchor.constraint(equalTo: parent.bottomAnchor),
-            touchInterceptView.leadingAnchor.constraint(equalTo: parent.leadingAnchor),
-            touchInterceptView.trailingAnchor.constraint(equalTo: parent.trailingAnchor)
-        ])
+        // NSLayoutConstraint.activate([
+        //     touchInterceptView.topAnchor.constraint(equalTo: parent.topAnchor),
+        //     touchInterceptView.bottomAnchor.constraint(equalTo: parent.bottomAnchor),
+        //     touchInterceptView.leadingAnchor.constraint(equalTo: parent.leadingAnchor),
+        //     touchInterceptView.trailingAnchor.constraint(equalTo: parent.trailingAnchor)
+        // ])
     }
     
     private func createCallOverlayView() {
@@ -1208,42 +1208,42 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         self.overlayView = overlayView.view
         
         // Ensure touch intercept view is on top
-        if let touchInterceptView = parent.subviews.first(where: { $0 is TouchInterceptView }) {
-            parent.bringSubviewToFront(touchInterceptView)
-            // Update reference and set call active
-            self.touchInterceptView = touchInterceptView as? TouchInterceptView
+        // if let touchInterceptView = parent.subviews.first(where: { $0 is TouchInterceptView }) {
+        //     parent.bringSubviewToFront(touchInterceptView)
+        //     // Update reference and set call active
+        //     self.touchInterceptView = touchInterceptView as? TouchInterceptView
             
-            // Set up active call check function
-            self.touchInterceptView?.setActiveCallCheck { [weak self] in
-                return self?.streamVideo?.state.activeCall != nil
-            }
+        //     // Set up active call check function
+        //     self.touchInterceptView?.setActiveCallCheck { [weak self] in
+        //         return self?.streamVideo?.state.activeCall != nil
+        //     }
             
-            self.touchInterceptView?.setCallActive(true)
-        } else {
-            // Create touch intercept view if not already created
-            let touchInterceptView = TouchInterceptView(frame: parent.bounds)
-            touchInterceptView.translatesAutoresizingMaskIntoConstraints = false
-            touchInterceptView.backgroundColor = .clear
-            touchInterceptView.isOpaque = false
-            touchInterceptView.setupWithWebView(webView, overlayView: overlayView.view)
-            parent.addSubview(touchInterceptView)
+        //     self.touchInterceptView?.setCallActive(true)
+        // } else {
+        //     // Create touch intercept view if not already created
+        //     let touchInterceptView = TouchInterceptView(frame: parent.bounds)
+        //     touchInterceptView.translatesAutoresizingMaskIntoConstraints = false
+        //     touchInterceptView.backgroundColor = .clear
+        //     touchInterceptView.isOpaque = false
+        //     touchInterceptView.setupWithWebView(webView, overlayView: overlayView.view)
+        //     parent.addSubview(touchInterceptView)
             
-            // Set up active call check function
-            touchInterceptView.setActiveCallCheck { [weak self] in
-                return self?.streamVideo?.state.activeCall != nil
-            }
+        //     // Set up active call check function
+        //     touchInterceptView.setActiveCallCheck { [weak self] in
+        //         return self?.streamVideo?.state.activeCall != nil
+        //     }
             
-            // Store reference and set call active
-            self.touchInterceptView = touchInterceptView
-            self.touchInterceptView?.setCallActive(true)
+        //     // Store reference and set call active
+        //     self.touchInterceptView = touchInterceptView
+        //     self.touchInterceptView?.setCallActive(true)
             
-            NSLayoutConstraint.activate([
-                touchInterceptView.topAnchor.constraint(equalTo: parent.topAnchor),
-                touchInterceptView.bottomAnchor.constraint(equalTo: parent.bottomAnchor),
-                touchInterceptView.leadingAnchor.constraint(equalTo: parent.leadingAnchor),
-                touchInterceptView.trailingAnchor.constraint(equalTo: parent.trailingAnchor)
-            ])
-        }
+        //     NSLayoutConstraint.activate([
+        //         touchInterceptView.topAnchor.constraint(equalTo: parent.topAnchor),
+        //         touchInterceptView.bottomAnchor.constraint(equalTo: parent.bottomAnchor),
+        //         touchInterceptView.leadingAnchor.constraint(equalTo: parent.leadingAnchor),
+        //         touchInterceptView.trailingAnchor.constraint(equalTo: parent.trailingAnchor)
+        //     ])
+        // }
     }
     
     // MARK: - Dynamic API Key Management
