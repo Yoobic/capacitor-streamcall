@@ -1094,7 +1094,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
         state = .initialized
         callKitAdapter.streamVideo = self.streamVideo
-        callKitAdapter.availabilityPolicy = .always
+        callKitAdapter.availabilityPolicy = .regionBased
         
         setupTokenSubscription()
 
