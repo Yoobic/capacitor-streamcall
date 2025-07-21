@@ -240,6 +240,7 @@ export class CallService {
 * [`logout()`](#logout)
 * [`call(...)`](#call)
 * [`endCall()`](#endcall)
+* [`joinCall(...)`](#joincall)
 * [`setMicrophoneEnabled(...)`](#setmicrophoneenabled)
 * [`setCameraEnabled(...)`](#setcameraenabled)
 * [`addListener('callEvent', ...)`](#addlistenercallevent-)
@@ -318,6 +319,23 @@ endCall() => Promise<SuccessResponse>
 ```
 
 End the current call
+
+**Returns:** <code>Promise&lt;<a href="#successresponse">SuccessResponse</a>&gt;</code>
+
+--------------------
+
+
+### joinCall(...)
+
+```typescript
+joinCall(options: { callId: string; callType: string; }) => Promise<SuccessResponse>
+```
+
+Join an existing call
+
+| Param         | Type                                               | Description        |
+| ------------- | -------------------------------------------------- | ------------------ |
+| **`options`** | <code>{ callId: string; callType: string; }</code> | - Microphone state |
 
 **Returns:** <code>Promise&lt;<a href="#successresponse">SuccessResponse</a>&gt;</code>
 

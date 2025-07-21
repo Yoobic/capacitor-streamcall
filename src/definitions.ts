@@ -237,7 +237,7 @@ export interface StreamCallPlugin {
    * @example
    * await StreamCall.joinCall({ callId: 'call001', callType: 'default' });
    */
-  joinCall(options: { callId: string, callType: string }): Promise<SuccessResponse>;
+  joinCall?(options: { callId: string, callType: string }): Promise<SuccessResponse>;
 
 
   /**
