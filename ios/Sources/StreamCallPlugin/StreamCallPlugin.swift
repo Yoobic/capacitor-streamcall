@@ -216,6 +216,13 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                             "state": "rejected"
                         ]
                         notifyListeners("callEvent", data: data)
+                    case let .typeCallAcceptedEvent(response):
+                        if let streamUserId = self.streamVideo?.user.id,
+                           response.user.id == streamUserId,
+                           response.callCid != self.currentCallId {
+                            
+                            self.updateCallStatusAndNotify(callId: response.callCid, state: "joined")
+                        }
                     case let .typeCallEndedEvent(response):
                         let data: [String: Any] = [
                             "callId": response.callCid,
