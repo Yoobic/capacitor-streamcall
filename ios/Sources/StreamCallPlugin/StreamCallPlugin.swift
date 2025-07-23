@@ -943,10 +943,10 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             Task {
                 do {
                     if let activeCall = streamVideo?.state.activeCall {
-                       if enabled {
-                            try await activeCall.microphone.enable()
-                        } else {
-                            try await activeCall.microphone.disable()
+                        if enabled && activeCall.microphone.status == .disabled {
+                            try await activeCall.microphone.toggle()
+                        } else if !enabled && activeCall.microphone.status == .enabled {
+                            try await activeCall.microphone.toggle()
                         }
                         call.resolve([
                             "success": true
@@ -976,10 +976,10 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             Task {
                 do {
                     if let activeCall = streamVideo?.state.activeCall {
-                        if enabled {
-                            try await activeCall.camera.enable()
-                        } else {
-                            try await activeCall.camera.disable()
+                        if enabled && activeCall.camera.status == .disabled {
+                            try await activeCall.camera.toggle()
+                        } else if !enabled && activeCall.camera.status == .enabled {
+                            try await activeCall.camera.toggle()
                         }
                         call.resolve([
                             "success": true
