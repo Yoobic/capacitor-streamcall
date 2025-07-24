@@ -46,6 +46,7 @@ export type CallState =
   | 'created'
   | 'session_started'
   | 'rejected'
+  | 'participant_counts'
   | 'missed'
   | 'accepted'
   | 'ended'
@@ -119,6 +120,8 @@ export interface CallEvent {
     | boolean[]
     | number[]
   >;
+
+  count?: number;
 }
 
 export interface CameraEnabledResponse {
@@ -333,6 +336,9 @@ export interface StreamCallPlugin {
    * console.log(callStatus);
    */
   toggleViews?(): Promise<{ newLayout: string}>;
+
+  toggleCamera?(): Promise<{ status: 'enabled' | 'disable' }>;
+  toggleMicrophone?(): Promise<{ status: 'enabled' | 'disable' }>;
 
   /**
    * Set speakerphone on

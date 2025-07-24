@@ -251,6 +251,8 @@ export class CallService {
 * [`isCameraEnabled()`](#iscameraenabled)
 * [`getCallStatus()`](#getcallstatus)
 * [`toggleViews()`](#toggleviews)
+* [`toggleCamera()`](#togglecamera)
+* [`toggleMicrophone()`](#togglemicrophone)
 * [`setSpeaker(...)`](#setspeaker)
 * [`switchCamera(...)`](#switchcamera)
 * [`getCallInfo(...)`](#getcallinfo)
@@ -489,6 +491,28 @@ Get the current call status
 --------------------
 
 
+### toggleCamera()
+
+```typescript
+toggleCamera() => Promise<{ status: 'enabled' | 'disable'; }>
+```
+
+**Returns:** <code>Promise&lt;{ status: 'enabled' | 'disable'; }&gt;</code>
+
+--------------------
+
+
+### toggleMicrophone()
+
+```typescript
+toggleMicrophone() => Promise<{ status: 'enabled' | 'disable'; }>
+```
+
+**Returns:** <code>Promise&lt;{ status: 'enabled' | 'disable'; }&gt;</code>
+
+--------------------
+
+
 ### setSpeaker(...)
 
 ```typescript
@@ -624,6 +648,7 @@ Get the currently set dynamic Stream Video API key
 | **`caller`**  | <code><a href="#callmember">CallMember</a></code>                                                                                                                                                                         | Information about the caller (for incoming calls)              |
 | **`members`** | <code>CallMember[]</code>                                                                                                                                                                                                 | List of call members                                           |
 | **`custom`**  | <code><a href="#record">Record</a>&lt; string, \| string \| boolean \| number \| null \| <a href="#record">Record</a>&lt;string, string \| boolean \| number \| null&gt; \| string[] \| boolean[] \| number[] &gt;</code> |                                                                |
+| **`count`**   | <code>number</code>                                                                                                                                                                                                       |                                                                |
 
 
 #### CallState
@@ -869,7 +894,7 @@ Construct a type with a set of properties K of type T
 
 #### CallState
 
-<code>'idle' | 'ringing' | 'joining' | 'reconnecting' | 'joined' | 'leaving' | 'left' | 'created' | 'session_started' | 'rejected' | 'missed' | 'accepted' | 'ended' | 'camera_enabled' | 'camera_disabled' | 'microphone_enabled' | 'microphone_disabled' | 'unknown'</code>
+<code>'idle' | 'ringing' | 'joining' | 'reconnecting' | 'joined' | 'leaving' | 'left' | 'created' | 'session_started' | 'rejected' | 'participant_counts' | 'missed' | 'accepted' | 'ended' | 'camera_enabled' | 'camera_disabled' | 'microphone_enabled' | 'microphone_disabled' | 'unknown'</code>
 
 
 ### Enums
