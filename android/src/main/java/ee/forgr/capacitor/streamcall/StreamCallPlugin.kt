@@ -73,6 +73,10 @@ import io.getstream.video.android.core.events.ParticipantLeftEvent
 import io.getstream.video.android.core.internal.InternalStreamVideoApi
 import io.getstream.video.android.core.notifications.NotificationConfig
 import io.getstream.video.android.core.notifications.NotificationHandler
+import io.getstream.video.android.core.notifications.handlers.CompatibilityStreamNotificationHandler
+import io.getstream.video.android.core.notifications.handlers.StreamNotificationBuilderInterceptors
+import androidx.core.app.NotificationCompat
+import android.app.PendingIntent
 import io.getstream.video.android.core.sounds.RingingConfig
 import io.getstream.video.android.core.sounds.toSounds
 import io.getstream.video.android.model.Device
@@ -316,6 +320,12 @@ class StreamCallPlugin : Plugin() {
                 } else {
                     Log.e("StreamCallPlugin", "handleOnNewIntent: ACCEPT_CALL - Call object is null for cid: $cid")
                 }
+            }
+        } else if (action === NotificationHandler.ACTION_LEAVE_CALL) {
+            Log.d("StreamCallPlugin", "handleOnNewIntent: Matched LEAVE_CALL action")
+            kotlinx.coroutines.GlobalScope.launch {
+                val success = _endCall()
+                Log.d("StreamCallPlugin", "handleOnNewIntent: LEAVE_CALL - End call result: $success")
             }
         }
         // Log the intent information
@@ -568,47 +578,6 @@ class StreamCallPlugin : Plugin() {
             // unsafe cast, add better handling
             val application = contextToUse.applicationContext as Application
             Log.d("StreamCallPlugin", "No existing StreamVideo singleton client, creating new one")
-            val notificationHandler = CustomNotificationHandler(
-                application = application,
-                endCall = { callId ->
-                    val activeCall = streamVideoClient?.call(callId.type, callId.id)
-
-                    kotlinx.coroutines.GlobalScope.launch {
-                        try {
-                            Log.i(
-                                "StreamCallPlugin",
-                                "Attempt to endCallRaw, activeCall == null: ${activeCall == null}",
-                            )
-                            activeCall?.let { endCallRaw(it) }
-                        } catch (e: Exception) {
-                            Log.e(
-                                "StreamCallPlugin",
-                                "Error ending after missed call notif action",
-                                e
-                            )
-                        }
-                    }
-                },
-                incomingCall = {
-                    if (this.savedContext != null && initializationTime != 0L) {
-                        val contextCreatedAt = initializationTime
-                        val now = System.currentTimeMillis()
-                        val isWithinOneSecond = (now - contextCreatedAt) <= 1000L
-
-                        Log.i(
-                            "StreamCallPlugin",
-                            "Time between context creation and activity created (incoming call notif): ${now - contextCreatedAt}"
-                        )
-                        if (isWithinOneSecond && !bootedToHandleCall) {
-                            Log.i(
-                                "StreamCallPlugin",
-                                "Notification incomingCall received less than 1 second after the creation of streamVideoSDK. Booted FOR SURE in order to handle the notification"
-                            )
-                        }
-                    }
-                }
-            )
-
             val notificationConfig = NotificationConfig(
                 pushDeviceGenerators = listOf(
                     FirebasePushDeviceGenerator(
@@ -617,7 +586,23 @@ class StreamCallPlugin : Plugin() {
                     )
                 ),
                 requestPermissionOnAppLaunch = { true },
-                notificationHandler = notificationHandler,
+                notificationHandler = CompatibilityStreamNotificationHandler(
+                    application = contextToUse as Application,
+                    intentResolver = CustomStreamIntentResolver(contextToUse),
+                    initialNotificationBuilderInterceptor = object : StreamNotificationBuilderInterceptors() {
+                        override fun onBuildIncomingCallNotification(
+                            builder: NotificationCompat.Builder,
+                            fullScreenPendingIntent: PendingIntent,
+                            acceptCallPendingIntent: PendingIntent,
+                            rejectCallPendingIntent: PendingIntent,
+                            callerName: String?,
+                            shouldHaveContentIntent: Boolean
+                        ): NotificationCompat.Builder {
+                            return builder.setContentIntent(fullScreenPendingIntent)
+                                .setFullScreenIntent(fullScreenPendingIntent, true)
+                        }
+                    }
+                )
             )
 
             val soundsConfig = incomingOnlyRingingConfig()
@@ -1996,28 +1981,41 @@ class StreamCallPlugin : Plugin() {
     }
 
     @OptIn(DelicateCoroutinesApi::class)
+    private suspend fun _endCall(): Boolean {
+        val activeCall = streamVideoClient?.state?.activeCall?.value
+        val ringingCall = streamVideoClient?.state?.ringingCall?.value
+        
+        val callToEnd = activeCall ?: ringingCall
+        
+        if (callToEnd == null) {
+            Log.w("StreamCallPlugin", "Attempted to end call but no active or ringing call found")
+            return false
+        }
+
+        Log.d("StreamCallPlugin", "Ending call: activeCall=${activeCall?.id}, ringingCall=${ringingCall?.id}, callToEnd=${callToEnd.id}")
+
+        return try {
+            endCallRaw(callToEnd)
+            true
+        } catch (e: Exception) {
+            Log.e("StreamCallPlugin", "Error ending call: ${e.message}", e)
+            false
+        }
+    }
+
     @PluginMethod
     fun endCall(call: PluginCall) {
         try {
-            val activeCall = streamVideoClient?.state?.activeCall?.value
-            val ringingCall = streamVideoClient?.state?.ringingCall?.value
-
-            val callToEnd = activeCall ?: ringingCall
-
-            if (callToEnd == null) {
-                Log.w("StreamCallPlugin", "Attempted to end call but no active or ringing call found")
-                call.reject("No active call to end")
-                return
-            }
-
-            Log.d("StreamCallPlugin", "Ending call: activeCall=${activeCall?.id}, ringingCall=${ringingCall?.id}, callToEnd=${callToEnd.id}")
-
             kotlinx.coroutines.GlobalScope.launch {
                 try {
-                    endCallRaw(callToEnd)
-                    call.resolve(JSObject().apply {
-                        put("success", true)
-                    })
+                    val success = _endCall()
+                    if (success) {
+                        call.resolve(JSObject().apply {
+                            put("success", true)
+                        })
+                    } else {
+                        call.reject("No active call to end")
+                    }
                 } catch (e: Exception) {
                     Log.e("StreamCallPlugin", "Error ending call: ${e.message}")
                     call.reject("Failed to end call: ${e.message}")
