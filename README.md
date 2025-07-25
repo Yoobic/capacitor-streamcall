@@ -254,6 +254,7 @@ export class CallService {
 * [`getCallInfo(...)`](#getcallinfo)
 * [`setDynamicStreamVideoApikey(...)`](#setdynamicstreamvideoapikey)
 * [`getDynamicStreamVideoApikey()`](#getdynamicstreamvideoapikey)
+* [`getCurrentUser()`](#getcurrentuser)
 * [Interfaces](#interfaces)
 * [Type Aliases](#type-aliases)
 * [Enums](#enums)
@@ -538,6 +539,19 @@ Get the currently set dynamic Stream Video API key
 --------------------
 
 
+### getCurrentUser()
+
+```typescript
+getCurrentUser() => Promise<CurrentUserResponse>
+```
+
+Get the current user's information
+
+**Returns:** <code>Promise&lt;<a href="#currentuserresponse">CurrentUserResponse</a>&gt;</code>
+
+--------------------
+
+
 ### Interfaces
 
 
@@ -817,6 +831,16 @@ The JSON representation for <a href="#listvalue">`ListValue`</a> is JSON array.
 | ------------------- | --------------------------- | --------------------------------------- |
 | **`apiKey`**        | <code>string \| null</code> | The dynamic API key if set, null if not |
 | **`hasDynamicKey`** | <code>boolean</code>        | Whether a dynamic key is currently set  |
+
+
+#### CurrentUserResponse
+
+| Prop             | Type                 | Description                             |
+| ---------------- | -------------------- | --------------------------------------- |
+| **`userId`**     | <code>string</code>  | User ID of the current user             |
+| **`name`**       | <code>string</code>  | Display name of the current user        |
+| **`imageURL`**   | <code>string</code>  | Avatar URL of the current user          |
+| **`isLoggedIn`** | <code>boolean</code> | Whether the user is currently logged in |
 
 
 ### Type Aliases

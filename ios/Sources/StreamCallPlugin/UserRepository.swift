@@ -52,10 +52,14 @@ class SecureUserRepository: UserRepository, VoipTokenHandler {
     private init() {}
 
     func save(user: UserCredentials) {
+        print("SecureUserRepository: Saving user credentials for: \(user.user.id)")
         let encoder = JSONEncoder()
         if let encoded = try? encoder.encode(user.user) {
             defaults.set(encoded, forKey: userKey)
             defaults.set(user.tokenValue, forKey: tokenKey)
+            print("SecureUserRepository: User credentials saved successfully for: \(user.user.id)")
+        } else {
+            print("SecureUserRepository: Failed to encode user data for: \(user.user.id)")
         }
     }
 
@@ -64,17 +68,25 @@ class SecureUserRepository: UserRepository, VoipTokenHandler {
     }
 
     func loadCurrentUser() -> UserCredentials? {
+        print("SecureUserRepository: Loading current user credentials")
+        
         if let savedUser = defaults.object(forKey: userKey) as? Data {
             let decoder = JSONDecoder()
             do {
                 let loadedUser = try decoder.decode(User.self, from: savedUser)
                 guard let tokenValue = defaults.value(forKey: tokenKey) as? String else {
+                    print("SecureUserRepository: User data found but no token")
                     throw ClientError.Unexpected()
                 }
-                return UserCredentials(user: loadedUser, tokenValue: tokenValue)
+                let credentials = UserCredentials(user: loadedUser, tokenValue: tokenValue)
+                print("SecureUserRepository: Successfully loaded credentials for user: \(loadedUser.id)")
+                return credentials
             } catch {
+                print("SecureUserRepository: Error while decoding user: \(String(describing: error))")
                 log.error("Error while decoding user: \(String(describing: error))")
             }
+        } else {
+            print("SecureUserRepository: No stored user data found")
         }
         return nil
     }
@@ -88,9 +100,11 @@ class SecureUserRepository: UserRepository, VoipTokenHandler {
     }
 
     func removeCurrentUser() {
+        print("SecureUserRepository: Removing current user credentials")
         defaults.set(nil, forKey: userKey)
         defaults.set(nil, forKey: tokenKey)
         defaults.set(nil, forKey: voipPushTokenKey)
+        print("SecureUserRepository: User credentials removed successfully")
     }
 
 }

@@ -65,6 +65,14 @@
       </ion-button>
     </div>
 
+    <!-- Test Functions -->
+    <div class="call-buttons" *ngIf="currentUser">
+      <ion-button (click)="getUserInfo()" color="medium">
+        <ion-icon name="person-circle-outline" slot="start"></ion-icon>
+        Get User Info
+      </ion-button>
+    </div>
+
     <div class="ion-padding" *ngIf="currentUser">
       <ion-list>
         <ion-item>
