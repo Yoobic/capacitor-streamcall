@@ -80,6 +80,14 @@ class TouchInterceptView: UIView {
             const x = \(x); const y = \(y);
             const el = document.elementFromPoint(x, y);
             if (!el) return 'NO_ELEM';
+            
+            // iPad fix: Force active state since iPad Safari doesn't handle :active properly
+            const isIPad = navigator.userAgent.includes('iPad');
+            if (isIPad) {
+                el.classList.add('active');
+                if (el.style.setProperty) el.style.setProperty('opacity', '0.8', 'important');
+            }
+            
             const eventInit = { bubbles: true, cancelable: true, clientX: x, clientY: y };
             const touchInit = { bubbles: true, cancelable: true, touches: [{ clientX: x, clientY: y }], targetTouches: [], changedTouches: [], shiftKey: false };
             const seq = [];
@@ -95,6 +103,15 @@ class TouchInterceptView: UIView {
             seq.push(new MouseEvent('mouseup', eventInit));
             seq.push(new MouseEvent('click', eventInit));
             seq.forEach(evt => el.dispatchEvent(evt));
+            
+            // iPad cleanup
+            if (isIPad) {
+                setTimeout(() => {
+                    el.classList.remove('active');
+                    el.style.removeProperty('opacity');
+                }, 100);
+            }
+            
             console.log('SyntheticClick seq on', el);
             return el.tagName;
         })();
