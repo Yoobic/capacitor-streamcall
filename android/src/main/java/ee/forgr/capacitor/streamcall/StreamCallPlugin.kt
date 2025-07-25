@@ -1,6 +1,5 @@
 package ee.forgr.capacitor.streamcall
 
-import TouchInterceptWrapper
 import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
@@ -25,6 +24,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.FrameLayout
+import java.lang.ref.WeakReference
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -2538,11 +2538,11 @@ class StreamCallPlugin : Plugin() {
 
     companion object {
         @JvmStatic fun preLoadInit(ctx: Context, app: Application) {
-            holder ?: run {
+            holder?.get() ?: run {
                 val p = StreamCallPlugin()
                 p.savedContext = ctx
                 p.initializeStreamVideo(ctx, app)
-                holder = p
+                holder = WeakReference(p)
                 
                 // Register lifecycle callback to clean up when all activities are destroyed
                 app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
@@ -2556,7 +2556,7 @@ class StreamCallPlugin : Plugin() {
                         activityCount--
                         // Only clear holder when no activities remain AND no active/ringing calls
                         if (activityCount <= 0) {
-                            val hasActiveCalls = holder?.let { plugin ->
+                            val hasActiveCalls = holder?.get()?.let { plugin ->
                                 val client = plugin.streamVideoClient
                                 val hasActive = client?.state?.activeCall?.value != null
                                 val hasRinging = client?.state?.ringingCall?.value != null
@@ -2578,7 +2578,7 @@ class StreamCallPlugin : Plugin() {
                 })
             }
         }
-        private var holder: StreamCallPlugin? = null
+        private var holder: WeakReference<StreamCallPlugin>? = null
         
         // Constants for SharedPreferences
         private const val API_KEY_PREFS_NAME = "stream_video_api_key_prefs"
