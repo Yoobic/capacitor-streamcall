@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.92](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.91...0.0.92) (2025-07-25)
+
+
+### Bug Fixes
+
+* add iPad support for touch events in TouchInterceptView ([6458a4b](https://github.com/Cap-go/capacitor-streamcall/commit/6458a4b009945c7584f9c9ea21f4d663fa41a25b))
+
 ### [0.0.91](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.90...0.0.91) (2025-07-25)
 
 
