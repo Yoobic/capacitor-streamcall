@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.89](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.88...0.0.89) (2025-07-25)
+
+
+### Features
+
+* add getCurrentUser method to StreamCallPlugin and update documentation ([af4daa0](https://github.com/Cap-go/capacitor-streamcall/commit/af4daa0826397709b806e103e29ae6667f536db5))
+
 ### [0.0.88](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.87...0.0.88) (2025-07-24)
 
 ### [0.0.87](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.86...0.0.87) (2025-07-24)
