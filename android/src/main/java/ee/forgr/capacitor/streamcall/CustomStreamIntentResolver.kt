@@ -5,22 +5,20 @@ import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.ResolveInfo
-import io.getstream.log.taggedLogger
 import io.getstream.video.android.core.notifications.NotificationHandler
 import io.getstream.video.android.core.notifications.StreamIntentResolver
 import io.getstream.video.android.model.StreamCallId
 
 class CustomStreamIntentResolver(private val context: Application) : StreamIntentResolver {
 
-    private val logger by taggedLogger("CustomIntentResolver")
     private val PENDING_INTENT_FLAG = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 
     override fun searchIncomingCallPendingIntent(callId: StreamCallId, notificationId: Int): PendingIntent? {
         val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            putExtra("callCid", callId.cid)
-            putExtra("action", "accept")
-            action = "io.getstream.video.android.action.ACCEPT_CALL"
+            putExtra(NotificationHandler.INTENT_EXTRA_CALL_CID, callId)
+            action = "io.getstream.video.android.action.INCOMING_CALL"
+            
         }
 
         return PendingIntent.getActivity(

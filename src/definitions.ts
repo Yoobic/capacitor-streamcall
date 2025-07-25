@@ -142,6 +142,25 @@ export interface DynamicApiKeyResponse {
 }
 
 /**
+ * @interface CurrentUserResponse
+ * @description Response from getCurrentUser containing user information
+ * @property {string} userId - User ID of the current user
+ * @property {string} name - Display name of the current user
+ * @property {string} [imageURL] - Avatar URL of the current user
+ * @property {boolean} isLoggedIn - Whether the user is currently logged in
+ */
+export interface CurrentUserResponse {
+  /** User ID of the current user */
+  userId: string;
+  /** Display name of the current user */
+  name: string;
+  /** Avatar URL of the current user */
+  imageURL?: string;
+  /** Whether the user is currently logged in */
+  isLoggedIn: boolean;
+}
+
+/**
  * @interface SuccessResponse
  * @description Standard response indicating operation success/failure
  * @property {boolean} success - Whether the operation succeeded
@@ -385,6 +404,15 @@ export interface StreamCallPlugin {
    * }
    */
   getDynamicStreamVideoApikey(): Promise<DynamicApiKeyResponse>;
+
+  /**
+   * Get the current user's information
+   * @returns {Promise<CurrentUserResponse>} Current user information
+   * @example
+   * const currentUser = await StreamCall.getCurrentUser();
+   * console.log(currentUser);
+   */
+  getCurrentUser(): Promise<CurrentUserResponse>;
 }
 
 /**

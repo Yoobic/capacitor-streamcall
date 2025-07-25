@@ -12,6 +12,7 @@ import type {
   CallState,
   CallMember,
   DynamicApiKeyResponse,
+  CurrentUserResponse,
 } from './definitions';
 
 export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
@@ -27,6 +28,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
   private participantLeftListener?: (event: { participant?: { sessionId: string } }) => void;
   private participantResponses: Map<string, string> = new Map();
   private callMembersExpected: Map<string, number> = new Map();
+  private currentUser?: { userId: string; name: string; imageURL?: string };
   //  private currentActiveCallId?: string;
 
   private setupCallRingListener() {
@@ -561,6 +563,13 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
       token: options.token,
     });
 
+    // Store current user data
+    this.currentUser = {
+      userId: options.userId,
+      name: options.name,
+      imageURL: options.imageURL,
+    };
+
     this.magicDivId = options.magicDivId;
     this.setupCallRingListener();
 
@@ -579,6 +588,7 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
 
     await this.client.disconnectUser();
     this.client = undefined;
+    this.currentUser = undefined;
     this.currentCall = undefined;
     return { success: true };
   }
@@ -838,5 +848,23 @@ export class StreamCallWeb extends WebPlugin implements StreamCallPlugin {
 
   async getDynamicStreamVideoApikey(): Promise<DynamicApiKeyResponse> {
     throw new Error('getDynamicStreamVideoApikey is not implemented on web platform');
+  }
+
+  async getCurrentUser(): Promise<CurrentUserResponse> {
+    if (this.currentUser && this.client) {
+      return {
+        userId: this.currentUser.userId,
+        name: this.currentUser.name,
+        imageURL: this.currentUser.imageURL || '',
+        isLoggedIn: true,
+      };
+    } else {
+      return {
+        userId: '',
+        name: '',
+        imageURL: '',
+        isLoggedIn: false,
+      };
+    }
   }
 }

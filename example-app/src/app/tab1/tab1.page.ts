@@ -118,16 +118,29 @@ export class Tab1Page {
   }
 
   private async loadStoredUser() {
-    const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
-      this.currentUser = JSON.parse(storedUser);
-      if (this.currentUser) {
-        if (this.currentUser.teams && this.currentUser.teams.length > 0) {
-          await this.login(this.currentUser.userId, this.currentUser.teams[0]);
-        } else {
-          await this.login(this.currentUser.userId);
-        }
+    try {
+      const currentUser = await StreamCall.getCurrentUser();
+      console.log('loadStoredUser: getCurrentUser result:', currentUser);
+      
+      if (currentUser.isLoggedIn) {
+        this.currentUser = {
+          userId: currentUser.userId,
+          name: currentUser.name,
+          imageURL: currentUser.imageURL || '',
+          teams: [] // Teams will be populated from server response if needed
+        };
+        
+        // Set current user ID in AppComponent for filtering
+        this.appComponent.setCurrentUserId(currentUser.userId);
+        
+        console.log('loadStoredUser: User data loaded from native storage, user should already be logged in');
+        await this.presentToast('User session restored', 'success');
+      } else {
+        console.log('loadStoredUser: No logged in user found in native storage');
       }
+    } catch (error) {
+      console.error('Failed to load stored user:', error);
+      await this.presentToast('Failed to restore user session', 'danger');
     }
   }
 
@@ -169,7 +182,6 @@ export class Tab1Page {
         imageURL: response.imageURL,
         teams: response.teams,
       };
-      localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
       
       // Set current user ID in AppComponent for filtering
       this.appComponent.setCurrentUserId(response.userId);
@@ -392,7 +404,6 @@ export class Tab1Page {
     try {
       await StreamCall.logout();
       this.currentUser = null;
-      localStorage.removeItem('currentUser');
       
       // Clear current user ID in AppComponent
       this.appComponent.setCurrentUserId('');
@@ -420,6 +431,24 @@ export class Tab1Page {
       position: 'bottom'
     });
     await toast.present();
+  }
+
+  async getUserInfo() {
+    try {
+      const userInfo = await StreamCall.getCurrentUser();
+      const message = `User Info: ${JSON.stringify(userInfo, null, 2)}`;
+      
+      const alert = await this.alertController.create({
+        header: 'User Information',
+        message: `<pre style="font-size: 12px; text-align: left;">${message}</pre>`,
+        buttons: ['OK']
+      });
+      
+      await alert.present();
+    } catch (error) {
+      console.error('Failed to get user info:', error);
+      await this.presentToast('Failed to get user info', 'danger');
+    }
   }
 
 }

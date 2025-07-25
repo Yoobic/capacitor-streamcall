@@ -31,7 +31,8 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "switchCamera", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getCallInfo", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setDynamicStreamVideoApikey", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "getDynamicStreamVideoApikey", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "getDynamicStreamVideoApikey", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getCurrentUser", returnType: CAPPluginReturnPromise)
     ]
 
     private enum State {
@@ -103,9 +104,12 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     override public func load() {
+        print("StreamCallPlugin: load() called")
+        
         // Read API key from Info.plist
         if let apiKey = Bundle.main.object(forInfoDictionaryKey: "CAPACITOR_STREAM_VIDEO_APIKEY") as? String {
             self.apiKey = apiKey
+            print("StreamCallPlugin: API key loaded from Info.plist")
         }
         if self.apiKey == nil {
             fatalError("Cannot get apikey")
@@ -113,10 +117,13 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         
         // Check if we have a logged in user for handling incoming calls
         if let credentials = SecureUserRepository.shared.loadCurrentUser() {
-            print("Loading user for StreamCallPlugin: \(credentials.user.name)")
+            print("StreamCallPlugin: Found stored credentials during load() for user: \(credentials.user.name)")
             DispatchQueue.global(qos: .userInitiated).async {
+                print("StreamCallPlugin: Calling initializeStreamVideo() from load() for user: \(credentials.user.id)")
                 self.initializeStreamVideo()
             }
+        } else {
+            print("StreamCallPlugin: No stored credentials found during load()")
         }
 
         // Create and set the navigation delegate
@@ -1067,13 +1074,14 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         state = .initializing
 
         // Try to get user credentials from repository
+        print("StreamCallPlugin: initializeStreamVideo - Checking for saved credentials...")
         guard let savedCredentials = SecureUserRepository.shared.loadCurrentUser(),
               let apiKey = getEffectiveApiKey() else {
-            print("No saved credentials or API key found, skipping initialization")
+            print("StreamCallPlugin: initializeStreamVideo - No saved credentials or API key found, skipping initialization")
             state = .notInitialized
             return
         }
-        print("Initializing with saved credentials for user: \(savedCredentials.user.name)")
+        print("StreamCallPlugin: initializeStreamVideo - Found saved credentials for user: \(savedCredentials.user.name), proceeding with initialization")
 
         LogConfig.level = .debug
         self.streamVideo = StreamVideo(
@@ -1082,12 +1090,14 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             token: UserToken(stringLiteral: savedCredentials.tokenValue),
             pushNotificationsConfig: self.pushNotificationsConfig ?? .default,
             tokenProvider: {completion in
+                print("StreamCallPlugin: Token provider called for token refresh")
                 guard let savedCredentials = SecureUserRepository.shared.loadCurrentUser() else {
-                    print("No saved credentials or API key found, cannot refresh token")
+                    print("StreamCallPlugin: Token provider - No saved credentials found, failing token refresh")
                     
                     completion(.failure(NSError(domain: "No saved credentials or API key found, cannot refresh token", code: 0, userInfo: nil)))
                     return
                 }
+                print("StreamCallPlugin: Token provider - Successfully providing token for user: \(savedCredentials.user.id)")
                 completion(.success(UserToken(stringLiteral: savedCredentials.tokenValue)))
             }
         )
@@ -1473,6 +1483,54 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         } catch {
             print("Error getting dynamic API key: \(error)")
             call.reject("Failed to get API key: \(error.localizedDescription)")
+        }
+    }
+    
+    @objc func getCurrentUser(_ call: CAPPluginCall) {
+        print("StreamCallPlugin: getCurrentUser called")
+        print("StreamCallPlugin: getCurrentUser: Current state: \(state), StreamVideo initialized: \(streamVideo != nil)")
+        
+        do {
+            if let savedCredentials = SecureUserRepository.shared.loadCurrentUser() {
+                print("StreamCallPlugin: getCurrentUser: Found saved credentials for user: \(savedCredentials.user.id)")
+                
+                // Check if StreamVideo session matches the stored credentials
+                let isStreamVideoActive = streamVideo != nil && state == .initialized
+                let streamVideoUserId = streamVideo?.user.id
+                let credentialsMatch = streamVideoUserId == savedCredentials.user.id
+                
+                print("StreamCallPlugin: getCurrentUser: StreamVideo active: \(isStreamVideoActive), StreamVideo user: \(streamVideoUserId ?? "nil"), Credentials match: \(credentialsMatch)")
+                
+                // If credentials exist but StreamVideo session is not active, try to reinitialize
+                if !isStreamVideoActive || !credentialsMatch {
+                    print("StreamCallPlugin: getCurrentUser: StreamVideo session not active or user mismatch, attempting to reinitialize...")
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        self.initializeStreamVideo()
+                    }
+                }
+                
+                let result: [String: Any] = [
+                    "userId": savedCredentials.user.id,
+                    "name": savedCredentials.user.name,
+                    "imageURL": savedCredentials.user.imageURL?.absoluteString ?? "",
+                    "isLoggedIn": true
+                ]
+                print("StreamCallPlugin: getCurrentUser: Returning \(result)")
+                call.resolve(result)
+            } else {
+                print("StreamCallPlugin: getCurrentUser: No saved credentials found")
+                let result: [String: Any] = [
+                    "userId": "",
+                    "name": "",
+                    "imageURL": "",
+                    "isLoggedIn": false
+                ]
+                print("StreamCallPlugin: getCurrentUser: Returning \(result)")
+                call.resolve(result)
+            }
+        } catch {
+            print("StreamCallPlugin: getCurrentUser: Failed to get current user - \(error)")
+            call.reject("Failed to get current user: \(error.localizedDescription)")
         }
     }
             

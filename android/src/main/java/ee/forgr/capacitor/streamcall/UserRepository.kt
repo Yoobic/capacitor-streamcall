@@ -50,6 +50,8 @@ class SecureUserRepository private constructor(context: Context) : UserRepositor
     }
 
     override fun save(user: UserCredentials) {
+        android.util.Log.d("SecureUserRepository", "Saving user credentials for: ${user.user.id}")
+        
         val customJson = user.user.custom?.let { customMap ->
             JSONObject().apply {
                 customMap.forEach { (key, value) ->
@@ -70,6 +72,8 @@ class SecureUserRepository private constructor(context: Context) : UserRepositor
             putString(KEY_USER, userJson.toString())
             putString(KEY_TOKEN, user.tokenValue)
         }
+        
+        android.util.Log.d("SecureUserRepository", "User credentials saved successfully for: ${user.user.id}")
     }
 
     override fun save(token: String) {
@@ -77,6 +81,8 @@ class SecureUserRepository private constructor(context: Context) : UserRepositor
     }
 
     override fun loadCurrentUser(): UserCredentials? {
+        android.util.Log.d("SecureUserRepository", "Loading current user credentials")
+        
         val userJson = sharedPreferences.getString(KEY_USER, null)
         val token = sharedPreferences.getString(KEY_TOKEN, null)
 
@@ -91,20 +97,26 @@ class SecureUserRepository private constructor(context: Context) : UserRepositor
                     role = jsonObject.optString("role"),
                     custom = ArrayMap()
                 )
-                UserCredentials(user, token)
+                val credentials = UserCredentials(user, token)
+                android.util.Log.d("SecureUserRepository", "Successfully loaded credentials for user: ${user.id}")
+                credentials
             } else {
+                android.util.Log.d("SecureUserRepository", "No stored credentials found (userJson: ${userJson != null}, token: ${token != null})")
                 null
             }
         } catch (e: Exception) {
+            android.util.Log.e("SecureUserRepository", "Error loading user credentials", e)
             e.printStackTrace()
             null
         }
     }
 
     override fun removeCurrentUser() {
+        android.util.Log.d("SecureUserRepository", "Removing current user credentials")
         sharedPreferences.edit {
             remove(KEY_USER)
             remove(KEY_TOKEN)
         }
+        android.util.Log.d("SecureUserRepository", "User credentials removed successfully")
     }
 } 

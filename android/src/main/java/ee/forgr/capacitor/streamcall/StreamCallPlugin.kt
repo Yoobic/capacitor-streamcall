@@ -200,11 +200,14 @@ class StreamCallPlugin : Plugin() {
     }
 
     override fun load() {
+        Log.d("StreamCallPlugin", "Plugin load() called")
         try {
             val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
             if (packageInfo.firstInstallTime == packageInfo.lastUpdateTime) {
                 Log.d("StreamCallPlugin", "Fresh install detected, clearing user credentials.")
                 SecureUserRepository.getInstance(context).removeCurrentUser()
+            } else {
+                Log.d("StreamCallPlugin", "App update or existing installation detected")
             }
         } catch (e: Exception) {
             Log.e("StreamCallPlugin", "Error checking for fresh install", e)
@@ -587,8 +590,8 @@ class StreamCallPlugin : Plugin() {
                 ),
                 requestPermissionOnAppLaunch = { true },
                 notificationHandler = CompatibilityStreamNotificationHandler(
-                    application = contextToUse as Application,
-                    intentResolver = CustomStreamIntentResolver(contextToUse),
+                    application = application,
+                    intentResolver = CustomStreamIntentResolver(application),
                     initialNotificationBuilderInterceptor = object : StreamNotificationBuilderInterceptors() {
                         override fun onBuildIncomingCallNotification(
                             builder: NotificationCompat.Builder,
@@ -2561,6 +2564,35 @@ class StreamCallPlugin : Plugin() {
             }
         } catch (e: Exception) {
             Log.e("StreamCallPlugin", "bringAppToForeground error", e)
+        }
+    }
+
+    @PluginMethod
+    fun getCurrentUser(call: PluginCall) {
+        Log.d("StreamCallPlugin", "getCurrentUser called")
+        try {
+            val savedCredentials = SecureUserRepository.getInstance(context).loadCurrentUser()
+            val ret = JSObject()
+            
+            if (savedCredentials != null) {
+                Log.d("StreamCallPlugin", "getCurrentUser: Found saved credentials for user: ${savedCredentials.user.id}")
+                ret.put("userId", savedCredentials.user.id)
+                ret.put("name", savedCredentials.user.name ?: "")
+                ret.put("imageURL", savedCredentials.user.image ?: "")
+                ret.put("isLoggedIn", true)
+            } else {
+                Log.d("StreamCallPlugin", "getCurrentUser: No saved credentials found")
+                ret.put("userId", "")
+                ret.put("name", "")
+                ret.put("imageURL", "")
+                ret.put("isLoggedIn", false)
+            }
+            
+            Log.d("StreamCallPlugin", "getCurrentUser: Returning ${ret}")
+            call.resolve(ret)
+        } catch (e: Exception) {
+            Log.e("StreamCallPlugin", "getCurrentUser: Failed to get current user", e)
+            call.reject("Failed to get current user", e)
         }
     }
 
