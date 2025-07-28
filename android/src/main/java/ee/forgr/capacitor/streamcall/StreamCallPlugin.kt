@@ -48,13 +48,13 @@ import io.getstream.android.push.firebase.FirebasePushDeviceGenerator
 import io.getstream.android.push.permissions.ActivityLifecycleCallbacks
 import io.getstream.android.video.generated.models.CallAcceptedEvent
 import io.getstream.android.video.generated.models.CallCreatedEvent
-import io.getstream.android.video.generated.models.CallEndedEvent
 import io.getstream.android.video.generated.models.CallMissedEvent
 import io.getstream.android.video.generated.models.CallRejectedEvent
 import io.getstream.android.video.generated.models.CallRingEvent
 import io.getstream.android.video.generated.models.CallSessionEndedEvent
 import io.getstream.android.video.generated.models.CallSessionParticipantLeftEvent
 import io.getstream.android.video.generated.models.CallSessionStartedEvent
+import io.getstream.android.video.generated.models.CallSessionParticipantCountsUpdatedEvent
 import io.getstream.android.video.generated.models.VideoEvent
 import io.getstream.video.android.compose.theme.VideoTheme
 import io.getstream.video.android.compose.ui.components.call.activecall.CallContent
@@ -77,6 +77,9 @@ import io.getstream.video.android.core.notifications.handlers.CompatibilityStrea
 import io.getstream.video.android.core.notifications.handlers.StreamNotificationBuilderInterceptors
 import androidx.core.app.NotificationCompat
 import android.app.PendingIntent
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import io.getstream.video.android.core.sounds.RingingConfig
 import io.getstream.video.android.core.sounds.toSounds
 import io.getstream.video.android.model.Device
@@ -92,6 +95,8 @@ import androidx.core.net.toUri
 import org.json.JSONObject
 import androidx.core.graphics.toColorInt
 import androidx.core.content.edit
+import io.getstream.video.android.compose.ui.components.call.renderer.LayoutType
+import io.getstream.video.android.core.socket.common.scope.user.UserId
 
 // I am not a religious pearson, but at this point, I am not sure even god himself would understand this code
 // It's a spaghetti-like, tangled, unreadable mess and frankly, I am deeply sorry for the code crimes commited in the Android impl
@@ -407,6 +412,26 @@ class StreamCallPlugin : Plugin() {
         parent.addView(barrierView, parent.indexOfChild(bridge?.webView) + 1) // Add above WebView
     }
 
+  object CallUIController {
+    val layoutType = mutableStateOf(LayoutType.GRID)
+
+    private val layouts = listOf(
+      LayoutType.GRID,
+      LayoutType.SPOTLIGHT,
+      LayoutType.DYNAMIC
+    )
+
+    fun toggleLayout() {
+      val currentIndex = layouts.indexOf(layoutType.value)
+      val nextIndex = (currentIndex + 1) % layouts.size
+      layoutType.value = layouts[nextIndex]
+    }
+
+    fun setLayout(type: LayoutType) {
+      layoutType.value = type
+    }
+  }
+
     /**
      * Centralized function to set the overlay content with call UI.
      * This handles all the common Compose UI setup for video calls.
@@ -415,7 +440,8 @@ class StreamCallPlugin : Plugin() {
         overlayView?.setContent {
             VideoTheme {
                 val activeCall = call ?: streamVideoClient?.state?.activeCall?.collectAsState()?.value
-                if (activeCall != null) {
+                var layoutType by remember { mutableStateOf(LayoutType.GRID) }
+              if (activeCall != null) {
 
                     val currentLocal by activeCall.state.me.collectAsStateWithLifecycle()
 
@@ -425,6 +451,7 @@ class StreamCallPlugin : Plugin() {
                         onBackPressed = { /* Handle back press if needed */ },
                         controlsContent = { /* Empty to disable native controls */ },
                         appBarContent = { /* Empty to disable app bar with stop call button */ },
+                        layout = CallUIController.layoutType.value,
                         videoRenderer = { videoModifier, videoCall, videoParticipant, videoStyle ->
                             ParticipantVideo(
                                 modifier = videoModifier,
@@ -504,6 +531,37 @@ class StreamCallPlugin : Plugin() {
         } catch (e: Exception) {
             call.reject("Failed to login", e)
         }
+    }
+
+    @PluginMethod
+    fun toggleViews(call: PluginCall) {
+      try {
+        // Check if there's an active call
+        val activeCall = streamVideoClient?.state?.activeCall?.value
+        if (activeCall == null) {
+          call.reject("No active call")
+          return
+        }
+
+        // Cycle through layout modes using shared state
+        val layouts = arrayOf(LayoutType.GRID, LayoutType.SPOTLIGHT, LayoutType.DYNAMIC)
+        val current = CallUIController.layoutType.value
+        val currentIndex = layouts.indexOf(current)
+        val nextIndex = (currentIndex + 1) % layouts.size
+        val nextLayout = layouts[nextIndex]
+
+        // Update shared state
+        CallUIController.layoutType.value = nextLayout
+
+        Log.d("StreamCallPlugin", "Layout toggled from ${layouts[currentIndex]} to $nextLayout")
+
+        call.resolve(JSObject().apply {
+          put("newLayout", nextLayout.name.lowercase())
+        })
+      } catch (e: Exception) {
+        Log.e("StreamCallPlugin", "Error toggling views: ${e.message}", e)
+        call.reject("Failed to toggle views: ${e.message}")
+      }
     }
 
     @PluginMethod
@@ -799,6 +857,16 @@ class StreamCallPlugin : Plugin() {
                         updateCallStatusAndNotify(callCid, "session_started")
                     }
 
+                    is CallSessionParticipantCountsUpdatedEvent -> {
+                      val data = JSObject().apply {
+                        put("callId", event.callCid)
+                        put("state", "participant_counts")
+                        put("count", streamVideoClient?.state?.activeCall?.value?.state?.participantCounts?.value?.total)
+                      }
+                      notifyListeners("callEvent", data)
+
+                    }
+
                     is CallRejectedEvent -> {
                         val userId = event.user.id
                         val callCid = event.callCid
@@ -852,24 +920,20 @@ class StreamCallPlugin : Plugin() {
                         updateCallStatusAndNotify(callCid, "accepted", userId)
                     }
 
-                    is CallEndedEvent -> {
-                        runOnMainThread {
-                            Log.d("StreamCallPlugin", "Setting overlay invisible due to CallEndedEvent for call ${event.callCid}")
-                            // Clean up call resources
-                            val callCid = event.callCid
-                            cleanupCall(callCid)
-                        }
-                        updateCallStatusAndNotify(event.callCid, "ended")
-                    }
-
                     is CallSessionEndedEvent -> {
                         runOnMainThread {
-                            Log.d("StreamCallPlugin", "Setting overlay invisible due to CallSessionEndedEvent for call ${event.callCid}. Test session: ${event.call.session?.endedAt}")
                             // Clean up call resources
                             val callCid = event.callCid
-                            cleanupCall(callCid)
+                            if (callCid == streamVideoClient?.state?.activeCall?.value?.cid) {
+                                Log.d("StreamCallPlugin", "Setting overlay invisible due to CallEndedEvent for call ${event.callCid}")
+                                cleanupCall(callCid)
+                            }
                         }
-                        updateCallStatusAndNotify(event.callCid, "left")
+                        val data = JSObject().apply {
+                            put("callId", event.callCid)
+                            put("state", "left")
+                        }
+                        notifyListeners("callEvent", data)
                     }
 
                     is ParticipantLeftEvent, is CallSessionParticipantLeftEvent -> {
@@ -1091,6 +1155,17 @@ class StreamCallPlugin : Plugin() {
                 // Accept and join call immediately - don't wait for permissions!
                 Log.d("StreamCallPlugin", "internalAcceptCall: Accepting call immediately for ${call.id}")
 
+//                val activeCall = streamVideoClient?.state?.activeCall?.value;
+//                if (activeCall?.cid?.isNotEmpty() == true && activeCall.cid != call.cid) {
+//                    val currentUserId = streamVideoClient?.userId
+//                    val createdBy = activeCall.state.createdBy.value?.id
+//                    val isCreator = createdBy == currentUserId
+//                    if (isCreator) {
+//                        activeCall.end()
+//                    } else {
+//                        activeCall.leave()
+//                    }
+//                }
                 if (!noAccept) {
                     call.accept()
                 }
@@ -1987,9 +2062,9 @@ class StreamCallPlugin : Plugin() {
     private suspend fun _endCall(): Boolean {
         val activeCall = streamVideoClient?.state?.activeCall?.value
         val ringingCall = streamVideoClient?.state?.ringingCall?.value
-        
+
         val callToEnd = activeCall ?: ringingCall
-        
+
         if (callToEnd == null) {
             Log.w("StreamCallPlugin", "Attempted to end call but no active or ringing call found")
             return false
@@ -2573,7 +2648,7 @@ class StreamCallPlugin : Plugin() {
         try {
             val savedCredentials = SecureUserRepository.getInstance(context).loadCurrentUser()
             val ret = JSObject()
-            
+
             if (savedCredentials != null) {
                 Log.d("StreamCallPlugin", "getCurrentUser: Found saved credentials for user: ${savedCredentials.user.id}")
                 ret.put("userId", savedCredentials.user.id)
@@ -2587,7 +2662,7 @@ class StreamCallPlugin : Plugin() {
                 ret.put("imageURL", "")
                 ret.put("isLoggedIn", false)
             }
-            
+
             Log.d("StreamCallPlugin", "getCurrentUser: Returning ${ret}")
             call.resolve(ret)
         } catch (e: Exception) {
