@@ -95,6 +95,7 @@ import androidx.core.net.toUri
 import org.json.JSONObject
 import androidx.core.graphics.toColorInt
 import androidx.core.content.edit
+import io.getstream.android.video.generated.models.CallEndedEvent
 import io.getstream.video.android.compose.ui.components.call.renderer.LayoutType
 import io.getstream.video.android.core.socket.common.scope.user.UserId
 
@@ -924,11 +925,12 @@ class StreamCallPlugin : Plugin() {
                         updateCallStatusAndNotify(callCid, "accepted", userId)
                     }
 
-                    is CallSessionEndedEvent -> {
+                    is CallEndedEvent -> {
                         runOnMainThread {
                             // Clean up call resources
                             val callCid = event.callCid
-                            if (callCid == streamVideoClient?.state?.activeCall?.value?.cid) {
+                            val currentCid = streamVideoClient?.state?.activeCall?.value?.cid
+                            if (callCid == currentCid || currentCid.isNullOrEmpty()) {
                                 currentCallId = callCid
                                 currentCallState = "left"
                                 Log.d("StreamCallPlugin", "Setting overlay invisible due to CallEndedEvent for call ${event.callCid}")
@@ -2668,7 +2670,7 @@ class StreamCallPlugin : Plugin() {
                 ret.put("imageURL", "")
                 ret.put("isLoggedIn", false)
             }
-            
+
             Log.d("StreamCallPlugin", "getCurrentUser: Returning $ret")
             call.resolve(ret)
         } catch (e: Exception) {
@@ -2684,15 +2686,15 @@ class StreamCallPlugin : Plugin() {
                 p.savedContext = ctx
                 p.initializeStreamVideo(ctx, app)
                 holder = WeakReference(p)
-                
+
                 // Register lifecycle callback to clean up when all activities are destroyed
                 app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
                     private var activityCount = 0
-                    
+
                     override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
                         activityCount++
                     }
-                    
+
                     override fun onActivityDestroyed(activity: Activity) {
                         activityCount--
                         // Only clear holder when no activities remain AND no active/ringing calls
@@ -2703,14 +2705,14 @@ class StreamCallPlugin : Plugin() {
                                 val hasRinging = client?.state?.ringingCall?.value != null
                                 hasActive || hasRinging
                             } ?: false
-                            
+
                             if (!hasActiveCalls) {
                                 holder = null
                                 app.unregisterActivityLifecycleCallbacks(this)
                             }
                         }
                     }
-                    
+
                     override fun onActivityStarted(activity: Activity) {}
                     override fun onActivityResumed(activity: Activity) {}
                     override fun onActivityPaused(activity: Activity) {}
@@ -2720,7 +2722,7 @@ class StreamCallPlugin : Plugin() {
             }
         }
         private var holder: WeakReference<StreamCallPlugin>? = null
-        
+
         // Constants for SharedPreferences
         private const val API_KEY_PREFS_NAME = "stream_video_api_key_prefs"
         private const val DYNAMIC_API_KEY_PREF = "dynamic_api_key"
