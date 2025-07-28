@@ -1,6 +1,5 @@
 package ee.forgr.capacitor.streamcall
 
-import TouchInterceptWrapper
 import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
@@ -25,6 +24,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.FrameLayout
+import java.lang.ref.WeakReference
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -208,11 +208,15 @@ class StreamCallPlugin : Plugin() {
         Log.d("StreamCallPlugin", "Plugin load() called")
         try {
             val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-            if (packageInfo.firstInstallTime == packageInfo.lastUpdateTime) {
-                Log.d("StreamCallPlugin", "Fresh install detected, clearing user credentials.")
+            // More robust fresh install detection - only clear credentials if:
+            // 1. It's actually a fresh install (first == last install time)
+            // 2. AND we don't already have stored credentials (to avoid clearing on restart)
+            val savedCredentials = SecureUserRepository.getInstance(context).loadCurrentUser()
+            if (packageInfo.firstInstallTime == packageInfo.lastUpdateTime && savedCredentials == null) {
+                Log.d("StreamCallPlugin", "True fresh install detected (no existing credentials), clearing any residual user credentials.")
                 SecureUserRepository.getInstance(context).removeCurrentUser()
             } else {
-                Log.d("StreamCallPlugin", "App update or existing installation detected")
+                Log.d("StreamCallPlugin", "App restart or existing installation detected, preserving credentials")
             }
         } catch (e: Exception) {
             Log.e("StreamCallPlugin", "Error checking for fresh install", e)
@@ -2662,8 +2666,8 @@ class StreamCallPlugin : Plugin() {
                 ret.put("imageURL", "")
                 ret.put("isLoggedIn", false)
             }
-
-            Log.d("StreamCallPlugin", "getCurrentUser: Returning ${ret}")
+            
+            Log.d("StreamCallPlugin", "getCurrentUser: Returning $ret")
             call.resolve(ret)
         } catch (e: Exception) {
             Log.e("StreamCallPlugin", "getCurrentUser: Failed to get current user", e)
@@ -2673,15 +2677,48 @@ class StreamCallPlugin : Plugin() {
 
     companion object {
         @JvmStatic fun preLoadInit(ctx: Context, app: Application) {
-            holder ?: run {
+            holder?.get() ?: run {
                 val p = StreamCallPlugin()
                 p.savedContext = ctx
                 p.initializeStreamVideo(ctx, app)
-                holder = p
+                holder = WeakReference(p)
+                
+                // Register lifecycle callback to clean up when all activities are destroyed
+                app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
+                    private var activityCount = 0
+                    
+                    override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
+                        activityCount++
+                    }
+                    
+                    override fun onActivityDestroyed(activity: Activity) {
+                        activityCount--
+                        // Only clear holder when no activities remain AND no active/ringing calls
+                        if (activityCount <= 0) {
+                            val hasActiveCalls = holder?.get()?.let { plugin ->
+                                val client = plugin.streamVideoClient
+                                val hasActive = client?.state?.activeCall?.value != null
+                                val hasRinging = client?.state?.ringingCall?.value != null
+                                hasActive || hasRinging
+                            } ?: false
+                            
+                            if (!hasActiveCalls) {
+                                holder = null
+                                app.unregisterActivityLifecycleCallbacks(this)
+                            }
+                        }
+                    }
+                    
+                    override fun onActivityStarted(activity: Activity) {}
+                    override fun onActivityResumed(activity: Activity) {}
+                    override fun onActivityPaused(activity: Activity) {}
+                    override fun onActivityStopped(activity: Activity) {}
+                    override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
+                })
             }
         }
-        private var holder: StreamCallPlugin? = null
-
+        private var holder: WeakReference<StreamCallPlugin>? = null
+        
         // Constants for SharedPreferences
         private const val API_KEY_PREFS_NAME = "stream_video_api_key_prefs"
         private const val DYNAMIC_API_KEY_PREF = "dynamic_api_key"

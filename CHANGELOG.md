@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.94](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.93...0.0.94) (2025-07-25)
+
+### [0.0.93](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.92...0.0.93) (2025-07-25)
+
+### [0.0.92](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.91...0.0.92) (2025-07-25)
+
+
+### Bug Fixes
+
+* add iPad support for touch events in TouchInterceptView ([6458a4b](https://github.com/Cap-go/capacitor-streamcall/commit/6458a4b009945c7584f9c9ea21f4d663fa41a25b))
+
+### [0.0.91](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.90...0.0.91) (2025-07-25)
+
+
+### Features
+
+* enhance fresh install detection and manage activity lifecycle in StreamCallPlugin ([2a5ef5b](https://github.com/Cap-go/capacitor-streamcall/commit/2a5ef5b00185b51705a7b7cd090ce327ea455508))
+
 ### [0.0.90](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.89...0.0.90) (2025-07-25)
 
 ### [0.0.89](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.88...0.0.89) (2025-07-25)

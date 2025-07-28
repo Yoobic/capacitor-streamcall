@@ -1,3 +1,7 @@
+package ee.forgr.capacitor.streamcall
+
+import android.content.Context
+import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.ViewGroup
 import androidx.coordinatorlayout.widget.CoordinatorLayout
@@ -5,10 +9,15 @@ import android.util.Log
 import androidx.core.view.isNotEmpty
 import androidx.core.view.isVisible
 
-class TouchInterceptWrapper(private val originalViewGroup: ViewGroup) : CoordinatorLayout(
-    originalViewGroup.context
-) {
-    init {
+class TouchInterceptWrapper : CoordinatorLayout {
+    
+    constructor(context: Context) : super(context)
+    
+    constructor(context: Context, attrs: AttributeSet?) : super(context, attrs)
+    
+    constructor(context: Context, attrs: AttributeSet?, defStyleAttr: Int) : super(context, attrs, defStyleAttr)
+    
+    constructor(originalViewGroup: ViewGroup) : super(originalViewGroup.context) {
         // Copy layout parameters and children
         layoutParams = originalViewGroup.layoutParams
         while (originalViewGroup.isNotEmpty()) {
