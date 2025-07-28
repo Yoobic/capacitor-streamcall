@@ -907,7 +907,7 @@ class StreamCallPlugin : Plugin() {
                         checkAllParticipantsResponded(callCid)
                     }
 
-                    is CallAcceptedEvent -> {
+                    is CallAcceptedEvent ->  {
                         val userId = event.user.id
                         val callCid = event.callCid
 
@@ -929,6 +929,8 @@ class StreamCallPlugin : Plugin() {
                             // Clean up call resources
                             val callCid = event.callCid
                             if (callCid == streamVideoClient?.state?.activeCall?.value?.cid) {
+                                currentCallId = callCid
+                                currentCallState = "left"
                                 Log.d("StreamCallPlugin", "Setting overlay invisible due to CallEndedEvent for call ${event.callCid}")
                                 cleanupCall(callCid)
                             }
@@ -1159,17 +1161,17 @@ class StreamCallPlugin : Plugin() {
                 // Accept and join call immediately - don't wait for permissions!
                 Log.d("StreamCallPlugin", "internalAcceptCall: Accepting call immediately for ${call.id}")
 
-//                val activeCall = streamVideoClient?.state?.activeCall?.value;
-//                if (activeCall?.cid?.isNotEmpty() == true && activeCall.cid != call.cid) {
-//                    val currentUserId = streamVideoClient?.userId
-//                    val createdBy = activeCall.state.createdBy.value?.id
-//                    val isCreator = createdBy == currentUserId
-//                    if (isCreator) {
-//                        activeCall.end()
-//                    } else {
-//                        activeCall.leave()
-//                    }
-//                }
+                val activeCall = streamVideoClient?.state?.activeCall?.value;
+                if (activeCall?.cid?.isNotEmpty() == true && activeCall.cid != call.cid) {
+                    val currentUserId = streamVideoClient?.userId
+                    val createdBy = activeCall.state.createdBy.value?.id
+                    val isCreator = createdBy == currentUserId
+                    if (isCreator) {
+                        activeCall.end()
+                    } else {
+                        activeCall.leave()
+                    }
+                }
                 if (!noAccept) {
                     call.accept()
                 }
