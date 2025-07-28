@@ -237,7 +237,6 @@ class StreamCallPlugin : Plugin() {
         setupViews()
         super.load()
         checkPermissions(this.callIsAudioOnly)
-
     }
 
     @OptIn(DelicateCoroutinesApi::class)
@@ -929,12 +928,13 @@ class StreamCallPlugin : Plugin() {
                         runOnMainThread {
                             // Clean up call resources
                             val callCid = event.callCid
-                            val currentCid = streamVideoClient?.state?.activeCall?.value?.cid
-                            if (callCid == currentCid || currentCid.isNullOrEmpty()) {
+                            if (callCid == currentCallId || currentCallId.isNullOrEmpty()) {
                                 currentCallId = callCid
                                 currentCallState = "left"
                                 Log.d("StreamCallPlugin", "Setting overlay invisible due to CallEndedEvent for call ${event.callCid}")
-                                cleanupCall(callCid)
+                                if (currentCallId.isNullOrEmpty()) {
+                                    cleanupCall(callCid)
+                                }
                             }
                         }
                         val data = JSObject().apply {
