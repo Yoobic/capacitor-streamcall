@@ -97,6 +97,7 @@ import androidx.core.graphics.toColorInt
 import androidx.core.content.edit
 import io.getstream.android.video.generated.models.CallEndedEvent
 import io.getstream.video.android.compose.ui.components.call.renderer.LayoutType
+import io.getstream.video.android.core.events.CallEndedSfuEvent
 import io.getstream.video.android.core.socket.common.scope.user.UserId
 
 // I am not a religious pearson, but at this point, I am not sure even god himself would understand this code
@@ -773,6 +774,9 @@ class StreamCallPlugin : Plugin() {
                     is CallSessionEndedEvent -> event.callCid
                     is CallCreatedEvent -> event.callCid
                     is CallEndedEvent -> event.callCid
+                    is ParticipantLeftEvent -> event.callCid
+                    is CallEndedSfuEvent -> currentCallId
+                    is CallSessionParticipantLeftEvent -> event.callCid
                     is CallSessionParticipantCountsUpdatedEvent -> event.callCid
                     // Add other call-related events as needed
                     else -> null
@@ -819,6 +823,7 @@ class StreamCallPlugin : Plugin() {
 //                            }
 //                        }
 //                    }
+
                     // Handle CallCreatedEvent differently - only log it but don't try to access members yet
                     is CallCreatedEvent -> {
                         val callCid = event.callCid
@@ -910,6 +915,26 @@ class StreamCallPlugin : Plugin() {
                         // Check if all participants have responded
                         checkAllParticipantsResponded(callCid)
                     }
+
+                    is CallEndedSfuEvent -> {
+                        if (
+                            currentCallId.isNotEmpty() &&
+                            currentActiveCall?.state?.endedAt?.value != null
+                        ) {
+                            runOnMainThread {
+                                currentCallId = ""
+                                currentCallState = "left"
+                                currentActiveCall = null;
+                                cleanupCall(currentCallId)
+                            }
+                            val data = JSObject().apply {
+                                put("callId", currentCallId)
+                                put("state", "left")
+                            }
+                            notifyListeners("callEvent", data)
+                        }
+                    }
+
 
                     is CallMissedEvent -> {
                         val userId = event.user.id
