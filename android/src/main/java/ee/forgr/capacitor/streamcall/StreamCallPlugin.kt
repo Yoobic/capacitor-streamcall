@@ -605,8 +605,17 @@ class StreamCallPlugin : Plugin() {
                             callerName: String?,
                             shouldHaveContentIntent: Boolean
                         ): NotificationCompat.Builder {
-                            return builder.setContentIntent(fullScreenPendingIntent)
-                                .setFullScreenIntent(fullScreenPendingIntent, true)
+                            val keyguardManager = application.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+                            val isLocked = keyguardManager.isKeyguardLocked
+                            
+                            return if (isLocked) {
+                                // Only full-screen intent when locked to avoid double notification
+                                builder.setFullScreenIntent(fullScreenPendingIntent, true)
+                            } else {
+                                // Both intents when unlocked for clickable notification
+                                builder.setContentIntent(fullScreenPendingIntent)
+                                    .setFullScreenIntent(fullScreenPendingIntent, true)
+                            }
                         }
                     }
                 )
