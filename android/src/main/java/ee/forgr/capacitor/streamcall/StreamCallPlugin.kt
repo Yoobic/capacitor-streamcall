@@ -255,6 +255,8 @@ class StreamCallPlugin : Plugin() {
             activity?.runOnUiThread {
                 val cid = intent.streamCallId(NotificationHandler.INTENT_EXTRA_CALL_CID)
                 Log.d("StreamCallPlugin", "handleOnNewIntent: INCOMING_CALL - Extracted cid: $cid")
+                // We need to make sure the activity is visible on locked screen in such case
+                changeActivityAsVisibleOnLockScreen(this@StreamCallPlugin.activity, true)
                 if (cid != null) {
                     Log.d("StreamCallPlugin", "handleOnNewIntent: INCOMING_CALL - cid is not null, processing.")
                     val call = streamVideoClient?.call(id = cid.id, type = cid.type)
