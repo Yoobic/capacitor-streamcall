@@ -1087,7 +1087,8 @@ class StreamCallPlugin : Plugin() {
 //                                updateCallStatusAndNotify(call.cid, if (isEnabled) "microphone_enabled" else "microphone_disabled")
 //                            }
 //                        }
-                    } ?: run {
+                    }
+                    if (call == null) {
                         if (currentActiveCall?.cid.isNullOrEmpty()) {
                             cameraStatusJob?.cancel()
                             microphoneStatusJob?.cancel()
@@ -1095,9 +1096,9 @@ class StreamCallPlugin : Plugin() {
                             updateCallStatusAndNotify("", "left")
                             changeActivityAsVisibleOnLockScreen(this@StreamCallPlugin.activity, false)
                         }
-
                     }
                 }
+
             }
         }
     }
