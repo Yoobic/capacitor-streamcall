@@ -126,6 +126,7 @@ class StreamCallPlugin : Plugin() {
     private var currentCallId: String = ""
     private var currentCallType: String = ""
     private var currentCallState: String = ""
+    private var currentActiveCall: Call? = null;
 
     // Add a field for the fragment
     private var callFragment: StreamCallFragment? = null
@@ -758,42 +759,56 @@ class StreamCallPlugin : Plugin() {
         // Subscribe to call events
         streamVideoClient?.let { client ->
             eventSubscription = client.subscribe { event: VideoEvent ->
+
+                val eventCid = when (event) {
+                    is CallSessionEndedEvent -> event.callCid
+                    is CallCreatedEvent -> event.callCid
+                    is CallSessionParticipantCountsUpdatedEvent -> event.callCid
+                    // Add other call-related events as needed
+                    else -> null
+                }
+                val currentCid = currentActiveCall?.cid
+
+                if (!currentCid.isNullOrEmpty() && currentCid != eventCid) {
+                    Log.v("StreamCallPlugin", "Ignore event ${event.getEventType()} $event as already on call ${currentActiveCall?.cid}")
+                    return@subscribe
+                }
                 Log.v("StreamCallPlugin", "Received an event ${event.getEventType()} $event")
                 when (event) {
-                    is CallRingEvent -> {
-                        // Extract caller information from the ringing call
-                        kotlinx.coroutines.GlobalScope.launch {
-                            try {
-                                val callCid = event.callCid
-                                val callIdParts = callCid.split(":")
-                                if (callIdParts.size >= 2) {
-                                    val callType = callIdParts[0]
-                                    val callId = callIdParts[1]
-                                    val call = streamVideoClient?.call(type = callType, id = callId)
-                                    val callInfo = call?.get()
-                                    val callerInfo = callInfo?.getOrNull()?.call?.createdBy
-
-                                    // Pass caller information to the ringing event
-                                    if (callerInfo != null) {
-                                        val caller = mapOf(
-                                            "userId" to callerInfo.id,
-                                            "name" to (callerInfo.name ?: ""),
-                                            "imageURL" to (callerInfo.image ?: ""),
-                                            "role" to (callerInfo.role)
-                                        )
-                                        updateCallStatusAndNotify(event.callCid, "ringing", null, null, null, caller)
-                                    } else {
-                                        updateCallStatusAndNotify(event.callCid, "ringing")
-                                    }
-                                } else {
-                                    updateCallStatusAndNotify(event.callCid, "ringing")
-                                }
-                            } catch (e: Exception) {
-                                Log.e("StreamCallPlugin", "Error getting caller info for ringing event", e)
-                                updateCallStatusAndNotify(event.callCid, "ringing")
-                            }
-                        }
-                    }
+//                    is CallRingEvent -> {
+//                        // Extract caller information from the ringing call
+//                        kotlinx.coroutines.GlobalScope.launch {
+//                            try {
+//                                val callCid = event.callCid
+//                                val callIdParts = callCid.split(":")
+//                                if (callIdParts.size >= 2) {
+//                                    val callType = callIdParts[0]
+//                                    val callId = callIdParts[1]
+//                                    val call = streamVideoClient?.call(type = callType, id = callId)
+//                                    val callInfo = call?.get()
+//                                    val callerInfo = callInfo?.getOrNull()?.call?.createdBy
+//
+//                                    // Pass caller information to the ringing event
+//                                    if (callerInfo != null) {
+//                                        val caller = mapOf(
+//                                            "userId" to callerInfo.id,
+//                                            "name" to (callerInfo.name ?: ""),
+//                                            "imageURL" to (callerInfo.image ?: ""),
+//                                            "role" to (callerInfo.role)
+//                                        )
+//                                        updateCallStatusAndNotify(event.callCid, "ringing", null, null, null, caller)
+//                                    } else {
+//                                        updateCallStatusAndNotify(event.callCid, "ringing")
+//                                    }
+//                                } else {
+//                                    updateCallStatusAndNotify(event.callCid, "ringing")
+//                                }
+//                            } catch (e: Exception) {
+//                                Log.e("StreamCallPlugin", "Error getting caller info for ringing event", e)
+//                                updateCallStatusAndNotify(event.callCid, "ringing")
+//                            }
+//                        }
+//                    }
                     // Handle CallCreatedEvent differently - only log it but don't try to access members yet
                     is CallCreatedEvent -> {
                         val callCid = event.callCid
@@ -901,8 +916,13 @@ class StreamCallPlugin : Plugin() {
                             moveAllActivitiesToBackgroundOrKill(context)
                         }
 
-                        updateCallStatusAndNotify(callCid, "missed", userId)
+//                        updateCallStatusAndNotify(callCid, "missed", userId)
 
+                        val data = JSObject().apply {
+                            put("callId", event.callCid)
+                            put("state", "missed")
+                        }
+                        notifyListeners("callEvent", data)
                         // Check if all participants have responded
                         checkAllParticipantsResponded(callCid)
                     }
@@ -924,17 +944,15 @@ class StreamCallPlugin : Plugin() {
                         updateCallStatusAndNotify(callCid, "accepted", userId)
                     }
 
-                    is CallEndedEvent -> {
+                    is CallSessionEndedEvent -> {
                         runOnMainThread {
                             // Clean up call resources
                             val callCid = event.callCid
-                            if (callCid == currentCallId || currentCallId.isNullOrEmpty()) {
-                                currentCallId = callCid
+                            if (callCid == currentCallId || currentCallId.isEmpty() ) {
+                                currentCallId = ""
                                 currentCallState = "left"
-                                Log.d("StreamCallPlugin", "Setting overlay invisible due to CallEndedEvent for call ${event.callCid}")
-                                if (currentCallId.isNullOrEmpty()) {
-                                    cleanupCall(callCid)
-                                }
+                                currentActiveCall = null;
+                                cleanupCall(callCid)
                             }
                         }
                         val data = JSObject().apply {
@@ -996,12 +1014,12 @@ class StreamCallPlugin : Plugin() {
                         }
                     }
 
-                    else -> {
-                        updateCallStatusAndNotify(
-                            streamVideoClient?.state?.activeCall?.value?.cid ?: "",
-                            event.getEventType()
-                        )
-                    }
+//                    else -> {
+//                        updateCallStatusAndNotify(
+//                            streamVideoClient?.state?.activeCall?.value?.cid ?: "",
+//                            event.getEventType()
+//                        )
+//                    }
                 }
             }
 
@@ -1027,26 +1045,29 @@ class StreamCallPlugin : Plugin() {
                         microphoneStatusJob?.cancel()
 
                         // Listen to camera status changes
-                        cameraStatusJob = kotlinx.coroutines.GlobalScope.launch {
-                            call.camera.isEnabled.collect { isEnabled ->
-                                Log.d("StreamCallPlugin", "Camera status changed for call ${call.id}: enabled=$isEnabled")
-                                updateCallStatusAndNotify(call.cid, if (isEnabled) "camera_enabled" else "camera_disabled")
-                            }
-                        }
+//                        cameraStatusJob = kotlinx.coroutines.GlobalScope.launch {
+//                            call.camera.isEnabled.collect { isEnabled ->
+//                                Log.d("StreamCallPlugin", "Camera status changed for call ${call.id}: enabled=$isEnabled")
+//                                updateCallStatusAndNotify(call.cid, if (isEnabled) "camera_enabled" else "camera_disabled")
+//                            }
+//                        }
 
                         // Listen to microphone status changes
-                        microphoneStatusJob = kotlinx.coroutines.GlobalScope.launch {
-                            call.microphone.isEnabled.collect { isEnabled ->
-                                Log.d("StreamCallPlugin", "Microphone status changed for call ${call.id}: enabled=$isEnabled")
-                                updateCallStatusAndNotify(call.cid, if (isEnabled) "microphone_enabled" else "microphone_disabled")
-                            }
-                        }
+//                        microphoneStatusJob = kotlinx.coroutines.GlobalScope.launch {
+//                            call.microphone.isEnabled.collect { isEnabled ->
+//                                Log.d("StreamCallPlugin", "Microphone status changed for call ${call.id}: enabled=$isEnabled")
+//                                updateCallStatusAndNotify(call.cid, if (isEnabled) "microphone_enabled" else "microphone_disabled")
+//                            }
+//                        }
                     } ?: run {
-                        cameraStatusJob?.cancel()
-                        microphoneStatusJob?.cancel()
-                        // Notify that call has ended using our helper
-                        updateCallStatusAndNotify("", "left")
-                        changeActivityAsVisibleOnLockScreen(this@StreamCallPlugin.activity, false)
+                        if (currentActiveCall?.cid.isNullOrEmpty()) {
+                            cameraStatusJob?.cancel()
+                            microphoneStatusJob?.cancel()
+                            // Notify that call has ended using our helper
+                            updateCallStatusAndNotify("", "left")
+                            changeActivityAsVisibleOnLockScreen(this@StreamCallPlugin.activity, false)
+                        }
+
                     }
                 }
             }
@@ -1163,7 +1184,7 @@ class StreamCallPlugin : Plugin() {
                 // Accept and join call immediately - don't wait for permissions!
                 Log.d("StreamCallPlugin", "internalAcceptCall: Accepting call immediately for ${call.id}")
 
-                val activeCall = streamVideoClient?.state?.activeCall?.value;
+                val activeCall = streamVideoClient?.state?.activeCall?.value ?: currentActiveCall
                 if (activeCall?.cid?.isNotEmpty() == true && activeCall.cid != call.cid) {
                     val currentUserId = streamVideoClient?.userId
                     val createdBy = activeCall.state.createdBy.value?.id
@@ -1182,10 +1203,11 @@ class StreamCallPlugin : Plugin() {
                 call.join()
                 Log.d("StreamCallPlugin", "internalAcceptCall: call.join() completed for call ${call.id}")
                 streamVideoClient?.state?.setActiveCall(call)
+                currentActiveCall = call;
                 Log.d("StreamCallPlugin", "internalAcceptCall: setActiveCall completed for call ${call.id}")
 
                 // Notify that call has started using helper
-                updateCallStatusAndNotify(call.id, "joined")
+                updateCallStatusAndNotify(call.cid, "joined")
                 Log.d("StreamCallPlugin", "internalAcceptCall: updateCallStatusAndNotify(joined) called for ${call.id}")
 
                 // Show overlay view with the active call and make webview transparent
@@ -2509,7 +2531,7 @@ class StreamCallPlugin : Plugin() {
 
     // Helper method to update call status and notify listeners
     private fun updateCallStatusAndNotify(callId: String, state: String, userId: String? = null, reason: String? = null, members: List<Map<String, Any>>? = null, caller: Map<String, Any>? = null) {
-        Log.d("StreamCallPlugin", "updateCallStatusAndNotify called: callId=$callId, state=$state, userId=$userId, reason=$reason")
+            Log.d("StreamCallPlugin", "updateCallStatusAndNotify called: callId=$callId, state=$state, userId=$userId, reason=$reason")
         // Update stored call info
         currentCallId = callId
         currentCallState = state
