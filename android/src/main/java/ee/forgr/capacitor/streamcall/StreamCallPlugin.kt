@@ -917,22 +917,27 @@ class StreamCallPlugin : Plugin() {
                     }
 
                     is CallEndedSfuEvent -> {
-                        if (
-                            currentCallId.isNotEmpty() &&
-                            currentActiveCall?.state?.endedAt?.value != null
-                        ) {
-                            runOnMainThread {
-                                currentCallId = ""
-                                currentCallState = "left"
-                                currentActiveCall = null;
-                                cleanupCall(currentCallId)
+                        kotlinx.coroutines.GlobalScope.launch {
+                            val response = currentActiveCall?.get()?.getOrNull();
+                            val endedAt = response?.call?.endedAt
+                            if (
+                                currentCallId.isNotEmpty() &&
+                                endedAt != null
+                            ) {
+                                runOnMainThread {
+                                    currentCallId = ""
+                                    currentCallState = "left"
+                                    currentActiveCall = null;
+                                    cleanupCall(currentCallId)
+                                }
+                                val data = JSObject().apply {
+                                    put("callId", currentCallId)
+                                    put("state", "left")
+                                }
+                                notifyListeners("callEvent", data)
                             }
-                            val data = JSObject().apply {
-                                put("callId", currentCallId)
-                                put("state", "left")
-                            }
-                            notifyListeners("callEvent", data)
                         }
+
                     }
 
 
