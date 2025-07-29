@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.95](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.94...0.0.95) (2025-07-29)
+
+
+### Bug Fixes
+
+* update notification handling in StreamCallPlugin to differentiate between locked and unlocked states ([5f53b51](https://github.com/Cap-go/capacitor-streamcall/commit/5f53b518d3876ec86942e0ca0653376209702412))
+
 ### [0.0.94](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.93...0.0.94) (2025-07-25)
 
 ### [0.0.93](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.92...0.0.93) (2025-07-25)
