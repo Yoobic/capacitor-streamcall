@@ -252,8 +252,6 @@ class StreamCallPlugin : Plugin() {
 
         if (action === "io.getstream.video.android.action.INCOMING_CALL") {
             Log.d("StreamCallPlugin", "handleOnNewIntent: Matched INCOMING_CALL action")
-            // We need to make sure the activity is visible on locked screen in such case
-            changeActivityAsVisibleOnLockScreen(this@StreamCallPlugin.activity, true)
             activity?.runOnUiThread {
                 val cid = intent.streamCallId(NotificationHandler.INTENT_EXTRA_CALL_CID)
                 Log.d("StreamCallPlugin", "handleOnNewIntent: INCOMING_CALL - Extracted cid: $cid")
@@ -325,7 +323,7 @@ class StreamCallPlugin : Plugin() {
                         Log.d("StreamCallPlugin", "  [$index] ${element.className}.${element.methodName}(${element.fileName}:${element.lineNumber})")
                     }
                     kotlinx.coroutines.GlobalScope.launch {
-                        val isAudioOnly = !call.state.settings.value?.video?.enabled!!;
+                        val isAudioOnly = call?.state?.settings?.value?.video?.enabled != true
                         this@StreamCallPlugin.callIsAudioOnly = isAudioOnly
                         internalAcceptCall(call, requestPermissionsAfter = !checkPermissions(isAudioOnly))
                     }
@@ -772,6 +770,7 @@ class StreamCallPlugin : Plugin() {
                 val eventCid = when (event) {
                     is CallSessionEndedEvent -> event.callCid
                     is CallCreatedEvent -> event.callCid
+                    is CallEndedEvent -> event.callCid
                     is CallSessionParticipantCountsUpdatedEvent -> event.callCid
                     // Add other call-related events as needed
                     else -> null
@@ -782,7 +781,7 @@ class StreamCallPlugin : Plugin() {
                     Log.v("StreamCallPlugin", "Ignore event ${event.getEventType()} $event as already on call ${currentActiveCall?.cid}")
                     return@subscribe
                 }
-                Log.v("StreamCallPlugin", "Received an event ${event.getEventType()} $event")
+                Log.v("StreamCallPlugin", " Received an event${event.getEventType()} $event")
                 when (event) {
 //                    is CallRingEvent -> {
 //                        // Extract caller information from the ringing call
@@ -951,6 +950,24 @@ class StreamCallPlugin : Plugin() {
                         }
 
                         updateCallStatusAndNotify(callCid, "accepted", userId)
+                    }
+
+                    is CallEndedEvent -> {
+                        runOnMainThread {
+                            // Clean up call resources
+                            val callCid = event.callCid
+                            if (callCid == currentCallId || currentCallId.isEmpty() ) {
+                                currentCallId = ""
+                                currentCallState = "left"
+                                currentActiveCall = null;
+                                cleanupCall(callCid)
+                            }
+                        }
+                        val data = JSObject().apply {
+                            put("callId", event.callCid)
+                            put("state", "left")
+                        }
+                        notifyListeners("callEvent", data)
                     }
 
                     is CallSessionEndedEvent -> {
@@ -1161,6 +1178,7 @@ class StreamCallPlugin : Plugin() {
             val streamVideoCall = streamVideoClient?.state?.ringingCall?.value
             if (streamVideoCall == null) {
                 call.reject("Ringing call is null")
+                changeActivityAsVisibleOnLockScreen(this@StreamCallPlugin.activity, false)
                 return
             }
             kotlinx.coroutines.GlobalScope.launch {
