@@ -2498,16 +2498,27 @@ class StreamCallPlugin : Plugin() {
     fun switchCamera(call: PluginCall) {
         val camera = call.getString("camera") ?: "front"
         val activeCall = streamVideoClient?.state?.activeCall?.value
+
         if (activeCall != null) {
-            if (camera == "front")
-                activeCall.camera.setDirection(CameraDirection.Front)
-            else
-                activeCall.camera.setDirection(CameraDirection.Back)
-            call.resolve(JSObject().apply {
-                put("success", true)
-            })
+            val devices = activeCall.camera.listDevices()
+
+            val desiredDirection = when (camera.lowercase()) {
+                "front" -> CameraDirection.Front
+                "back" -> CameraDirection.Back
+                else -> CameraDirection.Front // fallback
+            }
+
+            val targetDevice = devices.firstOrNull { it.direction == desiredDirection }
+
+            if (targetDevice == null) {
+                call.reject("No camera found for direction: $desiredDirection")
+                return
+            }
+
+            activeCall.camera.select(targetDevice.id)
+            call.resolve()
         } else {
-            call.reject("No active call")
+            call.reject("No active call.")
         }
     }
 
