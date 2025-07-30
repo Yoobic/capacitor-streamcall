@@ -447,14 +447,16 @@ class StreamCallPlugin : Plugin() {
             VideoTheme {
                 val activeCall = call ?: streamVideoClient?.state?.activeCall?.collectAsState()?.value
                 var layoutType by remember { mutableStateOf(LayoutType.GRID) }
-              if (activeCall != null) {
+                
+                // Only render CallContent if overlay is visible
+                if (activeCall != null && overlayView?.isVisible == true) {
 
                     val currentLocal by activeCall.state.me.collectAsStateWithLifecycle()
 
                     CallContent(
                         call = activeCall,
                         enableInPictureInPicture = false,
-                        onBackPressed = { /* Handle back press if needed */ },
+                        onBackPressed = {},
                         controlsContent = { /* Empty to disable native controls */ },
                         appBarContent = { /* Empty to disable app bar with stop call button */ },
                         layout = CallUIController.layoutType.value,
@@ -1125,6 +1127,9 @@ class StreamCallPlugin : Plugin() {
                             // Notify that call has ended using our helper
                             updateCallStatusAndNotify("", "left")
                             changeActivityAsVisibleOnLockScreen(this@StreamCallPlugin.activity, false)
+
+                            (overlayView?.parent as? ViewGroup)?.removeView(overlayView)
+                            overlayView = null
                         }
                     }
                 }

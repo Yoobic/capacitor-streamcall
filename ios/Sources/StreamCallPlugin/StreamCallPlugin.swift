@@ -304,13 +304,16 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                             
                             // Create/update overlay and make visible when there's an active call
                             self.createCallOverlayView()
-                            
+                          
                             // Notify that a call has started - but only if we haven't notified for this call yet
                             if let callId = viewModel.call?.cId, !self.hasNotifiedCallJoined || callId != self.currentCallId {
                                 print("Notifying call joined: \(callId)")
                                 self.updateCallStatusAndNotify(callId: callId, state: "joined")
                                 self.hasNotifiedCallJoined = true
                             }
+                          
+                          
+
                         } else if case .incoming(let incomingCall) = newState {
                             // Extract caller information
                             //                            Task {
@@ -590,7 +593,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                       self.overlayView?.isHidden = false
                       self.webView?.isOpaque = false
                   }
-
+                
                   call.resolve([
                       "success": true
                   ])
@@ -1393,6 +1396,24 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             call.reject("StreamVideo not initialized")
         }
     }
+
+
+    @objc func enableBluetooth(call: CAPPluginCall) {
+      Task {
+          do {
+            
+              let policy = DefaultAudioSessionPolicy()
+              try await self.callViewModel?.call?.updateAudioSessionPolicy(policy)
+              call.resolve([
+                  "success": true
+              ])
+          } catch {
+              print("Failed to update policy: \(error)")
+            call.reject("Unable to set bluetooth policy")
+          }
+      }
+    }
+  
 
     @objc func setSpeaker(_ call: CAPPluginCall) {
         guard let name = call.getString("name") else {

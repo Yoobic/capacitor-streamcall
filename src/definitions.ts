@@ -313,6 +313,14 @@ export interface StreamCallPlugin {
   removeAllListeners(): Promise<void>;
 
   /**
+   * Enable bluetooth audio
+   * @returns {Promise<SuccessResponse>} Success status
+   * @example
+   * await StreamCall.enableBluetooth();
+   */
+  enableBluetooth?(): Promise<SuccessResponse>;
+
+  /**
    * Accept an incoming call
    * @returns {Promise<SuccessResponse>} Success status
    * @example
