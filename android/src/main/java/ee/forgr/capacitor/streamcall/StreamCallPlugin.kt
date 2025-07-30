@@ -2025,11 +2025,11 @@ class StreamCallPlugin : Plugin() {
 
             // Use call.state.totalParticipants to get participant count (as per StreamVideo Android SDK docs)
             val totalParticipants = call.state.totalParticipants.value
-            val shouldEndCall = isCreator || totalParticipants <= 2
+//            val shouldEndCall = isCreator || totalParticipants <= 1
 
             Log.d("StreamCallPlugin", "Call $callId - Creator: $createdBy, CurrentUser: $currentUserId, IsCreator: $isCreator, TotalParticipants: $totalParticipants, ShouldEnd: $shouldEndCall")
 
-            if (shouldEndCall) {
+            if (isCreator) {
                 // End the call for everyone if I'm the creator or only 1 person
                 Log.d("StreamCallPlugin", "Ending call $callId for all participants (creator: $isCreator, participants: $totalParticipants)")
                 call.end()
@@ -2672,17 +2672,11 @@ class StreamCallPlugin : Plugin() {
 
         val call = streamVideoClient?.call(id = callId, type = callType)
         if (call != null) {
-          // Log the full stack trace to see exactly where this is called from
-          val stackTrace = Thread.currentThread().stackTrace
-          android.util.Log.d("StreamCallPlugin", "internalAcceptCall STACK TRACE:")
-          stackTrace.forEachIndexed { index, element ->
-            android.util.Log.d("StreamCallPlugin", "  [$index] ${element.className}.${element.methodName}(${element.fileName}:${element.lineNumber})")
-          }
           kotlinx.coroutines.GlobalScope.launch {
             val isAudioOnly = getIsAudioOnly(call)
-            internalAcceptCall(call, requestPermissionsAfter = !checkPermissions(isAudioOnly))
+            internalAcceptCall(call, requestPermissionsAfter = !checkPermissions(isAudioOnly), true)
           }
-          bringAppToForeground()
+            bringAppToForeground()
         } else {
           android.util.Log.e("StreamCallPlugin", "JoinCaaL - Call object is null for cid: $callId")
         }
