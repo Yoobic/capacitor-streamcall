@@ -500,6 +500,9 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             // self.overlayViewModel?.updateStreamVideo(nil)
             self.overlayView?.isHidden = true
             self.webView?.isOpaque = true
+            
+            // Remove touch interceptor if it exists
+            self.removeTouchInterceptor()
         }
 
         call.resolve([
@@ -750,6 +753,9 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     
                     // Update UI on main thread
                     await MainActor.run {
+                        // Add touch interceptor for the call
+                        self.addTouchInterceptor()
+                        
                         // self.overlayViewModel?.updateCall(streamCall)
                         self.overlayView?.isHidden = false
                         self.webView?.isOpaque = false
@@ -902,9 +908,11 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     }
                     
                     await MainActor.run {
-                        self.touchInterceptView?.setCallActive(false)
                         self.overlayView?.isHidden = true
                         self.webView?.isOpaque = true
+                        
+                        // Remove touch interceptor
+                        self.removeTouchInterceptor()
                     }
                     
                     call.resolve([
@@ -931,9 +939,11 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     await callViewModel?.hangUp()
                     
                     await MainActor.run {
-                        self.touchInterceptView?.setCallActive(false)
                         self.overlayView?.isHidden = true
                         self.webView?.isOpaque = true
+                        
+                        // Remove touch interceptor
+                        self.removeTouchInterceptor()
                     }
                     
                     call.resolve([
@@ -1040,6 +1050,9 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
                     // Update the CallOverlayView with the active call
                     await MainActor.run {
+                        // Add touch interceptor for the call
+                        self.addTouchInterceptor()
+                        
                         // self.overlayViewModel?.updateCall(streamCall)
                         self.overlayView?.isHidden = false
                         self.webView?.isOpaque = false
@@ -1286,6 +1299,9 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         } else {
             print("No call overlay view to hide")
         }
+        
+        // Remove touch interceptor
+        self.removeTouchInterceptor()
     }
 
     @objc func getCallStatus(_ call: CAPPluginCall) {

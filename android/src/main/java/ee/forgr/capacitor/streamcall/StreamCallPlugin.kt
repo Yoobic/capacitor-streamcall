@@ -377,19 +377,6 @@ class StreamCallPlugin : Plugin() {
         val context = context
         val originalParent = bridge?.webView?.parent as? ViewGroup ?: return
 
-        // Wrap original parent with TouchInterceptWrapper to allow touch passthrough
-        val rootParent = originalParent.parent as? ViewGroup
-        val indexInRoot = rootParent?.indexOfChild(originalParent) ?: -1
-        if (rootParent != null && indexInRoot >= 0) {
-            rootParent.removeViewAt(indexInRoot)
-            touchInterceptWrapper = TouchInterceptWrapper(originalParent).apply {
-                setBackgroundColor(Color.TRANSPARENT)
-            }
-            rootParent.addView(touchInterceptWrapper, indexInRoot)
-        }
-
-        val parent: ViewGroup = touchInterceptWrapper ?: originalParent
-
         // Make WebView initially visible and opaque
         bridge?.webView?.setBackgroundColor(Color.WHITE) // Or whatever background color suits your app
 
@@ -401,7 +388,7 @@ class StreamCallPlugin : Plugin() {
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
         }
-        parent.addView(overlayView, 0)  // Add at index 0 to ensure it's below WebView
+        originalParent.addView(overlayView, 0)  // Add at index 0 to ensure it's below WebView
 
         // Initialize with active call content
         setOverlayContent()
@@ -415,7 +402,79 @@ class StreamCallPlugin : Plugin() {
             )
             setBackgroundColor("#1a242c".toColorInt())
         }
-        parent.addView(barrierView, parent.indexOfChild(bridge?.webView) + 1) // Add above WebView
+        originalParent.addView(barrierView, originalParent.indexOfChild(bridge?.webView) + 1) // Add above WebView
+    }
+
+    private fun addTouchInterceptor() {
+        val originalParent = bridge?.webView?.parent as? ViewGroup ?: return
+        
+        // Check if touch interceptor already exists
+        if (touchInterceptWrapper != null) {
+            Log.d("StreamCallPlugin", "Touch interceptor already exists, skipping creation")
+            return
+        }
+        
+        // Wrap original parent with TouchInterceptWrapper to allow touch passthrough
+        val rootParent = originalParent.parent as? ViewGroup
+        val indexInRoot = rootParent?.indexOfChild(originalParent) ?: -1
+        if (rootParent != null && indexInRoot >= 0) {
+            rootParent.removeViewAt(indexInRoot)
+            touchInterceptWrapper = TouchInterceptWrapper(originalParent).apply {
+                setBackgroundColor(Color.TRANSPARENT)
+            }
+            rootParent.addView(touchInterceptWrapper, indexInRoot)
+            
+            // Move views to touch interceptor
+            val parent = touchInterceptWrapper!!
+            if (overlayView?.parent != parent) {
+                (overlayView?.parent as? ViewGroup)?.removeView(overlayView)
+                parent.addView(overlayView, 0)
+            }
+            if (barrierView?.parent != parent) {
+                (barrierView?.parent as? ViewGroup)?.removeView(barrierView)
+                parent.addView(barrierView, parent.indexOfChild(bridge?.webView) + 1)
+            }
+            
+            Log.d("StreamCallPlugin", "Touch interceptor added for active call")
+        }
+    }
+    
+    private fun removeTouchInterceptor() {
+        val touchWrapper = touchInterceptWrapper ?: return
+        val rootParent = touchWrapper.parent as? ViewGroup ?: return
+        val indexInRoot = rootParent.indexOfChild(touchWrapper)
+        
+        // Get the original parent (should be the only child of touchWrapper)
+        val originalParent = touchWrapper.getChildAt(0) as? ViewGroup
+        if (originalParent != null && originalParent !is ComposeView) {
+            // Move views back to original parent (only if it's not a ComposeView)
+            if (overlayView?.parent == touchWrapper) {
+                touchWrapper.removeView(overlayView)
+                originalParent.addView(overlayView, 0)
+            }
+            if (barrierView?.parent == touchWrapper) {
+                touchWrapper.removeView(barrierView)
+                originalParent.addView(barrierView, originalParent.indexOfChild(bridge?.webView) + 1)
+            }
+            
+            // Remove touch wrapper and restore original parent
+            touchWrapper.removeView(originalParent)
+            rootParent.removeView(touchWrapper)
+            rootParent.addView(originalParent, indexInRoot)
+            
+            touchInterceptWrapper = null
+            Log.d("StreamCallPlugin", "Touch interceptor removed after call ended")
+        } else {
+            // If original parent is a ComposeView or null, just remove the touch wrapper
+            // The views will stay where they are
+            if (originalParent != null) {
+                touchWrapper.removeView(originalParent)
+                rootParent.removeView(touchWrapper)
+                rootParent.addView(originalParent, indexInRoot)
+            }
+            touchInterceptWrapper = null
+            Log.d("StreamCallPlugin", "Touch interceptor removed (ComposeView parent case)")
+        }
     }
 
   object CallUIController {
@@ -1281,6 +1340,10 @@ class StreamCallPlugin : Plugin() {
                 // Show overlay view with the active call and make webview transparent
                 runOnMainThread {
                     Log.d("StreamCallPlugin", "internalAcceptCall: Updating UI for active call ${call.id} - setting overlay visible.")
+                    
+                    // Add touch interceptor for the call
+                    addTouchInterceptor()
+                    
                     bridge?.webView?.setBackgroundColor(Color.TRANSPARENT) // Make webview transparent
                     Log.d("StreamCallPlugin", "internalAcceptCall: WebView background set to transparent for call ${call.id}")
                     bridge?.webView?.bringToFront() // Ensure WebView is on top and transparent
@@ -1653,6 +1716,10 @@ class StreamCallPlugin : Plugin() {
                 activity?.runOnUiThread {
                     streamCall?.microphone?.setEnabled(true)
                     streamCall?.camera?.setEnabled(!isAudioOnly)
+
+                    // Add touch interceptor for the call
+                    addTouchInterceptor()
+                    
                     bridge?.webView?.setBackgroundColor(Color.TRANSPARENT) // Make webview transparent
                     bridge?.webView?.bringToFront() // Ensure WebView is on top and transparent
                     overlayView?.isVisible = true
@@ -2090,6 +2157,9 @@ class StreamCallPlugin : Plugin() {
             overlayView?.isVisible = false
             setOverlayContent(call)
             bridge?.webView?.setBackgroundColor(Color.WHITE) // Restore webview opacity
+            
+            // Remove touch interceptor
+            removeTouchInterceptor()
 
             // Also hide incoming call view if visible
             Log.d("StreamCallPlugin", "Hiding incoming call view for call $callId")
