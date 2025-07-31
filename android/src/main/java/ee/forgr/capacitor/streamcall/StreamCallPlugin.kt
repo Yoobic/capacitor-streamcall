@@ -467,7 +467,7 @@ class StreamCallPlugin : Plugin() {
                                 participant = videoParticipant,
                                 style = videoStyle,
                                 actionsContent = {_, _, _ -> {}},
-                                scalingType = VideoScalingType.SCALE_ASPECT_FIT
+                                scalingType = VideoScalingType.SCALE_ASPECT_FILL
                             )
                         },
                         floatingVideoRenderer = { call, parentSize ->
