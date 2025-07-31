@@ -2819,6 +2819,10 @@ class StreamCallPlugin : Plugin() {
     }
 
     private suspend fun getIsAudioOnly(call: Call): Boolean {
+        // If local state exists and contains "audio_only", return it
+        call.state.custom.value?.let { custom ->
+            return custom["audio_only"].toString() == "true"
+        }
         val callInfoResult = call.get()
         return if (callInfoResult.isSuccess) {
             val audioOnlyValue = callInfoResult.getOrNull()?.call?.custom?.get("audio_only")
