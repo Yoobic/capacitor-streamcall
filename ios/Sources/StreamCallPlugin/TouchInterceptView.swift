@@ -9,7 +9,6 @@ class TouchInterceptView: UIView {
     private var lastTouchPoint: CGPoint?
     private let touchThreshold: CGFloat = 5.0 // pixels
     private let timerDelay: TimeInterval = 0.1 // seconds
-    private var isCallActive: Bool = false
     private var hasActiveCallCheck: (() -> Bool)?
     
     func setupWithWebView(_ webView: UIView, overlayView: UIView) {
@@ -26,28 +25,10 @@ class TouchInterceptView: UIView {
         self.hasActiveCallCheck = check
     }
     
-    func setCallActive(_ active: Bool) {
-        self.isCallActive = active
-        // os_log(.debug, "TouchInterceptView: setCallActive - %{public}s", String(describing: active))
-        
-        // Cancel any pending timer when call becomes inactive
-        if !active {
-            forwardTimer?.invalidate()
-            forwardTimer = nil
-            lastTouchPoint = nil
-        }
-    }
-    
     private func shouldInterceptTouches() -> Bool {
-        // Check both our flag and actual call state
+        // Check if there's an active call
         let hasActiveCall = hasActiveCallCheck?() ?? false
-        let shouldIntercept = isCallActive && hasActiveCall
-        
-        if isCallActive != hasActiveCall {
-            // os_log(.debug, "TouchInterceptView: State mismatch - isCallActive: %{public}s, hasActiveCall: %{public}s", String(describing: isCallActive), String(describing: hasActiveCall))
-        }
-        
-        return shouldIntercept
+        return hasActiveCall
     }
     
     private func isInteractive(_ view: UIView) -> Bool {
@@ -130,16 +111,21 @@ class TouchInterceptView: UIView {
         
         // Check if we should intercept touches
         if !shouldInterceptTouches() {
+            // Cancel any pending timer when not in a call
+            forwardTimer?.invalidate()
+            forwardTimer = nil
+            lastTouchPoint = nil
+            
             if let webView = self.webView {
                 let webPoint = self.convert(point, to: webView)
                 let result = webView.hitTest(webPoint, with: event)
-//                os_log(.debug, "TouchInterceptView: hitTest - Not intercepting, direct WebView result %{public}s at %{public}s", String(describing: result), String(describing: webPoint))
+                print("TouchInterceptView: hitTest - Not intercepting (no active call), direct WebView result \(String(describing: result)) at \(webPoint)")
                 return result
             }
             return nil
         }
         
-        // os_log(.debug, "TouchInterceptView: hitTest entry at %{public}s, callActive: %{public}s", String(describing: point), String(describing: isCallActive))
+        print("TouchInterceptView: hitTest intercepting touch at \(point)")
         
         // Check if this is same touch location continuing
         if let lastPoint = lastTouchPoint {
@@ -167,7 +153,7 @@ class TouchInterceptView: UIView {
         if let overlayView = self.overlayView, !overlayView.isHidden {
             let overlayPoint = self.convert(point, to: overlayView)
             if let overlayHit = nonGreedyInteractiveHitTest(in: overlayView, point: overlayPoint, with: event) {
-                // os_log(.debug, "TouchInterceptView: hitTest - Overlay view %{public}s at %{public}s", String(describing: overlayHit), String(describing: overlayPoint))
+                print("TouchInterceptView: hitTest - Hit overlay view \(String(describing: overlayHit)) at \(overlayPoint)")
                 return overlayHit
             }
         }
@@ -175,10 +161,10 @@ class TouchInterceptView: UIView {
         if let webView = self.webView {
             let webPoint = self.convert(point, to: webView)
             let result = webView.hitTest(webPoint, with: event)
-            // os_log(.debug, "TouchInterceptView: hitTest - WebView result %{public}s at %{public}s", String(describing: result), String(describing: webPoint))
+            print("TouchInterceptView: hitTest - WebView fallback result \(String(describing: result)) at \(webPoint)")
             return result
         }
-        // os_log(.debug, "TouchInterceptView: hitTest - No view found for %{public}s", String(describing: point))
+        print("TouchInterceptView: hitTest - No view found for \(point)")
         return nil
     }
     

@@ -245,9 +245,6 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                             print("- In call state detected")
                             print("- All participants: \(String(describing: viewModel.participants))")
                             
-                            // Enable touch interceptor when call becomes active
-                            self.touchInterceptView?.setCallActive(true)
-                            
                             // Create/update overlay and make visible when there's an active call
                             self.createCallOverlayView()
                             
@@ -302,9 +299,6 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                             }
                         } else if newState == .idle {
                             print("Call state changed to idle. CurrentCallId: \(self.currentCallId), ActiveCall: \(String(describing: self.streamVideo?.state.activeCall?.cId))")
-                            
-                            // Disable touch interceptor when call becomes inactive
-                            self.touchInterceptView?.setCallActive(false)
                             
                             // Only notify about call ending if we have a valid stored call ID and there's truly no active call
                             // This prevents false "left" events during normal state transitions
@@ -433,9 +427,11 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         Task { @MainActor in
             // self.overlayViewModel?.updateCall(nil)
             // self.overlayViewModel?.updateStreamVideo(nil)
-            self.touchInterceptView?.setCallActive(false)
             self.overlayView?.isHidden = true
             self.webView?.isOpaque = true
+            
+            // Remove touch interceptor if it exists
+            self.removeTouchInterceptor()
         }
 
         call.resolve([
@@ -604,6 +600,9 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     
                     // Update UI on main thread
                     await MainActor.run {
+                        // Add touch interceptor for the call
+                        self.addTouchInterceptor()
+                        
                         // self.overlayViewModel?.updateCall(streamCall)
                         self.overlayView?.isHidden = false
                         self.webView?.isOpaque = false
@@ -671,9 +670,11 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     }
                     
                     await MainActor.run {
-                        self.touchInterceptView?.setCallActive(false)
                         self.overlayView?.isHidden = true
                         self.webView?.isOpaque = true
+                        
+                        // Remove touch interceptor
+                        self.removeTouchInterceptor()
                     }
                     
                     call.resolve([
@@ -700,9 +701,11 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     await callViewModel?.hangUp()
                     
                     await MainActor.run {
-                        self.touchInterceptView?.setCallActive(false)
                         self.overlayView?.isHidden = true
                         self.webView?.isOpaque = true
+                        
+                        // Remove touch interceptor
+                        self.removeTouchInterceptor()
                     }
                     
                     call.resolve([
@@ -809,6 +812,9 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
                     // Update the CallOverlayView with the active call
                     await MainActor.run {
+                        // Add touch interceptor for the call
+                        self.addTouchInterceptor()
+                        
                         // self.overlayViewModel?.updateCall(streamCall)
                         self.overlayView?.isHidden = false
                         self.webView?.isOpaque = false
@@ -900,12 +906,6 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     private func setupViews() {
         guard let webView = self.webView, let parent = webView.superview else { return }
         
-        // Create the touch intercept view as an overlay for touch passthrough
-        let touchInterceptView = TouchInterceptView(frame: parent.bounds)
-        touchInterceptView.translatesAutoresizingMaskIntoConstraints = false
-        touchInterceptView.backgroundColor = .clear
-        touchInterceptView.isOpaque = false
-        
         // Create SwiftUI view with view model if not already created
         if self.overlayView == nil, let callViewModel = self.callViewModel {
             let hostingController = UIHostingController(rootView: CallOverlayView(viewModel: callViewModel))
@@ -930,16 +930,34 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                 ])
             }
         }
+    }
+    
+    private func addTouchInterceptor() {
+        guard let webView = self.webView, let parent = webView.superview else { return }
+        
+        // Check if touch interceptor already exists
+        if self.touchInterceptView != nil {
+            print("Touch interceptor already exists, skipping creation")
+            return
+        }
+        
+        // Create the touch intercept view as an overlay for touch passthrough
+        let touchInterceptView = TouchInterceptView(frame: parent.bounds)
+        touchInterceptView.translatesAutoresizingMaskIntoConstraints = false
+        touchInterceptView.backgroundColor = .clear
+        touchInterceptView.isOpaque = false
         
         // Setup touch intercept view with references to webview and overlay
         if let overlayView = self.overlayView {
             touchInterceptView.setupWithWebView(webView, overlayView: overlayView)
-            // Insert touchInterceptView above webView
-            parent.insertSubview(touchInterceptView, aboveSubview: webView)
+            // Add touchInterceptView as the topmost view
+            parent.addSubview(touchInterceptView)
+            parent.bringSubviewToFront(touchInterceptView)
         } else {
             // If overlayView is not present, just add on top of webView
             touchInterceptView.setupWithWebView(webView, overlayView: webView)
-            parent.insertSubview(touchInterceptView, aboveSubview: webView)
+            parent.addSubview(touchInterceptView)
+            parent.bringSubviewToFront(touchInterceptView)
         }
         
         // Set up active call check function
@@ -957,6 +975,18 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             touchInterceptView.leadingAnchor.constraint(equalTo: parent.leadingAnchor),
             touchInterceptView.trailingAnchor.constraint(equalTo: parent.trailingAnchor)
         ])
+        
+        print("Touch interceptor added for active call - view hierarchy: \(parent.subviews.map { type(of: $0) })")
+    }
+    
+    private func removeTouchInterceptor() {
+        guard let touchInterceptView = self.touchInterceptView else { return }
+        
+        // Remove touch interceptor from view hierarchy
+        touchInterceptView.removeFromSuperview()
+        self.touchInterceptView = nil
+        
+        print("Touch interceptor removed after call ended")
     }
     
     private func createCallOverlayView() {
@@ -1004,43 +1034,8 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         self.hostingController = overlayView
         self.overlayView = overlayView.view
         
-        // Ensure touch intercept view is on top
-        if let touchInterceptView = parent.subviews.first(where: { $0 is TouchInterceptView }) {
-            parent.bringSubviewToFront(touchInterceptView)
-            // Update reference and set call active
-            self.touchInterceptView = touchInterceptView as? TouchInterceptView
-            
-            // Set up active call check function
-            self.touchInterceptView?.setActiveCallCheck { [weak self] in
-                return self?.streamVideo?.state.activeCall != nil
-            }
-            
-            self.touchInterceptView?.setCallActive(true)
-        } else {
-            // Create touch intercept view if not already created
-            let touchInterceptView = TouchInterceptView(frame: parent.bounds)
-            touchInterceptView.translatesAutoresizingMaskIntoConstraints = false
-            touchInterceptView.backgroundColor = .clear
-            touchInterceptView.isOpaque = false
-            touchInterceptView.setupWithWebView(webView, overlayView: overlayView.view)
-            parent.addSubview(touchInterceptView)
-            
-            // Set up active call check function
-            touchInterceptView.setActiveCallCheck { [weak self] in
-                return self?.streamVideo?.state.activeCall != nil
-            }
-            
-            // Store reference and set call active
-            self.touchInterceptView = touchInterceptView
-            self.touchInterceptView?.setCallActive(true)
-            
-            NSLayoutConstraint.activate([
-                touchInterceptView.topAnchor.constraint(equalTo: parent.topAnchor),
-                touchInterceptView.bottomAnchor.constraint(equalTo: parent.bottomAnchor),
-                touchInterceptView.leadingAnchor.constraint(equalTo: parent.leadingAnchor),
-                touchInterceptView.trailingAnchor.constraint(equalTo: parent.trailingAnchor)
-            ])
-        }
+        // Add touch interceptor if not already present
+        self.addTouchInterceptor()
     }
     
     // MARK: - Dynamic API Key Management
@@ -1066,9 +1061,6 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     }
     
     func ensureViewRemoved() {
-        // Disable touch interceptor when overlay is removed
-        self.touchInterceptView?.setCallActive(false)
-        
         // Check if we have an overlay view
         if let existingOverlayView = self.overlayView {
             print("Hiding call overlay view")
@@ -1083,6 +1075,9 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         } else {
             print("No call overlay view to hide")
         }
+        
+        // Remove touch interceptor
+        self.removeTouchInterceptor()
     }
 
     @objc func getCallStatus(_ call: CAPPluginCall) {
