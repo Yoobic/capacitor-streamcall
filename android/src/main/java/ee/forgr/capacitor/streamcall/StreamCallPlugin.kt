@@ -253,11 +253,11 @@ class StreamCallPlugin : Plugin() {
 
         if (action === "io.getstream.video.android.action.INCOMING_CALL") {
             Log.d("StreamCallPlugin", "handleOnNewIntent: Matched INCOMING_CALL action")
+            // We need to make sure the activity is visible on locked screen in such case
+            changeActivityAsVisibleOnLockScreen(this@StreamCallPlugin.activity, true)
             activity?.runOnUiThread {
                 val cid = intent.streamCallId(NotificationHandler.INTENT_EXTRA_CALL_CID)
                 Log.d("StreamCallPlugin", "handleOnNewIntent: INCOMING_CALL - Extracted cid: $cid")
-                // We need to make sure the activity is visible on locked screen in such case
-                changeActivityAsVisibleOnLockScreen(this@StreamCallPlugin.activity, true)
                 if (cid != null) {
                     Log.d("StreamCallPlugin", "handleOnNewIntent: INCOMING_CALL - cid is not null, processing.")
                     val call = streamVideoClient?.call(id = cid.id, type = cid.type)
@@ -467,7 +467,11 @@ class StreamCallPlugin : Plugin() {
                                 participant = videoParticipant,
                                 style = videoStyle,
                                 actionsContent = {_, _, _ -> {}},
-                                scalingType = VideoScalingType.SCALE_ASPECT_FILL
+                                scalingType = if (CallUIController.layoutType.value == LayoutType.GRID) {
+                                    VideoScalingType.SCALE_ASPECT_FIT
+                                } else {
+                                    VideoScalingType.SCALE_ASPECT_FILL
+                                }
                             )
                         },
                         floatingVideoRenderer = { call, parentSize ->
@@ -1122,14 +1126,13 @@ class StreamCallPlugin : Plugin() {
                     }
                     if (call == null) {
                         if (currentActiveCall?.cid.isNullOrEmpty()) {
-                            cameraStatusJob?.cancel()
-                            microphoneStatusJob?.cancel()
-                            // Notify that call has ended using our helper
-                            updateCallStatusAndNotify("", "left")
-                            changeActivityAsVisibleOnLockScreen(this@StreamCallPlugin.activity, false)
-
-                            (overlayView?.parent as? ViewGroup)?.removeView(overlayView)
-                            overlayView = null
+                            runOnMainThread {
+                                cameraStatusJob?.cancel()
+                                microphoneStatusJob?.cancel()
+                                // Notify that call has ended using our helper
+                                updateCallStatusAndNotify("", "left")
+                                changeActivityAsVisibleOnLockScreen(this@StreamCallPlugin.activity, false)
+                            }
                         }
                     }
                 }
