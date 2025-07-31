@@ -2025,9 +2025,8 @@ class StreamCallPlugin : Plugin() {
 
             // Use call.state.totalParticipants to get participant count (as per StreamVideo Android SDK docs)
             val totalParticipants = call.state.totalParticipants.value
-//            val shouldEndCall = isCreator || totalParticipants <= 1
 
-            Log.d("StreamCallPlugin", "Call $callId - Creator: $createdBy, CurrentUser: $currentUserId, IsCreator: $isCreator, TotalParticipants: $totalParticipants, ShouldEnd: $shouldEndCall")
+            Log.d("StreamCallPlugin", "Call $callId - Creator: $createdBy, CurrentUser: $currentUserId, IsCreator: $isCreator, TotalParticipants: $totalParticipants")
 
             if (isCreator) {
                 // End the call for everyone if I'm the creator or only 1 person
@@ -2676,7 +2675,6 @@ class StreamCallPlugin : Plugin() {
             val isAudioOnly = getIsAudioOnly(call)
             internalAcceptCall(call, requestPermissionsAfter = !checkPermissions(isAudioOnly), true)
           }
-            bringAppToForeground()
         } else {
           android.util.Log.e("StreamCallPlugin", "JoinCaaL - Call object is null for cid: $callId")
         }
