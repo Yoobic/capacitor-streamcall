@@ -449,7 +449,7 @@ class StreamCallPlugin : Plugin() {
                 var layoutType by remember { mutableStateOf(LayoutType.GRID) }
                 
                 // Only render CallContent if overlay is visible
-                if (activeCall != null && overlayView?.isVisible == true) {
+                if (activeCall != null && overlayView?.isVisible != false) {
 
                     val currentLocal by activeCall.state.me.collectAsStateWithLifecycle()
 
@@ -1295,9 +1295,9 @@ class StreamCallPlugin : Plugin() {
                     Log.d("StreamCallPlugin", "internalAcceptCall: Microphone and camera set to $hasPermissions for call ${call.id}")
 
                     Log.d("StreamCallPlugin", "internalAcceptCall: Setting CallContent with active call ${call.id}")
-                    setOverlayContent(call)
                     Log.d("StreamCallPlugin", "internalAcceptCall: Content set for overlayView for call ${call.id}")
                     overlayView?.isVisible = true
+                    setOverlayContent(call)
                     Log.d("StreamCallPlugin", "internalAcceptCall: OverlayView set to visible for call ${call.id}, isVisible: ${overlayView?.isVisible}")
 
                     // Ensure overlay is behind WebView by adjusting its position in the parent
@@ -2821,17 +2821,18 @@ class StreamCallPlugin : Plugin() {
         private const val DYNAMIC_API_KEY_PREF = "dynamic_api_key"
     }
 
-    private suspend fun getIsAudioOnly(call: Call): Boolean {
+    private fun getIsAudioOnly(call: Call): Boolean {
         // If local state exists and contains "audio_only", return it
         call.state.custom.value?.let { custom ->
             return custom["audio_only"].toString() == "true"
         }
-        val callInfoResult = call.get()
-        return if (callInfoResult.isSuccess) {
-            val audioOnlyValue = callInfoResult.getOrNull()?.call?.custom?.get("audio_only")
-            audioOnlyValue?.toString() == "true"
-        } else {
-            false
-        }
+        return false;
+//        val callInfoResult = call.get()
+//        return if (callInfoResult.isSuccess) {
+//            val audioOnlyValue = callInfoResult.getOrNull()?.call?.custom?.get("audio_only")
+//            audioOnlyValue?.toString() == "true"
+//        } else {
+//            false
+//        }
     }
 }
