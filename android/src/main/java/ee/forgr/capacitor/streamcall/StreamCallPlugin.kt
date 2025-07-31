@@ -1655,8 +1655,8 @@ class StreamCallPlugin : Plugin() {
                     streamCall?.camera?.setEnabled(!isAudioOnly)
                     bridge?.webView?.setBackgroundColor(Color.TRANSPARENT) // Make webview transparent
                     bridge?.webView?.bringToFront() // Ensure WebView is on top and transparent
-                    setOverlayContent(streamCall)
                     overlayView?.isVisible = true
+                    setOverlayContent(streamCall)
                     // Ensure overlay is behind WebView by adjusting its position in the parent
                     val parent = overlayView?.parent as? ViewGroup
                     parent?.removeView(overlayView)
@@ -2087,8 +2087,8 @@ class StreamCallPlugin : Plugin() {
                 return@runOnMainThread
             }
 
-            setOverlayContent(call)
             overlayView?.isVisible = false
+            setOverlayContent(call)
             bridge?.webView?.setBackgroundColor(Color.WHITE) // Restore webview opacity
 
             // Also hide incoming call view if visible
