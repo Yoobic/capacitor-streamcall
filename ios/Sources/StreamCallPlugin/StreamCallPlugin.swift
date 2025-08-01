@@ -49,6 +49,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     private var hostingController: UIHostingController<CallOverlayView>?
     private var tokenSubscription: AnyCancellable?
     private var activeCallSubscription: AnyCancellable?
+    private var speakerSubscription: AnyCancellable?
     private var lastVoIPToken: String?
     private var touchInterceptView: TouchInterceptView?
 
@@ -192,9 +193,11 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             
-            // Cancel existing subscription if any
+            // Cancel existing subscriptions if any
             self.activeCallSubscription?.cancel()
             self.activeCallSubscription = nil
+            self.speakerSubscription?.cancel()
+            self.speakerSubscription = nil
             
             // Verify callViewModel exists
             guard let callViewModel = self.callViewModel, let streamVideo = self.streamVideo else {
@@ -264,7 +267,6 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         break
                     }
                 }
-            
 
             // Subscribe to streamVideo.state.$activeCall to handle CallKit integration
             let callPublisher = streamVideo.state.$activeCall
@@ -279,6 +281,40 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         // This ensures CallKit integration works properly
                         viewModel.setActiveCall(activeCall)
                         viewModel.update(participantsLayout: .grid)
+                        
+                        // Subscribe to speaker status for this active call
+                        self.speakerSubscription = activeCall.speaker.$status
+                            .receive(on: DispatchQueue.main)
+                            .sink { [weak self] speakerStatus in
+                                guard let self = self else { return }
+                                
+                                // Only emit if the current active call matches our current call ID
+                                guard activeCall.cId == self.currentCallId else {
+                                    return
+                                }
+                                
+                                print("Speaker status update: \(speakerStatus)")
+                                
+                                let state: String
+                                switch speakerStatus {
+                                case .enabled:
+                                    state = "speaker_enabled"
+                                case .disabled:
+                                    state = "speaker_disabled"
+                                }
+                                
+                                let data: [String: Any] = [
+                                    "callId": self.currentCallId,
+                                    "state": state
+                                ]
+                                
+                                self.notifyListeners("callEvent", data: data)
+                            }
+                    } else {
+                        // Clean up speaker subscription when activeCall becomes nil
+                        print("Active call became nil, cleaning up speaker subscription")
+                        self.speakerSubscription?.cancel()
+                        self.speakerSubscription = nil
                     }
                 }
             
@@ -382,7 +418,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     }
                 }
             
-            // Combine both publishers
+            // Combine all publishers
             self.activeCallSubscription = AnyCancellable {
                 callPublisher.cancel()
                 statePublisher.cancel()
@@ -480,6 +516,8 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         tokenSubscription = nil
         activeCallSubscription?.cancel()
         activeCallSubscription = nil
+        speakerSubscription?.cancel()
+        speakerSubscription = nil
         lastVoIPToken = nil
         state = .notInitialized
 
