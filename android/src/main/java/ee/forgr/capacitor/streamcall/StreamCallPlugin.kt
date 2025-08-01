@@ -120,6 +120,7 @@ class StreamCallPlugin : Plugin() {
     private var activeCallStateJob: Job? = null
     private var cameraStatusJob: Job? = null
     private var microphoneStatusJob: Job? = null
+    private var speakerStatusJob: Job? = null
     private var lastEventSent: String? = null
     private var callIsAudioOnly: Boolean = false
 
@@ -711,6 +712,7 @@ class StreamCallPlugin : Plugin() {
             activeCallStateJob?.cancel()
             cameraStatusJob?.cancel()
             microphoneStatusJob?.cancel()
+            speakerStatusJob?.cancel()
 
             // Properly cleanup the client
             kotlinx.coroutines.GlobalScope.launch {
@@ -898,6 +900,7 @@ class StreamCallPlugin : Plugin() {
         activeCallStateJob?.cancel()
         cameraStatusJob?.cancel()
         microphoneStatusJob?.cancel()
+        speakerStatusJob?.cancel()
         // Subscribe to call events
         streamVideoClient?.let { client ->
             eventSubscription = client.subscribe { event: VideoEvent ->
@@ -1237,28 +1240,56 @@ class StreamCallPlugin : Plugin() {
 
                         cameraStatusJob?.cancel()
                         microphoneStatusJob?.cancel()
+                        speakerStatusJob?.cancel()
 
                         // Listen to camera status changes
-//                        cameraStatusJob = kotlinx.coroutines.GlobalScope.launch {
-//                            call.camera.isEnabled.collect { isEnabled ->
-//                                Log.d("StreamCallPlugin", "Camera status changed for call ${call.id}: enabled=$isEnabled")
-//                                updateCallStatusAndNotify(call.cid, if (isEnabled) "camera_enabled" else "camera_disabled")
-//                            }
-//                        }
+                        cameraStatusJob = kotlinx.coroutines.GlobalScope.launch {
+                            call.camera.isEnabled.collect { isEnabled ->
+                                Log.d("StreamCallPlugin", "Camera status changed for call ${call.id}: enabled=$isEnabled")
+                                if (call.cid === currentActiveCall?.cid) {
+                                    val data = JSObject().apply {
+                                        put("callId", call.cid)
+                                        put("state",  if (isEnabled) "camera_enabled" else "camera_disabled")
+                                    }
+                                    notifyListeners("callEvent", data)
+                                }
+                            }
+                        }
 
                         // Listen to microphone status changes
-//                        microphoneStatusJob = kotlinx.coroutines.GlobalScope.launch {
-//                            call.microphone.isEnabled.collect { isEnabled ->
-//                                Log.d("StreamCallPlugin", "Microphone status changed for call ${call.id}: enabled=$isEnabled")
-//                                updateCallStatusAndNotify(call.cid, if (isEnabled) "microphone_enabled" else "microphone_disabled")
-//                            }
-//                        }
+                        microphoneStatusJob = kotlinx.coroutines.GlobalScope.launch {
+                            call.microphone.isEnabled.collect { isEnabled ->
+                                Log.d("StreamCallPlugin", "Microphone status changed for call ${call.id}: enabled=$isEnabled")
+                                if (call.cid === currentActiveCall?.cid) {
+                                    val data = JSObject().apply {
+                                        put("callId", call.cid)
+                                        put("state",  if (isEnabled) "microphone_enabled" else "microphone_disabled")
+                                    }
+                                    notifyListeners("callEvent", data)
+                                }
+                            }
+                        }
+
+                        // Listen to speaker status changes
+                        speakerStatusJob = kotlinx.coroutines.GlobalScope.launch {
+                            call.speaker.isEnabled.collect { isEnabled ->
+                                Log.d("StreamCallPlugin", "Speaker status changed for call ${call.id}: enabled=$isEnabled")
+                                if (call.cid === currentActiveCall?.cid) {
+                                    val data = JSObject().apply {
+                                        put("callId", call.cid)
+                                        put("state",  if (isEnabled) "speaker_enabled" else "speaker_disabled")
+                                    }
+                                    notifyListeners("callEvent", data)
+                                }
+                            }
+                        }
                     }
                     if (call == null) {
                         if (currentActiveCall?.cid.isNullOrEmpty()) {
                             runOnMainThread {
                                 cameraStatusJob?.cancel()
                                 microphoneStatusJob?.cancel()
+                                speakerStatusJob?.cancel()
                                 // Notify that call has ended using our helper
                                 updateCallStatusAndNotify("", "left")
                                 changeActivityAsVisibleOnLockScreen(this@StreamCallPlugin.activity, false)
@@ -1799,6 +1830,10 @@ class StreamCallPlugin : Plugin() {
                     val parent = overlayView?.parent as? ViewGroup
                     parent?.removeView(overlayView)
                     parent?.addView(overlayView, 0) // Add at index 0 to ensure it's behind other views
+
+                    if (streamCall != null) {
+                        currentActiveCall = streamCall;
+                    }
                 }
 
                 // Resolve the call with success
