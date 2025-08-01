@@ -1146,14 +1146,6 @@ class StreamCallPlugin : Plugin() {
                         runOnMainThread {
                             // Clean up call resources
 
-                            val cacheCall = streamVideoClient?.call(currentCallType, currentCallId);
-
-                            kotlinx.coroutines.GlobalScope.launch {
-                                cacheCall?.get();
-                                Log.d("StreamCallPlugin", "Call accepted by $currentActiveCall.state.endedByUser.value")
-
-                            }
-
                             val callCid = event.callCid
                             if (callCid == currentCallId || currentCallId.isEmpty() ) {
                                 currentCallId = ""
