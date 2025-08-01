@@ -489,7 +489,6 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         
         // Clean up touch intercept view
         if let touchInterceptView = self.touchInterceptView {
-            touchInterceptView.setCallActive(false)
             touchInterceptView.removeFromSuperview()
             self.touchInterceptView = nil
         }
@@ -823,7 +822,6 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     }
                     
                     await MainActor.run {
-                        self.touchInterceptView?.setCallActive(false)
                         self.overlayView?.isHidden = true
                         self.webView?.isOpaque = true
                     }
@@ -849,7 +847,6 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     await callViewModel?.hangUp()
                     
                     await MainActor.run {
-                        self.touchInterceptView?.setCallActive(false)
                         self.overlayView?.isHidden = true
                         self.webView?.isOpaque = true
                     }
@@ -1169,6 +1166,63 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
     
+    private func addTouchInterceptor() {
+        guard let webView = self.webView, let parent = webView.superview else { return }
+        
+        // Check if touch interceptor already exists
+        if self.touchInterceptView != nil {
+            print("Touch interceptor already exists, skipping creation")
+            return
+        }
+        
+        // Create the touch intercept view as an overlay for touch passthrough
+        let touchInterceptView = TouchInterceptView(frame: parent.bounds)
+        touchInterceptView.translatesAutoresizingMaskIntoConstraints = false
+        touchInterceptView.backgroundColor = .clear
+        touchInterceptView.isOpaque = false
+        
+        // Setup touch intercept view with references to webview and overlay
+        if let overlayView = self.overlayView {
+            touchInterceptView.setupWithWebView(webView, overlayView: overlayView)
+            // Add touchInterceptView as the topmost view
+            parent.addSubview(touchInterceptView)
+            parent.bringSubviewToFront(touchInterceptView)
+        } else {
+            // If overlayView is not present, just add on top of webView
+            touchInterceptView.setupWithWebView(webView, overlayView: webView)
+            parent.addSubview(touchInterceptView)
+            parent.bringSubviewToFront(touchInterceptView)
+        }
+        
+        // Set up active call check function
+        touchInterceptView.setActiveCallCheck { [weak self] in
+            return self?.streamVideo?.state.activeCall != nil
+        }
+        
+        // Store reference to touch intercept view
+        self.touchInterceptView = touchInterceptView
+        
+        // Setup constraints for touchInterceptView to cover the entire parent
+        NSLayoutConstraint.activate([
+            touchInterceptView.topAnchor.constraint(equalTo: parent.topAnchor),
+            touchInterceptView.bottomAnchor.constraint(equalTo: parent.bottomAnchor),
+            touchInterceptView.leadingAnchor.constraint(equalTo: parent.leadingAnchor),
+            touchInterceptView.trailingAnchor.constraint(equalTo: parent.trailingAnchor)
+        ])
+        
+        print("Touch interceptor added for active call - view hierarchy: \(parent.subviews.map { type(of: $0) })")
+    }
+    
+    private func removeTouchInterceptor() {
+        guard let touchInterceptView = self.touchInterceptView else { return }
+        
+        // Remove touch interceptor from view hierarchy
+        touchInterceptView.removeFromSuperview()
+        self.touchInterceptView = nil
+        
+        print("Touch interceptor removed after call ended")
+    }
+    
     private func createCallOverlayView() {
         guard let webView = self.webView,
               let parent = webView.superview,
@@ -1239,7 +1293,6 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         
         // Store reference and set call active
         self.touchInterceptView = touchInterceptView
-        self.touchInterceptView?.setCallActive(true)
         
         // Setup constraints for touchInterceptView to cover the entire parent
         NSLayoutConstraint.activate([
@@ -1280,11 +1333,10 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         // Remove touch intercept view
         if let touchInterceptView = self.touchInterceptView {
             print("Removing touch intercept view")
-            touchInterceptView.setCallActive(false)
             touchInterceptView.removeFromSuperview()
             self.touchInterceptView = nil
         }
-        
+
         // Check if we have an overlay view
         if let existingOverlayView = self.overlayView {
             print("Hiding call overlay view")
