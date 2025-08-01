@@ -132,6 +132,7 @@ class StreamCallPlugin : Plugin() {
     // Add a field for the fragment
     private var callFragment: StreamCallFragment? = null
     private var touchInterceptWrapper: TouchInterceptWrapper? = null
+    private var originalParent: ViewGroup? = null // Store the original parent that was wrapped
 
     // Track permission request timing and attempts
     private var permissionRequestStartTime: Long = 0
@@ -428,6 +429,9 @@ class StreamCallPlugin : Plugin() {
         Log.d("StreamCallPlugin", "addTouchInterceptor: Original parent type: ${originalParent.javaClass.simpleName}")
         Log.d("StreamCallPlugin", "addTouchInterceptor: Original parent child count: ${originalParent.childCount}")
         
+        // Store the original parent for later restoration
+        this.originalParent = originalParent
+        
         // Wrap original parent with TouchInterceptWrapper to allow touch passthrough
         val rootParent = originalParent.parent as? ViewGroup
         val indexInRoot = rootParent?.indexOfChild(originalParent) ?: -1
@@ -480,62 +484,43 @@ class StreamCallPlugin : Plugin() {
             Log.d("StreamCallPlugin", "removeTouchInterceptor: Child $i: ${child.javaClass.simpleName}")
         }
         
+        // Use the stored original parent for restoration
+        val originalParentToRestore = this.originalParent
+        if (originalParentToRestore == null) {
+            Log.e("StreamCallPlugin", "removeTouchInterceptor: No original parent stored, cannot restore properly")
+            return
+        }
+        
+        Log.d("StreamCallPlugin", "removeTouchInterceptor: Restoring original parent: ${originalParentToRestore.javaClass.simpleName}")
+        
         // Store references to all children before removing
         val childrenToRestore = mutableListOf<View>()
         for (i in 0 until touchWrapper.childCount) {
             childrenToRestore.add(touchWrapper.getChildAt(i))
         }
         
-        // Find which child should be the new container (usually the one that was the original parent)
-        // This is typically a FrameLayout or similar ViewGroup, but NOT ComposeView
-        var newParent: ViewGroup? = null
+        // Remove all children from touchWrapper first
+        touchWrapper.removeAllViews()
         
-        // Look for a ViewGroup that is not a ComposeView to be the new parent
+        // Remove touchWrapper from root parent
+        rootParent.removeView(touchWrapper)
+        
+        // Add the original parent back to the root at the same position
+        rootParent.addView(originalParentToRestore, indexInRoot)
+        
+        // Move all children back to the original parent in the correct order
         for (child in childrenToRestore) {
-            if (child is ViewGroup && child !is ComposeView) {
-                // Check if this ViewGroup originally contained the WebView or other views
-                newParent = child
-                Log.d("StreamCallPlugin", "removeTouchInterceptor: Found potential parent: ${child.javaClass.simpleName}")
-                break
-            }
-        }
-        
-        // If we didn't find a suitable parent, create a new FrameLayout
-        if (newParent == null) {
-            Log.d("StreamCallPlugin", "removeTouchInterceptor: No suitable parent found, creating new FrameLayout")
-            newParent = FrameLayout(touchWrapper.context).apply {
-                layoutParams = touchWrapper.layoutParams
-            }
-            
-            // Move all children from touchWrapper to the new parent
-            touchWrapper.removeAllViews()
-            for (child in childrenToRestore) {
-                newParent.addView(child)
-            }
-        } else {
-            // If we found an existing parent, move other children to it
-            touchWrapper.removeAllViews()
-            
-            // First add the parent back
-            rootParent.addView(newParent, indexInRoot)
-            
-            // Then add other children to this parent if they're not already there
-            for (child in childrenToRestore) {
-                if (child != newParent && child.parent == null) {
-                    when (child) {
-                        is ComposeView -> newParent.addView(child, 0) // Add ComposeView at bottom
-                        bridge?.webView -> newParent.addView(child) // Add WebView on top
-                        else -> newParent.addView(child) // Add other views
-                    }
+            if (child != originalParentToRestore) {
+                // Remove from current parent if it has one
+                (child.parent as? ViewGroup)?.removeView(child)
+                
+                // Add to original parent in the correct order
+                when (child) {
+                    overlayView -> originalParentToRestore.addView(child, 0) // Add overlay at bottom
+                    bridge?.webView -> originalParentToRestore.addView(child) // Add WebView on top
+                    barrierView -> originalParentToRestore.addView(child, originalParentToRestore.indexOfChild(bridge?.webView) + 1) // Add barrier above WebView
+                    else -> originalParentToRestore.addView(child) // Add other views
                 }
-            }
-        }
-        
-        // Remove the touch wrapper from root if not done yet
-        if (touchWrapper.parent != null) {
-            rootParent.removeView(touchWrapper)
-            if (newParent.parent == null) {
-                rootParent.addView(newParent, indexInRoot)
             }
         }
         
@@ -548,6 +533,7 @@ class StreamCallPlugin : Plugin() {
         }
         
         touchInterceptWrapper = null
+        this.originalParent = null // Clear the stored reference
         Log.d("StreamCallPlugin", "Touch interceptor removed successfully")
         
         // Log final state
@@ -2226,12 +2212,10 @@ class StreamCallPlugin : Plugin() {
             Log.d("StreamCallPlugin", "endCallRaw: Cleaning up UI for call $callId")
             Log.d("StreamCallPlugin", "endCallRaw: WebView visible before: ${bridge?.webView?.visibility}")
             Log.d("StreamCallPlugin", "endCallRaw: TouchInterceptWrapper exists: ${touchInterceptWrapper != null}")
-            
-            setOverlayContent(call)
+
+
             overlayView?.isVisible = false
-            bridge?.webView?.setBackgroundColor(Color.WHITE) // Restore webview opacity
-            bridge?.webView?.visibility = View.VISIBLE // Ensure WebView is visible
-            
+            setOverlayContent(call)
             // Remove touch interceptor
             if (touchInterceptWrapper != null) {
                 Log.d("StreamCallPlugin", "endCallRaw: Removing touch interceptor")
@@ -2239,6 +2223,10 @@ class StreamCallPlugin : Plugin() {
             } else {
                 Log.d("StreamCallPlugin", "endCallRaw: No touch interceptor to remove")
             }
+
+            bridge?.webView?.setBackgroundColor(Color.WHITE) // Restore webview opacity
+            bridge?.webView?.visibility = View.VISIBLE // Ensure WebView is visible
+            
 
             // Also hide incoming call view if visible
             Log.d("StreamCallPlugin", "endCallRaw: Hiding incoming call view for call $callId")
@@ -2525,7 +2513,7 @@ class StreamCallPlugin : Plugin() {
             overlayView?.isVisible = false
             bridge?.webView?.setBackgroundColor(Color.WHITE) // Restore webview opacity
             bridge?.webView?.visibility = View.VISIBLE // Ensure WebView is visible
-            
+
             // Remove touch interceptor if it exists
             if (touchInterceptWrapper != null) {
                 Log.d("StreamCallPlugin", "cleanupCall: Removing touch interceptor")

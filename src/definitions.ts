@@ -52,6 +52,8 @@ export type CallState =
   | 'ended'
   | 'camera_enabled'
   | 'camera_disabled'
+  | 'speaker_enabled'
+  | 'speaker_disabled'
   | 'microphone_enabled'
   | 'microphone_disabled'
   | 'unknown';
