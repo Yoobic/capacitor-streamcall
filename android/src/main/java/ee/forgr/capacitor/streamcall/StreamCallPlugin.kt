@@ -1113,7 +1113,11 @@ class StreamCallPlugin : Plugin() {
                             callState.timer = null
                         }
 
-                        updateCallStatusAndNotify(callCid, "accepted", userId)
+                        val currentUserId = streamVideoClient?.userId
+
+                        if (userId == currentUserId) {
+                            updateCallStatusAndNotify(callCid, "accepted", userId)
+                        }
                     }
 
                     is CallEndedEvent -> {
@@ -2990,18 +2994,17 @@ class StreamCallPlugin : Plugin() {
         private const val DYNAMIC_API_KEY_PREF = "dynamic_api_key"
     }
 
-    private fun getIsAudioOnly(call: Call): Boolean {
+    private suspend fun getIsAudioOnly(call: Call): Boolean {
         // If local state exists and contains "audio_only", return it
         call.state.custom.value?.let { custom ->
             return custom["audio_only"].toString() == "true"
         }
-        return false;
-//        val callInfoResult = call.get()
-//        return if (callInfoResult.isSuccess) {
-//            val audioOnlyValue = callInfoResult.getOrNull()?.call?.custom?.get("audio_only")
-//            audioOnlyValue?.toString() == "true"
-//        } else {
-//            false
-//        }
+        val callInfoResult = call.get()
+        return if (callInfoResult.isSuccess) {
+            val audioOnlyValue = callInfoResult.getOrNull()?.call?.custom?.get("audio_only")
+            audioOnlyValue?.toString() == "true"
+        } else {
+            false
+        }
     }
 }
