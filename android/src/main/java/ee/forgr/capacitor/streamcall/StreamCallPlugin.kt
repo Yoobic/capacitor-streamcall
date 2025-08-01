@@ -909,6 +909,7 @@ class StreamCallPlugin : Plugin() {
                     is CallSessionEndedEvent -> event.callCid
                     is CallCreatedEvent -> event.callCid
                     is CallEndedEvent -> event.callCid
+                    is CallAcceptedEvent -> event.callCid
                     is ParticipantLeftEvent -> event.callCid
                     is CallEndedSfuEvent -> currentCallId
                     is CallSessionParticipantLeftEvent -> event.callCid
@@ -1144,6 +1145,15 @@ class StreamCallPlugin : Plugin() {
                     is CallSessionEndedEvent -> {
                         runOnMainThread {
                             // Clean up call resources
+
+                            val cacheCall = streamVideoClient?.call(currentCallType, currentCallId);
+
+                            kotlinx.coroutines.GlobalScope.launch {
+                                cacheCall?.get();
+                                Log.d("StreamCallPlugin", "Call accepted by $currentActiveCall.state.endedByUser.value")
+
+                            }
+
                             val callCid = event.callCid
                             if (callCid == currentCallId || currentCallId.isEmpty() ) {
                                 currentCallId = ""
@@ -1199,12 +1209,12 @@ class StreamCallPlugin : Plugin() {
                                 Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: Participant left, remaining: $total")
                                 val selfUserId = streamVideoClient?.userId
 
-                                if (total != null && total <= 1 && userId != selfUserId) {
-                                    Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: All remote participants have left call ${activeCall.cid}. Ending call.")
-                                    kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
-                                        endCallRaw(activeCall)
-                                    }
-                                }
+//                                if (total != null && total <= 1 && userId != selfUserId) {
+//                                    Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: All remote participants have left call ${activeCall.cid}. Ending call.")
+//                                    kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
+//                                        endCallRaw(activeCall)
+//                                    }
+//                                }
                             }
                         } else {
                             Log.d("StreamCallPlugin", "CallSessionParticipantLeftEvent: Conditions not met (activeCall null, or cid mismatch, or local user not joined). ActiveCall CID: ${activeCall?.cid}")
@@ -1413,17 +1423,17 @@ class StreamCallPlugin : Plugin() {
                 // Accept and join call immediately - don't wait for permissions!
                 Log.d("StreamCallPlugin", "internalAcceptCall: Accepting call immediately for ${call.id}")
 
-                val activeCall = streamVideoClient?.state?.activeCall?.value ?: currentActiveCall
-                if (activeCall?.cid?.isNotEmpty() == true && activeCall.cid != call.cid) {
-                    val currentUserId = streamVideoClient?.userId
-                    val createdBy = activeCall.state.createdBy.value?.id
-                    val isCreator = createdBy == currentUserId
-                    if (isCreator) {
-                        activeCall.end()
-                    } else {
-                        activeCall.leave()
-                    }
-                }
+//                val activeCall = streamVideoClient?.state?.activeCall?.value ?: currentActiveCall
+//                if (activeCall?.cid?.isNotEmpty() == true && activeCall.cid != call.cid) {
+//                    val currentUserId = streamVideoClient?.userId
+//                    val createdBy = activeCall.state.createdBy.value?.id
+//                    val isCreator = createdBy == currentUserId
+//                    if (isCreator) {
+//                        activeCall.end()
+//                    } else {
+//                        activeCall.leave()
+//                    }
+//                }
                 if (!noAccept) {
                     call.accept()
                 }
@@ -1479,7 +1489,7 @@ class StreamCallPlugin : Plugin() {
                             overlayView?.requestLayout()
                             Log.d("StreamCallPlugin", "internalAcceptCall: UI invalidated and layout requested for call ${call.id}")
                             // Force refresh with active call from client
-                            val activeCall = streamVideoClient?.state?.activeCall?.value
+                            val activeCall = currentActiveCall ?: streamVideoClient?.state?.activeCall?.value
                             if (activeCall != null) {
                                 Log.d("StreamCallPlugin", "internalAcceptCall: Force refreshing CallContent with active call ${activeCall.id}")
                                 setOverlayContent(activeCall)
