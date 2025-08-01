@@ -2,6 +2,8 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.0.3](https://github.com/Cap-go/capacitor-streamcall/compare/7.0.2...7.0.3) (2025-08-01)
+
 ### [7.0.2](https://github.com/Cap-go/capacitor-streamcall/compare/7.0.1...7.0.2) (2025-07-31)
 
 ### [7.0.1](https://github.com/Cap-go/capacitor-streamcall/compare/0.0.96...7.0.1) (2025-07-29)
