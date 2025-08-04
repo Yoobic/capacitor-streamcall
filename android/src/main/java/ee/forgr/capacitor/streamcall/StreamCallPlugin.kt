@@ -226,6 +226,11 @@ class StreamCallPlugin : Plugin() {
         } catch (e: Exception) {
             Log.e("StreamCallPlugin", "Error checking for fresh install", e)
         }
+        // general init
+        initializeStreamVideo()
+        setupViews()
+        super.load()
+        checkPermissions(this.callIsAudioOnly)
         // Register broadcast receiver for ACCEPT_CALL action with high priority
         val filter = IntentFilter("io.getstream.video.android.action.ACCEPT_CALL")
         filter.priority = 999 // Set high priority to ensure it captures the intent
@@ -236,11 +241,6 @@ class StreamCallPlugin : Plugin() {
         val serviceIntent = Intent(activity, StreamCallBackgroundService::class.java)
         activity.startService(serviceIntent)
         Log.d("StreamCallPlugin", "Started StreamCallBackgroundService to keep app alive")
-        // general init
-        initializeStreamVideo()
-        setupViews()
-        super.load()
-        checkPermissions(this.callIsAudioOnly)
     }
 
     @OptIn(DelicateCoroutinesApi::class)
@@ -917,7 +917,8 @@ class StreamCallPlugin : Plugin() {
                     // Add other call-related events as needed
                     else -> null
                 }
-                val currentCid = currentActiveCall?.cid
+                val activeCall = streamVideoClient?.state?.activeCall?.value ?: currentActiveCall
+                val currentCid = activeCall?.cid
 
                 if (!currentCid.isNullOrEmpty() && currentCid != eventCid) {
                     Log.v("StreamCallPlugin", "Ignore event ${event.getEventType()} $event as already on call ${currentActiveCall?.cid}")
@@ -1065,6 +1066,11 @@ class StreamCallPlugin : Plugin() {
                                     currentCallState = "left"
                                     currentActiveCall = null;
                                     cleanupCall(currentCallId)
+                                    val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+                                    if (keyguardManager.isKeyguardLocked) {
+                                        Log.d("StreamCallPlugin", "Stop ringing and move to background")
+                                        moveAllActivitiesToBackgroundOrKill(context)
+                                    }
                                 }
                                 val data = JSObject().apply {
                                     put("callId", currentCallId)
@@ -1133,6 +1139,10 @@ class StreamCallPlugin : Plugin() {
                                 currentCallState = "left"
                                 currentActiveCall = null;
                                 cleanupCall(callCid)
+                                val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+                                if (keyguardManager.isKeyguardLocked) {
+                                    moveAllActivitiesToBackgroundOrKill(context)
+                                }
                             }
                         }
                         val data = JSObject().apply {
@@ -1152,6 +1162,11 @@ class StreamCallPlugin : Plugin() {
                                 currentCallState = "left"
                                 currentActiveCall = null;
                                 cleanupCall(callCid)
+                                val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+                                if (keyguardManager.isKeyguardLocked) {
+                                    Log.d("StreamCallPlugin", "Stop ringing and move to background")
+                                    moveAllActivitiesToBackgroundOrKill(context)
+                                }
                             }
                         }
                         val data = JSObject().apply {
@@ -1285,19 +1300,32 @@ class StreamCallPlugin : Plugin() {
                                 }
                             }
                         }
-                    }
-                    if (call == null) {
-                        if (currentActiveCall?.cid.isNullOrEmpty()) {
-                            runOnMainThread {
-                                cameraStatusJob?.cancel()
+                    } ?:run {
+//                        if (currentActiveCall?.cid.isNullOrEmpty()) {
+//                            runOnMainThread {
+
+                        cameraStatusJob?.cancel()
                                 microphoneStatusJob?.cancel()
                                 speakerStatusJob?.cancel()
                                 // Notify that call has ended using our helper
                                 updateCallStatusAndNotify("", "left")
                                 changeActivityAsVisibleOnLockScreen(this@StreamCallPlugin.activity, false)
-                            }
-                        }
+//                            }
+//                        }
                     }
+//
+//                    if (call == null) {
+//                        if (currentActiveCall?.cid.isNullOrEmpty()) {
+//                            runOnMainThread {
+//                                cameraStatusJob?.cancel()
+//                                microphoneStatusJob?.cancel()
+//                                speakerStatusJob?.cancel()
+//                                // Notify that call has ended using our helper
+//                                updateCallStatusAndNotify("", "left")
+//                                changeActivityAsVisibleOnLockScreen(this@StreamCallPlugin.activity, false)
+//                            }
+//                        }
+//                    }
                 }
 
             }
