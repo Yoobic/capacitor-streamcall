@@ -27,10 +27,10 @@ public class StreamCallBackgroundService extends Service {
     public void onDestroy() {
         super.onDestroy();
         Log.d(TAG, "Service destroyed");
-        // Restart the service if it's killed by the system
-        Intent restartServiceIntent = new Intent(getApplicationContext(), StreamCallBackgroundService.class);
-        restartServiceIntent.setPackage(getPackageName());
-        startService(restartServiceIntent);
+        // Do not restart the service if it's killed by the system - blocked starting from Android 12
+        // Intent restartServiceIntent = new Intent(getApplicationContext(), StreamCallBackgroundService.class);
+        // restartServiceIntent.setPackage(getPackageName());
+        // startService(restartServiceIntent);
     }
 
     @Nullable
