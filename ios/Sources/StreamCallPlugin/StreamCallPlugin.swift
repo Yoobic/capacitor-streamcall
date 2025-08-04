@@ -166,10 +166,6 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                 do {
                     print("Setting up token subscription")
                     try self.requireInitialized()
-                    if let lastVoIPToken = self.lastVoIPToken, !lastVoIPToken.isEmpty {
-                        print("Deleting device: \(lastVoIPToken)")
-                        try await self.streamVideo?.deleteDevice(id: lastVoIPToken)
-                    }
                     if !updatedDeviceToken.isEmpty {
                         print("Setting voip device: \(updatedDeviceToken)")
                         try await self.streamVideo?.setVoipDevice(id: updatedDeviceToken)
