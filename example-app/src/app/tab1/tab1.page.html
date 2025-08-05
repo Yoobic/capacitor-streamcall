@@ -89,6 +89,33 @@
       </ion-list>
     </div>
     
+    <!-- Test Input for Keyboard Resize -->
+    <div class="ion-padding" *ngIf="currentUser">
+      <ion-card>
+        <ion-card-header>
+          <ion-card-title>Keyboard Test</ion-card-title>
+        </ion-card-header>
+        <ion-card-content>
+          <ion-item>
+            <ion-label position="stacked">Test Input</ion-label>
+            <ion-input 
+              type="text" 
+              placeholder="Type here to test keyboard resize"
+              [(ngModel)]="testInput">
+            </ion-input>
+          </ion-item>
+          <ion-item>
+            <ion-label position="stacked">Test Textarea</ion-label>
+            <ion-textarea 
+              placeholder="Type here to test keyboard resize with multiline"
+              [(ngModel)]="testTextarea"
+              rows="3">
+            </ion-textarea>
+          </ion-item>
+        </ion-card-content>
+      </ion-card>
+    </div>
+    
     <div class="call-status">
       <h3>Call Status: {{ callStatus }}</h3>
     </div>
@@ -98,5 +125,17 @@
       <ion-button (click)="presentLoginModal()" *ngIf="!currentUser" color="success">Login</ion-button>
       <ion-button *ngIf="currentUser" (click)="logout()" color="danger">Logout</ion-button>
     </div>
-  </div> 
+  </div>
+  
+  <!-- Always visible input at bottom for testing keyboard during calls -->
+  <div class="ion-padding" style="position: sticky; bottom: 0; background: var(--ion-background-color); border-top: 1px solid var(--ion-border-color);">
+    <ion-item>
+      <ion-label position="floating">Test keyboard resize (always visible)</ion-label>
+      <ion-input 
+        type="text" 
+        placeholder="Type here during calls to test keyboard"
+        [(ngModel)]="bottomTestInput">
+      </ion-input>
+    </ion-item>
+  </div>
 </ion-content>

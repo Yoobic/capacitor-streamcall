@@ -49,6 +49,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     private var activeCallSubscription: AnyCancellable?
     private var lastVoIPToken: String?
     private var touchInterceptView: TouchInterceptView?
+    private var needsTouchInterceptorSetup: Bool = false
 
     private var streamVideo: StreamVideo?
 
@@ -240,6 +241,9 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         if newState == .inCall {
                             print("- In call state detected")
                             print("- All participants: \(String(describing: viewModel.participants))")
+                            
+                            // Ensure views are set up first (important when accepting call from notification)
+                            self.setupViews()
                             
                             // Create/update overlay and make visible when there's an active call
                             self.createCallOverlayView()
@@ -808,12 +812,19 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
                     // Update the CallOverlayView with the active call
                     await MainActor.run {
+                        print("acceptCall: Setting up UI for accepted call")
+                        
+                        // Ensure views are set up first
+                        self.setupViews()
+                        
                         // Add touch interceptor for the call
                         self.addTouchInterceptor()
                         
                         // self.overlayViewModel?.updateCall(streamCall)
                         self.overlayView?.isHidden = false
                         self.webView?.isOpaque = false
+                        
+                        print("acceptCall: UI setup complete - overlay visible: \(!self.overlayView!.isHidden), touch interceptor: \(self.touchInterceptView != nil)")
                     }
 
                     call.resolve([
@@ -926,10 +937,32 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                 ])
             }
         }
+        
+        // Check if we have an active call and need to add touch interceptor
+        if let activeCall = self.streamVideo?.state.activeCall {
+            print("Active call detected during setupViews, ensuring touch interceptor is added")
+            // Make overlay visible if there's an active call
+            self.overlayView?.isHidden = false
+            self.webView?.isOpaque = false
+            // Add touch interceptor if not already present
+            self.addTouchInterceptor()
+        } else if self.needsTouchInterceptorSetup {
+            // If we previously tried to add touch interceptor but webview wasn't ready
+            print("Deferred touch interceptor setup detected, attempting to add now")
+            self.addTouchInterceptor()
+            // Reset the flag if successful
+            if self.touchInterceptView != nil {
+                self.needsTouchInterceptorSetup = false
+            }
+        }
     }
     
     private func addTouchInterceptor() {
-        guard let webView = self.webView, let parent = webView.superview else { return }
+        guard let webView = self.webView, let parent = webView.superview else {
+            print("Cannot add touch interceptor - webView or parent not ready, marking for deferred setup")
+            self.needsTouchInterceptorSetup = true
+            return
+        }
         
         // Check if touch interceptor already exists
         if self.touchInterceptView != nil {
@@ -981,6 +1014,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         // Remove touch interceptor from view hierarchy
         touchInterceptView.removeFromSuperview()
         self.touchInterceptView = nil
+        self.needsTouchInterceptorSetup = false
         
         print("Touch interceptor removed after call ended")
     }
