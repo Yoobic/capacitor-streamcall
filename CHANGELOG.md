@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [7.1.0](https://github.com/Cap-go/capacitor-streamcall/compare/7.0.5...7.1.0) (2025-08-05)
+
+
+### Features
+
+* add keyboard plugin configuration and input fields for testing keyboard resize in Tab1 page ([c8098ed](https://github.com/Cap-go/capacitor-streamcall/commit/c8098ed94963f81b6bde1a46dfba215b5de10907))
+
+
+### Bug Fixes
+
+* update call identifier from id to cid in StreamCallPlugin for consistency in call status notifications ([eb993f3](https://github.com/Cap-go/capacitor-streamcall/commit/eb993f33c09683e24b91b92fb689571f3d10c1ed))
+* update call identifier handling in StreamCallPlugin to use fullCallId for consistency in call notifications ([6f472ca](https://github.com/Cap-go/capacitor-streamcall/commit/6f472ca9a6f95ba40de8f6c544b95ce715e8f253))
+
 ### [7.0.5](https://github.com/Cap-go/capacitor-streamcall/compare/7.0.4...7.0.5) (2025-08-04)
 
 ### [7.0.4](https://github.com/Cap-go/capacitor-streamcall/compare/7.0.3...7.0.4) (2025-08-04)
