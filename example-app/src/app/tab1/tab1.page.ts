@@ -46,6 +46,9 @@ export class Tab1Page {
   environmentText: string = 'Loading...';
   ringUsers = true;
   callType: CallType = 'default';
+  testInput: string = '';
+  testTextarea: string = '';
+  bottomTestInput: string = '';
 
   constructor(
     private http: HttpClient,
