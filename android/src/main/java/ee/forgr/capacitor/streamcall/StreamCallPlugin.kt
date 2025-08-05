@@ -350,7 +350,7 @@ class StreamCallPlugin : Plugin() {
                 changeActivityAsVisibleOnLockScreen(this@StreamCallPlugin.activity, false)
 
                 // Notify that call has ended using our helper
-                updateCallStatusAndNotify(call.id, "rejected")
+                updateCallStatusAndNotify(call.cid, "rejected")
 
                 hideIncomingCall()
             } catch (e: Exception) {
@@ -1235,8 +1235,8 @@ class StreamCallPlugin : Plugin() {
                 Log.d("StreamCallPlugin", "internalAcceptCall: setActiveCall completed for call ${call.id}")
 
                 // Notify that call has started using helper
-                updateCallStatusAndNotify(call.id, "joined")
-                Log.d("StreamCallPlugin", "internalAcceptCall: updateCallStatusAndNotify(joined) called for ${call.id}")
+                updateCallStatusAndNotify(call.cid, "joined")
+                Log.d("StreamCallPlugin", "internalAcceptCall: updateCallStatusAndNotify(joined) called for ${call.cid}")
 
                 // Show overlay view with the active call and make webview transparent
                 runOnMainThread {
