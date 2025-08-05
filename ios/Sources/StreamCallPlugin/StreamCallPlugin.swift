@@ -72,6 +72,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
     // Helper method to update call status and notify listeners
     private func updateCallStatusAndNotify(callId: String, state: String, userId: String? = nil, reason: String? = nil, caller: [String: Any]? = nil, members: [[String: Any]]? = nil) {
+        print("updateCallStatusAndNotify: callId: \(callId), state: \(state)")
         // Update stored call info
         currentCallId = callId
         currentCallState = state
@@ -294,8 +295,9 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                                     print("Failed to get call info for caller details: \(error)")
                                 }
                                 
-                                // Notify with caller information
-                                self.updateCallStatusAndNotify(callId: incomingCall.id, state: "ringing", caller: caller, members: members)
+                                // Notify with caller information  
+                                let fullCallId = "\(incomingCall.type):\(incomingCall.id)"
+                                self.updateCallStatusAndNotify(callId: fullCallId, state: "ringing", caller: caller, members: members)
                             }
                         } else if newState == .idle {
                             print("Call state changed to idle. CurrentCallId: \(self.currentCallId), ActiveCall: \(String(describing: self.streamVideo?.state.activeCall?.cId))")
@@ -596,7 +598,8 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     }
                     
                     // Now send the created event with complete member data
-                    self.updateCallStatusAndNotify(callId: callId, state: "created", members: allMembers)
+                    let fullCallId = "\(callType):\(callId)"
+                    self.updateCallStatusAndNotify(callId: fullCallId, state: "created", members: allMembers)
                     
                     // Update UI on main thread
                     await MainActor.run {

@@ -1983,7 +1983,7 @@ class StreamCallPlugin : Plugin() {
 
     @OptIn(InternalStreamVideoApi::class)
     private suspend fun endCallRaw(call: Call) {
-        val callId = call.id
+        val callId = call.cid
         Log.d("StreamCallPlugin", "Attempting to end call $callId")
         
         try {
@@ -2107,7 +2107,7 @@ class StreamCallPlugin : Plugin() {
 
     @OptIn(DelicateCoroutinesApi::class)
     private fun transEndCallRaw(call: Call) {
-        val callId = call.id
+        val callId = call.cid
         val savedCapacitorActivity = savedActivity
         if (savedCapacitorActivity == null) {
             Log.d("StreamCallPlugin", "Cannot perform transEndCallRaw for call $callId. savedCapacitorActivity is null")
