@@ -2220,6 +2220,8 @@ class StreamCallPlugin : Plugin() {
             this@StreamCallPlugin.savedActivity?.let {
                 changeActivityAsVisibleOnLockScreen(it, false)
             }
+          changeActivityAsVisibleOnLockScreen(this.activity, false)
+
 
         } catch (e: Exception) {
             Log.e("StreamCallPlugin", "Error getting call info for $callId, defaulting to leave()", e)
