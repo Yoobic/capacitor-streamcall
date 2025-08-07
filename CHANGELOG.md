@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.1.2](https://github.com/Cap-go/capacitor-streamcall/compare/7.1.1...7.1.2) (2025-08-07)
+
+
+### Bug Fixes
+
+* update pending intent methods in CustomStreamIntentResolver to include payload parameter for enhanced call handling ([f5df80f](https://github.com/Cap-go/capacitor-streamcall/commit/f5df80f76ee1d953d2692fe86b353c49ff9890e6))
+
 ### [7.1.1](https://github.com/Cap-go/capacitor-streamcall/compare/7.1.0...7.1.1) (2025-08-07)
 
 
