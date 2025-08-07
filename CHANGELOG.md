@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [7.1.1](https://github.com/Cap-go/capacitor-streamcall/compare/7.1.0...7.1.1) (2025-08-07)
+
+
+### Bug Fixes
+
+* update Stream dependencies in build.gradle to version 1.11.1 ([3ab7614](https://github.com/Cap-go/capacitor-streamcall/commit/3ab7614afdb2dac51d744fb36745ba3203e6c408))
+
 ## [7.1.0](https://github.com/Cap-go/capacitor-streamcall/compare/7.0.5...7.1.0) (2025-08-05)
 
 
