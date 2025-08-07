@@ -919,6 +919,11 @@ class StreamCallPlugin : Plugin() {
                 }
                 val currentCid = currentActiveCall?.cid
 
+                if (eventCid?.startsWith("livestream") == true) {
+                    Log.v("StreamCallPlugin", "Ignore livestream event")
+                    return@subscribe
+                }
+
                 if (!currentCid.isNullOrEmpty() && currentCid != eventCid) {
                     Log.v("StreamCallPlugin", "Ignore event ${event.getEventType()} $event as already on call ${currentActiveCall?.cid}")
                     return@subscribe
