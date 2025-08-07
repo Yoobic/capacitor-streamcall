@@ -13,12 +13,18 @@ class CustomStreamIntentResolver(private val context: Application) : StreamInten
 
     private val PENDING_INTENT_FLAG = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
 
-    override fun searchIncomingCallPendingIntent(callId: StreamCallId, notificationId: Int): PendingIntent? {
+    override fun searchIncomingCallPendingIntent(callId: StreamCallId, notificationId: Int, payload: Map<String, Any?>): PendingIntent? {
         val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra(NotificationHandler.INTENT_EXTRA_CALL_CID, callId)
             action = "io.getstream.video.android.action.INCOMING_CALL"
             
+        } ?: Intent(Intent.ACTION_MAIN).apply {
+            setPackage(context.packageName)
+            addCategory(Intent.CATEGORY_LAUNCHER)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra(NotificationHandler.INTENT_EXTRA_CALL_CID, callId)
+            action = "io.getstream.video.android.action.INCOMING_CALL"
         }
 
         return PendingIntent.getActivity(
@@ -29,7 +35,7 @@ class CustomStreamIntentResolver(private val context: Application) : StreamInten
         )
     }
 
-    override fun searchOutgoingCallPendingIntent(callId: StreamCallId, notificationId: Int): PendingIntent? {
+    override fun searchOutgoingCallPendingIntent(callId: StreamCallId, notificationId: Int, payload: Map<String, Any?>): PendingIntent? {
         // For outgoing calls, create a specific intent that only opens webview when user taps
         val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -49,13 +55,13 @@ class CustomStreamIntentResolver(private val context: Application) : StreamInten
         )
     }
 
-    override fun searchNotificationCallPendingIntent(callId: StreamCallId, notificationId: Int): PendingIntent? =
+    override fun searchNotificationCallPendingIntent(callId: StreamCallId, notificationId: Int, payload: Map<String, Any?>): PendingIntent? =
         searchActivityPendingIntent(Intent(NotificationHandler.ACTION_NOTIFICATION), callId, notificationId)
 
-    override fun searchMissedCallPendingIntent(callId: StreamCallId, notificationId: Int): PendingIntent? =
+    override fun searchMissedCallPendingIntent(callId: StreamCallId, notificationId: Int, payload: Map<String, Any?>): PendingIntent? =
         searchActivityPendingIntent(Intent(NotificationHandler.ACTION_MISSED_CALL), callId, notificationId)
 
-    override fun getDefaultPendingIntent(): PendingIntent {
+    override fun getDefaultPendingIntent(payload: Map<String, Any?>): PendingIntent {
         val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
             ?: Intent(Intent.ACTION_MAIN).apply {
                 setPackage(context.packageName)
@@ -70,10 +76,10 @@ class CustomStreamIntentResolver(private val context: Application) : StreamInten
         )
     }
 
-    override fun searchLiveCallPendingIntent(callId: StreamCallId, notificationId: Int): PendingIntent? =
+    override fun searchLiveCallPendingIntent(callId: StreamCallId, notificationId: Int, payload: Map<String, Any?>): PendingIntent? =
         searchActivityPendingIntent(Intent(NotificationHandler.ACTION_LIVE_CALL), callId, notificationId)
 
-    override fun searchAcceptCallPendingIntent(callId: StreamCallId, notificationId: Int): PendingIntent? {
+    override fun searchAcceptCallPendingIntent(callId: StreamCallId, notificationId: Int, payload: Map<String, Any?>): PendingIntent? {
         val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
             action = NotificationHandler.ACTION_ACCEPT_CALL
             putExtra(NotificationHandler.INTENT_EXTRA_CALL_CID, callId)
@@ -88,10 +94,10 @@ class CustomStreamIntentResolver(private val context: Application) : StreamInten
         )
     }
 
-    override fun searchRejectCallPendingIntent(callId: StreamCallId): PendingIntent? =
+    override fun searchRejectCallPendingIntent(callId: StreamCallId, payload: Map<String, Any?>): PendingIntent? =
         searchBroadcastPendingIntent(Intent(NotificationHandler.ACTION_REJECT_CALL), callId)
 
-    override fun searchEndCallPendingIntent(callId: StreamCallId): PendingIntent? {
+    override fun searchEndCallPendingIntent(callId: StreamCallId, payload: Map<String, Any?>): PendingIntent? {
         val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
             action = NotificationHandler.ACTION_LEAVE_CALL
             putExtra(NotificationHandler.INTENT_EXTRA_CALL_CID, callId)
@@ -106,7 +112,7 @@ class CustomStreamIntentResolver(private val context: Application) : StreamInten
         )
     }
 
-    override fun searchOngoingCallPendingIntent(callId: StreamCallId, notificationId: Int): PendingIntent? {
+    override fun searchOngoingCallPendingIntent(callId: StreamCallId, notificationId: Int, payload: Map<String, Any?>): PendingIntent? {
         val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
             action = NotificationHandler.ACTION_ONGOING_CALL
             putExtra(NotificationHandler.INTENT_EXTRA_CALL_CID, callId)
