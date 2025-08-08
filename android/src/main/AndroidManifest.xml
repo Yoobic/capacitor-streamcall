@@ -14,11 +14,6 @@
               </intent-filter>
           </service>
 
-        <service
-            android:name="ee.forgr.capacitor.streamcall.StreamCallBackgroundService"
-            android:enabled="true"
-            android:exported="false" />
-
         <receiver
             android:name=".AcceptCallReceiver"
             android:enabled="true"
