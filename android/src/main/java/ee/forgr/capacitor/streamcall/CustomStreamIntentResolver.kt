@@ -19,6 +19,12 @@ class CustomStreamIntentResolver(private val context: Application) : StreamInten
             putExtra(NotificationHandler.INTENT_EXTRA_CALL_CID, callId)
             action = "io.getstream.video.android.action.INCOMING_CALL"
             
+        } ?: Intent(Intent.ACTION_MAIN).apply {
+            setPackage(context.packageName)
+            addCategory(Intent.CATEGORY_LAUNCHER)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra(NotificationHandler.INTENT_EXTRA_CALL_CID, callId)
+            action = "io.getstream.video.android.action.INCOMING_CALL"
         }
 
         return PendingIntent.getActivity(
