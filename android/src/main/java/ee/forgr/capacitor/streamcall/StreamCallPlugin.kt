@@ -1064,16 +1064,16 @@ class StreamCallPlugin : Plugin() {
 
                         Log.w("StreamCallPlugin", "CallSessionParticipantCountsUpdatedEvent: count: ${total}")
 
-                        if (activeCall != null && total != null && activeCall.cid == event.callCid && total <= 1) {
-                            kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
-                                kotlinx.coroutines.delay(3000) // Wait 3 seconds
-                                val latestTotal = activeCall.state.participantCounts.value?.total
-                                Log.w("StreamCallPlugin", "Rechecked count after delay: $latestTotal")
-                                if (latestTotal != null && latestTotal <= 1) {
-                                    endCallRaw(activeCall, true)
-                                }
-                            }
-                        }
+//                        if (activeCall != null && total != null && activeCall.cid == event.callCid && total <= 1) {
+//                            kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
+//                                kotlinx.coroutines.delay(3000) // Wait 3 seconds
+//                                val latestTotal = activeCall.state.participantCounts.value?.total
+//                                Log.w("StreamCallPlugin", "Rechecked count after delay: $latestTotal")
+//                                if (latestTotal != null && latestTotal <= 1) {
+//                                    endCallRaw(activeCall, true)
+//                                }
+//                            }
+//                        }
                     }
 
                     is CallRejectedEvent -> {
