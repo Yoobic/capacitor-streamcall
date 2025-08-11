@@ -133,6 +133,7 @@ class StreamCallPlugin : Plugin() {
     private var currentCallState: String = ""
     private var currentActiveCall: Call? = null;
     private var ringingCallId: String = "";
+    private var joiningCallId: String = ""
 
 
     // Add a field for the fragment
@@ -266,6 +267,7 @@ class StreamCallPlugin : Plugin() {
                 val cid = intent.streamCallId(NotificationHandler.INTENT_EXTRA_CALL_CID)
                 Log.d("StreamCallPlugin", "handleOnNewIntent: INCOMING_CALL - Extracted cid: $cid")
                 if (cid != null) {
+                    ringingCallId = cid.cid;
                     Log.d("StreamCallPlugin", "handleOnNewIntent: INCOMING_CALL - cid is not null, processing.")
                     val call = streamVideoClient?.call(id = cid.id, type = cid.type)
                     Log.d("StreamCallPlugin", "handleOnNewIntent: INCOMING_CALL - Got call object: ${call?.id}")
@@ -296,7 +298,6 @@ class StreamCallPlugin : Plugin() {
 
                             // Notify WebView/JS about incoming call so it can render its own UI
                             notifyListeners("incomingCall", payload, true)
-                            ringingCallId = cid.cid;
                             // Delay bringing app to foreground to allow the event to be processed first
                             kotlinx.coroutines.delay(500) // 500ms delay
                             bringAppToForeground()
@@ -360,13 +361,26 @@ class StreamCallPlugin : Plugin() {
         Log.d("StreamCallPlugin", "declineCall called for call: ${call.id}")
         kotlinx.coroutines.GlobalScope.launch {
             try {
+                updateCallStatusAndNotify(call.cid, "left")
                 call.reject()
                 changeActivityAsVisibleOnLockScreen(this@StreamCallPlugin.activity, false)
-
+                val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+                if (keyguardManager.isKeyguardLocked) {
+                    Log.d("StreamCallPlugin", "Stop ringing and move to background")
+                    this@StreamCallPlugin.bootedToHandleCall = true
+                    this@StreamCallPlugin.savedActivity = activity
+                    moveAllActivitiesToBackgroundOrKill(context, true)
+                }
                 // Notify that call has ended using our helper
-                updateCallStatusAndNotify(call.id, "rejected")
+//                updateCallStatusAndNotify(call.id, "rejected")
+                val data = JSObject().apply {
+                    put("callId", call.cid)
+                    put("state", "rejected")
+                }
+                notifyListeners("callEvent", data)
 
-                hideIncomingCall()
+
+//                hideIncomingCall()
             } catch (e: Exception) {
                 Log.e("StreamCallPlugin", "Error declining call: ${e.message}")
             }
@@ -1007,7 +1021,7 @@ class StreamCallPlugin : Plugin() {
                                         Log.d("StreamCallPlugin", "Call created for $callCid with ${callParticipants.size} remote participants: ${callParticipants.joinToString()}.")
 
                                         // Start tracking this call now that we have the member list
-                                        startCallTimeoutMonitor(callCid, callParticipants)
+//                                        startCallTimeoutMonitor(callCid, callParticipants)
 
                                         // Extract all members information (including self) for UI display
                                         val allMembers = event.members.map { member ->
@@ -1064,8 +1078,13 @@ class StreamCallPlugin : Plugin() {
                             callState.participantResponses[userId] = "rejected"
                         }
 
-                        updateCallStatusAndNotify(callCid, "rejected", userId)
+//                        updateCallStatusAndNotify(callCid, "rejected", userId)
 
+                        val data = JSObject().apply {
+                            put("callId", event.callCid)
+                            put("state", "rejected")
+                        }
+                        notifyListeners("callEvent", data)
                         // Check if all participants have responded
                         checkAllParticipantsResponded(callCid)
                     }
@@ -1266,19 +1285,22 @@ class StreamCallPlugin : Plugin() {
 
                             else -> {}
                         }
-                    } else if (call?.cid.isNullOrEmpty() && client.state.activeCall.value === null) {
-                        Log.d("StreamCallPlugin", "Clean up ringing call")
+                    } else if (call?.cid.isNullOrEmpty() && joiningCallId.isEmpty() && client.state.activeCall.value === null) {
+                        Log.d("StreamCallPlugin", "Clean up ringing call ${ringingCallId} and ${streamVideoClient?.state?.ringingCall?.value?.cid}")
                         val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-                        if (keyguardManager.isKeyguardLocked && ringingCallId.isNullOrEmpty()) {
+                        if (keyguardManager.isKeyguardLocked && ringingCallId.isEmpty() ) {
                             Log.d("StreamCallPlugin", "Stop ringing and move to background")
                             moveAllActivitiesToBackgroundOrKill(context, true)
                         }
+                        changeActivityAsVisibleOnLockScreen(this@StreamCallPlugin.activity, false)
                         val data = JSObject().apply {
                             put("callId", ringingCallId)
                             put("state",  "left")
                         }
                         notifyListeners("callEvent", data)
                         ringingCallId = ""
+                    } else {
+                        Log.d("StreamCallPlugin", "RING CALL ONE TWO ${call?.cid}")
                     }
 
                 }
@@ -1358,7 +1380,8 @@ class StreamCallPlugin : Plugin() {
                                 speakerStatusJob?.cancel()
                                 // Notify that call has ended using our helper
                                 updateCallStatusAndNotify("", "left")
-                                if (ringingCallId.isEmpty()) {
+                                if (streamVideoClient?.state?.ringingCall?.value?.cid?.isEmpty() == true) {
+                                    Log.d("StreamCallPlugin", "clean up lock screen due to empty active and ring call + ${streamVideoClient?.state?.ringingCall?.value?.cid}")
                                     changeActivityAsVisibleOnLockScreen(this@StreamCallPlugin.activity, false)
                                 }
                             }
@@ -1481,27 +1504,33 @@ class StreamCallPlugin : Plugin() {
                 // Accept and join call immediately - don't wait for permissions!
                 Log.d("StreamCallPlugin", "internalAcceptCall: Accepting call immediately for ${call.id}")
 
-                val activeCall = streamVideoClient?.state?.activeCall?.value ?: currentActiveCall
-                if (activeCall?.cid?.isNotEmpty() == true && activeCall.cid != call.cid) {
-                    val currentUserId = streamVideoClient?.userId
-                    val createdBy = activeCall.state.createdBy.value?.id
-                    val isCreator = createdBy == currentUserId
-                    if (isCreator) {
-                        activeCall.end()
-                    } else {
-                        activeCall.leave()
-                    }
-                }
+//                val activeCall = streamVideoClient?.state?.activeCall?.value ?: currentActiveCall
+//                if (activeCall?.cid?.isNotEmpty() == true && activeCall.cid != call.cid) {
+//                    val currentUserId = streamVideoClient?.userId
+//                    val createdBy = activeCall.state.createdBy.value?.id
+//                    val isCreator = createdBy == currentUserId
+//                    if (isCreator) {
+//                        activeCall.end()
+//                    } else {
+//                        activeCall.leave()
+//                    }
+//                }
+
+                joiningCallId = call.cid
+
 
                 if (!noAccept) {
                     call.accept()
                 }
+
 
                 Log.d("StreamCallPlugin", "internalAcceptCall: call.accept() completed for call ${call.id}")
                 call.join()
                 Log.d("StreamCallPlugin", "internalAcceptCall: call.join() completed for call ${call.id}")
                 streamVideoClient?.state?.setActiveCall(call)
                 currentActiveCall = call;
+                joiningCallId = "";
+
                 Log.d("StreamCallPlugin", "internalAcceptCall: setActiveCall completed for call ${call.id}")
 
                 // Notify that call has started using helper
@@ -1576,6 +1605,7 @@ class StreamCallPlugin : Plugin() {
 
             } catch (e: Exception) {
                 Log.e("StreamCallPlugin", "internalAcceptCall: Error accepting call ${call.id}: ${e.message}", e)
+                joiningCallId = ""
                 runOnMainThread {
                     android.widget.Toast.makeText(
                         context,
