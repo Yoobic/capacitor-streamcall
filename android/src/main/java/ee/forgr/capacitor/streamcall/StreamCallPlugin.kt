@@ -1022,7 +1022,7 @@ class StreamCallPlugin : Plugin() {
                                         Log.d("StreamCallPlugin", "Call created for $callCid with ${callParticipants.size} remote participants: ${callParticipants.joinToString()}.")
 
                                         // Start tracking this call now that we have the member list
-//                                        startCallTimeoutMonitor(callCid, callParticipants)
+//                                      // startCallTimeoutMonitor(callCid, callParticipants)
 
                                         // Extract all members information (including self) for UI display
                                         val allMembers = event.members.map { member ->
@@ -1053,21 +1053,27 @@ class StreamCallPlugin : Plugin() {
                     }
 
                     is CallSessionParticipantCountsUpdatedEvent -> {
-                      val total = activeCall?.state?.participantCounts?.value?.total
-                      val data = JSObject().apply {
-                        put("callId", event.callCid)
-                        put("state", "participant_counts")
-                        put("count", total)
-                      }
-
-                      notifyListeners("callEvent", data)
-
-                      if (activeCall != null && total != null && activeCall.cid == event.callCid && total <= 1) {
-                        kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
-                          endCallRaw(activeCall, true)
+                        val total = activeCall?.state?.participantCounts?.value?.total
+                        val data = JSObject().apply {
+                            put("callId", event.callCid)
+                            put("state", "participant_counts")
+                            put("count", total)
                         }
-                      }
 
+                        notifyListeners("callEvent", data)
+
+                        Log.w("StreamCallPlugin", "CallSessionParticipantCountsUpdatedEvent: count: ${total}")
+
+                        if (activeCall != null && total != null && activeCall.cid == event.callCid && total <= 1) {
+                            kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
+                                kotlinx.coroutines.delay(3000) // Wait 3 seconds
+                                val latestTotal = activeCall.state.participantCounts.value?.total
+                                Log.w("StreamCallPlugin", "Rechecked count after delay: $latestTotal")
+                                if (latestTotal != null && latestTotal <= 1) {
+                                    endCallRaw(activeCall, true)
+                                }
+                            }
+                        }
                     }
 
                     is CallRejectedEvent -> {
