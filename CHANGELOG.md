@@ -1,6 +1,8 @@
 # Changelog
 
-All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
+All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
+
+## [7.1.3](https://github.com/Cap-go/capacitor-streamcall/compare/7.1.2...7.1.3) (2025-08-11)
 
 ### [7.1.2](https://github.com/Cap-go/capacitor-streamcall/compare/7.1.1...7.1.2) (2025-08-07)
 
