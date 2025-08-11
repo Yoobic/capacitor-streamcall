@@ -363,12 +363,13 @@ class StreamCallPlugin : Plugin() {
             try {
                 updateCallStatusAndNotify(call.cid, "left")
                 call.reject()
+                call.leave()
                 changeActivityAsVisibleOnLockScreen(this@StreamCallPlugin.activity, false)
                 val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
                 if (keyguardManager.isKeyguardLocked) {
                     Log.d("StreamCallPlugin", "Stop ringing and move to background")
-                    this@StreamCallPlugin.bootedToHandleCall = true
-                    this@StreamCallPlugin.savedActivity = activity
+//                    this@StreamCallPlugin.bootedToHandleCall = true
+//                    this@StreamCallPlugin.savedActivity = activity
                     moveAllActivitiesToBackgroundOrKill(context, true)
                 }
                 // Notify that call has ended using our helper
