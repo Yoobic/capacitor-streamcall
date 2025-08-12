@@ -2310,18 +2310,18 @@ class StreamCallPlugin : Plugin() {
             val isCreator = createdBy == currentUserId
 
             // Use call.state.totalParticipants to get participant count (as per StreamVideo Android SDK docs)
-            val totalParticipants = call.state.totalParticipants.value
+            val totalParticipants = call.state.participants.value.size
 
             Log.d("StreamCallPlugin", "Call $callId - Creator: $createdBy, CurrentUser: $currentUserId, IsCreator: $isCreator, TotalParticipants: $totalParticipants")
 
             if (isCreator || totalParticipants <= 2) {
-                // End the call for everyone if I'm the creator or only 1 person
-                Log.d("StreamCallPlugin", "Ending call $callId for all participants (creator: $isCreator, participants: $totalParticipants)")
-                call.end()
+              // End the call for everyone if I'm the creator or only 1 person
+              Log.d("StreamCallPlugin", "Ending call $callId for all participants (creator: $isCreator, participants: $totalParticipants)")
+              call.end()
             } else {
-                // Just leave the call if there are more than 1 person and I'm not the creator
-                Log.d("StreamCallPlugin", "Leaving call $callId (not creator, >1 participants)")
-                call.leave()
+              // Just leave the call if there are more than 1 person and I'm not the creator
+              Log.d("StreamCallPlugin", "Leaving call $callId (not creator, >1 participants)")
+              call.leave()
             }
 
             // Here, we'll also mark the activity as not-visible on lock screen
