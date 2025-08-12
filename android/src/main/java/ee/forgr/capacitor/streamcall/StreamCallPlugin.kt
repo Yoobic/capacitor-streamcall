@@ -1511,17 +1511,22 @@ class StreamCallPlugin : Plugin() {
                 // Accept and join call immediately - don't wait for permissions!
                 Log.d("StreamCallPlugin", "internalAcceptCall: Accepting call immediately for ${call.id}")
 
-//                val activeCall = streamVideoClient?.state?.activeCall?.value ?: currentActiveCall
-//                if (activeCall?.cid?.isNotEmpty() == true && activeCall.cid != call.cid) {
-//                    val currentUserId = streamVideoClient?.userId
-//                    val createdBy = activeCall.state.createdBy.value?.id
-//                    val isCreator = createdBy == currentUserId
-//                    if (isCreator) {
-//                        activeCall.end()
-//                    } else {
-//                        activeCall.leave()
-//                    }
-//                }
+
+                val activeCall = streamVideoClient?.state?.activeCall?.value ?: currentActiveCall
+                if (activeCall?.cid?.isNotEmpty() == true && activeCall.cid != call.cid) {
+
+
+                    val currentUserId = streamVideoClient?.userId
+                    val createdBy = activeCall.state.createdBy.value?.id
+                    val isCreator = createdBy == currentUserId
+                    if (isCreator) {
+                        activeCall.end()
+                    } else {
+                        activeCall.leave()
+                    }
+                    // wait for one sec when switching calls
+                    kotlinx.coroutines.delay(1000)
+                }
 
                 joiningCallId = call.cid
 
@@ -2292,7 +2297,7 @@ class StreamCallPlugin : Plugin() {
     }
 
     @OptIn(InternalStreamVideoApi::class)
-    private suspend fun endCallRaw(call: Call, forceEnd: Boolean = false) {
+    private suspend fun endCallRaw(call: Call) {
         val callId = call.cid
         Log.d("StreamCallPlugin", "Attempting to end call $callId")
 
@@ -2309,7 +2314,7 @@ class StreamCallPlugin : Plugin() {
 
             Log.d("StreamCallPlugin", "Call $callId - Creator: $createdBy, CurrentUser: $currentUserId, IsCreator: $isCreator, TotalParticipants: $totalParticipants")
 
-            if (isCreator || forceEnd) {
+            if (isCreator || totalParticipants <= 2) {
                 // End the call for everyone if I'm the creator or only 1 person
                 Log.d("StreamCallPlugin", "Ending call $callId for all participants (creator: $isCreator, participants: $totalParticipants)")
                 call.end()
