@@ -66,7 +66,7 @@ export type CallState =
  * - `livestream`: For one-to-many streaming. Backstage enabled (requires `goLive`), access granted to all authenticated users.
  * - `development`: For testing ONLY. All permissions enabled, backstage disabled. **Not recommended for production.**
  */
-export type CallType = 'default' | 'audio_room' | 'livestream' | 'development';
+export type CallType = 'default' | 'audio' | 'audio_room' | 'livestream' | 'development';
 
 /**
  * @interface CallMember
@@ -170,6 +170,7 @@ export interface CurrentUserResponse {
 export interface SuccessResponse {
   /** Whether the operation was successful */
   success: boolean;
+  callId?: string;
 }
 
 /**
