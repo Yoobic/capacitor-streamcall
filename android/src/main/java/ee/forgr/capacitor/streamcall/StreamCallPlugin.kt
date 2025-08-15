@@ -161,9 +161,11 @@ class StreamCallPlugin : Plugin() {
         INITIALIZED
     }
 
-    fun incomingOnlyRingingConfig(): RingingConfig = object : RingingConfig {
-        override val incomingCallSoundUri: Uri? = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-        override val outgoingCallSoundUri: Uri? = null
+    fun incomingOnlyRingingConfig(packageName: String): RingingConfig = object : RingingConfig {
+      val ringtoneUri = "android.resource://${packageName}/raw/outgoing".toUri()
+
+      override val incomingCallSoundUri: Uri? = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+      override val outgoingCallSoundUri: Uri? = ringtoneUri
     }
 
     private fun runOnMainThread(action: () -> Unit) {
@@ -835,7 +837,7 @@ class StreamCallPlugin : Plugin() {
                 )
             )
 
-            val soundsConfig = incomingOnlyRingingConfig()
+            val soundsConfig = incomingOnlyRingingConfig(contextToUse.packageName)
 
             // Initialize StreamVideo client
             streamVideoClient = StreamVideoBuilder(
@@ -2788,16 +2790,15 @@ class StreamCallPlugin : Plugin() {
     }
 
     @PluginMethod
-    fun getCallStatus(call: PluginCall) {
-        // If not in a call, reject
-        if (currentCallId.isEmpty() || currentCallState == "left") {
-            call.reject("Not in a call")
-            return
-        }
+    fun getRingingCall(call: PluginCall) {
 
+    }
+
+    @PluginMethod
+    fun getCallStatus(call: PluginCall) {
         val result = JSObject()
-        result.put("callId", currentCallId)
-        result.put("state", currentCallState)
+        result.put("callId", streamVideoClient?.state?.ringingCall?.value?.cid)
+        result.put("state", "ringing")
 
         // No additional fields to ensure compatibility with CallEvent interface
         call.resolve(result)

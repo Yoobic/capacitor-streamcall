@@ -357,6 +357,15 @@ export interface StreamCallPlugin {
    */
   getCallStatus(): Promise<CallEvent>;
 
+  /**
+   * Get the current ringing call
+   * @returns {Promise<CallEvent>} Current ringing call status as a CallEvent
+   * @example
+   * const ringingCall = await StreamCall.getRingingCall();
+   * console.log(ringingCall);
+   */
+  getRingingCall?(): Promise<CallEvent>;
+
 
   /**
    * Get the current call status

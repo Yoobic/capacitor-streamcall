@@ -246,10 +246,12 @@ export class CallService {
 * [`addListener('callEvent', ...)`](#addlistenercallevent-)
 * [`addListener('incomingCall', ...)`](#addlistenerincomingcall-)
 * [`removeAllListeners()`](#removealllisteners)
+* [`enableBluetooth()`](#enablebluetooth)
 * [`acceptCall()`](#acceptcall)
 * [`rejectCall()`](#rejectcall)
 * [`isCameraEnabled()`](#iscameraenabled)
 * [`getCallStatus()`](#getcallstatus)
+* [`getRingingCall()`](#getringingcall)
 * [`toggleViews()`](#toggleviews)
 * [`toggleCamera()`](#togglecamera)
 * [`toggleMicrophone()`](#togglemicrophone)
@@ -427,6 +429,19 @@ Remove all event listeners
 --------------------
 
 
+### enableBluetooth()
+
+```typescript
+enableBluetooth() => Promise<SuccessResponse>
+```
+
+Enable bluetooth audio
+
+**Returns:** <code>Promise&lt;<a href="#successresponse">SuccessResponse</a>&gt;</code>
+
+--------------------
+
+
 ### acceptCall()
 
 ```typescript
@@ -473,6 +488,19 @@ getCallStatus() => Promise<CallEvent>
 ```
 
 Get the current call status
+
+**Returns:** <code>Promise&lt;<a href="#callevent">CallEvent</a>&gt;</code>
+
+--------------------
+
+
+### getRingingCall()
+
+```typescript
+getRingingCall() => Promise<CallEvent>
+```
+
+Get the current ringing call
 
 **Returns:** <code>Promise&lt;<a href="#callevent">CallEvent</a>&gt;</code>
 
@@ -616,6 +644,7 @@ Get the current user's information
 | Prop          | Type                 | Description                          |
 | ------------- | -------------------- | ------------------------------------ |
 | **`success`** | <code>boolean</code> | Whether the operation was successful |
+| **`callId`**  | <code>string</code>  |                                      |
 
 
 #### LoginOptions
@@ -906,7 +935,7 @@ The JSON representation for <a href="#listvalue">`ListValue`</a> is JSON array.
 
 #### CallType
 
-<code>'default' | 'audio_room' | 'livestream' | 'development'</code>
+<code>'default' | 'audio' | 'audio_room' | 'livestream' | 'development'</code>
 
 
 #### Record
@@ -918,7 +947,7 @@ Construct a type with a set of properties K of type T
 
 #### CallState
 
-<code>'idle' | 'ringing' | 'joining' | 'reconnecting' | 'joined' | 'leaving' | 'left' | 'created' | 'session_started' | 'rejected' | 'participant_counts' | 'missed' | 'accepted' | 'ended' | 'camera_enabled' | 'camera_disabled' | 'microphone_enabled' | 'microphone_disabled' | 'unknown'</code>
+<code>'idle' | 'ringing' | 'joining' | 'reconnecting' | 'joined' | 'leaving' | 'left' | 'created' | 'session_started' | 'rejected' | 'participant_counts' | 'missed' | 'accepted' | 'ended' | 'camera_enabled' | 'camera_disabled' | 'speaker_enabled' | 'speaker_disabled' | 'microphone_enabled' | 'microphone_disabled' | 'unknown'</code>
 
 
 ### Enums
