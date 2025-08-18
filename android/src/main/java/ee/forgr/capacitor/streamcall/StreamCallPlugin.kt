@@ -1513,10 +1513,10 @@ class StreamCallPlugin : Plugin() {
                 // Accept and join call immediately - don't wait for permissions!
                 Log.d("StreamCallPlugin", "internalAcceptCall: Accepting call immediately for ${call.id}")
 
+                joiningCallId = call.cid
 
                 val activeCall = streamVideoClient?.state?.activeCall?.value ?: currentActiveCall
                 if (activeCall?.cid?.isNotEmpty() == true && activeCall.cid != call.cid) {
-
 
                     val currentUserId = streamVideoClient?.userId
                     val createdBy = activeCall.state.createdBy.value?.id
@@ -1530,7 +1530,6 @@ class StreamCallPlugin : Plugin() {
                     kotlinx.coroutines.delay(1000)
                 }
 
-                joiningCallId = call.cid
 
 
                 if (!noAccept) {
@@ -2791,15 +2790,27 @@ class StreamCallPlugin : Plugin() {
 
     @PluginMethod
     fun getRingingCall(call: PluginCall) {
-
-    }
-
-    @PluginMethod
-    fun getCallStatus(call: PluginCall) {
         val result = JSObject()
         result.put("callId", streamVideoClient?.state?.ringingCall?.value?.cid)
         result.put("state", "ringing")
 
+        // No additional fields to ensure compatibility with CallEvent interface
+
+        call.resolve(result)
+    }
+
+    @PluginMethod
+    fun getCallStatus(call: PluginCall) {
+        // If not in a call, reject
+        if (currentCallId.isEmpty() || currentCallState == "left") {
+            call.reject("Not in a call")
+            return
+        }
+
+        val result = JSObject()
+
+        result.put("callId", currentCallId)
+        result.put("state", currentCallState)
         // No additional fields to ensure compatibility with CallEvent interface
         call.resolve(result)
     }
