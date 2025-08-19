@@ -1440,6 +1440,23 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
         call.resolve(result)
     }
+    
+    func toJSONCompatible(_ value: Any) -> Any {
+        if let dict = value as? [String: Any] {
+            return dict.mapValues { toJSONCompatible($0) }
+        } else if let array = value as? [Any] {
+            return array.map { toJSONCompatible($0) }
+        } else if let str = value as? String {
+            return str
+        } else if let num = value as? NSNumber {
+            return num
+        } else if value is NSNull {
+            return NSNull()
+        }
+        // Fallback: convert anything unexpected to string
+        return String(describing: value)
+    }
+
 
 
     @objc func getCallInfo(_ call: CAPPluginCall) {
@@ -1448,90 +1465,27 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
 
-        do {
-            try requireInitialized()
+        
+        guard let activeCall = streamVideo?.state.activeCall, activeCall.cId == callId else {
+            call.reject("Call ID does not match active call")
+            return
+        }
 
-            guard let activeCall = streamVideo?.state.activeCall, activeCall.cId == callId else {
-                call.reject("Call ID does not match active call")
-                return
+        Task {
+            let custom = await MainActor.run {
+                activeCall.state.custom
             }
 
-            Task {
-                do {
-                    // Get detailed call information
-                    let callInfo = try await activeCall.get()
+            // Convert RawJSON dictionary into JSON-serializable dictionary
+            let serializableCustom = toJSONCompatible(custom) as? [String: Any] ?? [:]
 
-                    // Extract caller information
-                    var caller: [String: Any]? = nil
-                    let createdBy = callInfo.call.createdBy
-                    var callerData: [String: Any] = [:]
-                    callerData["userId"] = createdBy.id
-                    callerData["name"] = createdBy.name
-                    callerData["imageURL"] = createdBy.image
-                    callerData["role"] = createdBy.role
-                    caller = callerData
+            let result: [String: Any] = [
+                "callId": callId,
+                "custom": serializableCustom
+            ]
+            print("Debug: Resolving getCallInfo with custom =", serializableCustom)
 
-                    // Extract members information
-                    var membersArray: [[String: Any]] = []
-                    let participants = await activeCall.state.participants
-                    for participant in participants {
-                        var memberData: [String: Any] = [:]
-                        memberData["userId"] = participant.userId
-                        memberData["name"] = participant.name
-                        memberData["imageURL"] = participant.profileImageURL
-                        memberData["role"] = participant.roles.first ?? ""
-                        membersArray.append(memberData)
-                    }
-                    let members = membersArray
-
-                    // Determine call state based on current calling state
-                    let state: String
-                    let callingState = await self.callViewModel?.callingState
-                    switch callingState {
-                    case .idle:
-                        state = "idle"
-                    case .incoming:
-                        state = "ringing"
-                    case .outgoing:
-                        state = "ringing"
-                    case .inCall:
-                        state = "joined"
-                    case .lobby:
-                        state = "lobby"
-                    case .joining:
-                        state = "joining"
-                    case .reconnecting:
-                        state = "reconnecting"
-                    case .none:
-                        state = "unknown"
-                    }
-
-                    var result: [String: Any] = [:]
-                    result["callId"] = callId
-                    result["state"] = state
-
-                    if let caller = caller {
-                        result["caller"] = caller
-                    }
-
-                    result["members"] = members
-
-                    // Get caller and custom safely on main actor
-                    let (custom): ([String: Any]?) = await MainActor.run {
-                        guard let streamVideo = streamVideo else { return (nil) }
-                        let callState = streamVideo.state.activeCall?.state
-                        return (callState?.custom)
-                    }
-
-                    result["custom"] = custom
-
-                    call.resolve(result)
-                } catch {
-                    call.reject("Failed to get call info: \(error.localizedDescription)")
-                }
-            }
-        } catch {
-            call.reject("StreamVideo not initialized")
+            call.resolve(result)
         }
     }
 
