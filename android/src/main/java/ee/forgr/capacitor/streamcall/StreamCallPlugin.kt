@@ -2315,7 +2315,7 @@ class StreamCallPlugin : Plugin() {
 
             Log.d("StreamCallPlugin", "Call $callId - Creator: $createdBy, CurrentUser: $currentUserId, IsCreator: $isCreator, TotalParticipants: $totalParticipants")
 
-            if (isCreator || totalParticipants <= 2) {
+            if (isCreator || totalParticipants <= 1) {
               // End the call for everyone if I'm the creator or only 1 person
               Log.d("StreamCallPlugin", "Ending call $callId for all participants (creator: $isCreator, participants: $totalParticipants)")
               call.end()
