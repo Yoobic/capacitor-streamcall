@@ -3062,7 +3062,7 @@ class StreamCallPlugin : Plugin() {
         try {
             val ctx = savedContext ?: context
             val launchIntent = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)
-            launchIntent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            launchIntent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             if (launchIntent != null) {
                 ctx.startActivity(launchIntent)
                 Log.d("StreamCallPlugin", "bringAppToForeground: Launch intent executed to foreground app")
