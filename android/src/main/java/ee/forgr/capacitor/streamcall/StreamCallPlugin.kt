@@ -933,6 +933,7 @@ class StreamCallPlugin : Plugin() {
                     is CallCreatedEvent -> event.callCid
                     is CallEndedEvent -> event.callCid
                     is CallAcceptedEvent -> event.callCid
+                    is CallRejectedEvent -> event.callCid
                     is CallEndedSfuEvent -> currentCallId
                     is CallSessionParticipantCountsUpdatedEvent -> event.callCid
                     // Add other call-related events as needed
