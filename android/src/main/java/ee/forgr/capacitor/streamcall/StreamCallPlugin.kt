@@ -51,7 +51,6 @@ import io.getstream.android.video.generated.models.CallCreatedEvent
 import io.getstream.android.video.generated.models.CallMissedEvent
 import io.getstream.android.video.generated.models.CallRejectedEvent
 import io.getstream.android.video.generated.models.CallSessionEndedEvent
-import io.getstream.android.video.generated.models.CallSessionStartedEvent
 import io.getstream.android.video.generated.models.CallSessionParticipantCountsUpdatedEvent
 import io.getstream.android.video.generated.models.VideoEvent
 import io.getstream.video.android.compose.theme.VideoTheme
@@ -1050,10 +1049,10 @@ class StreamCallPlugin : Plugin() {
                         }
                     }
                     // Add handler for CallSessionStartedEvent which contains participant information
-                    is CallSessionStartedEvent -> {
-                        val callCid = event.callCid
-                        updateCallStatusAndNotify(callCid, "session_started")
-                    }
+//                    is CallSessionStartedEvent -> {
+//                        val callCid = event.callCid
+//                        updateCallStatusAndNotify(callCid, "session_started")
+//                    }
 
                     is CallSessionParticipantCountsUpdatedEvent -> {
                         val total = activeCall?.state?.participantCounts?.value?.total
