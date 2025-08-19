@@ -1441,51 +1441,28 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve(result)
     }
     
-    func toJSONCompatible(_ value: Any) -> Any {
-        if let dict = value as? [String: Any] {
-            return dict.mapValues { toJSONCompatible($0) }
-        } else if let array = value as? [Any] {
-            return array.map { toJSONCompatible($0) }
-        } else if let str = value as? String {
-            return str
-        } else if let num = value as? NSNumber {
-            return num
-        } else if value is NSNull {
-            return NSNull()
-        }
-        // Fallback: convert anything unexpected to string
-        return String(describing: value)
-    }
+    func getCallInfo(callId: String, activeCall: Call) async -> [String: Any] {
+        do {
+            let customRaw = await MainActor.run { activeCall.state.custom }
 
-
-
-    @objc func getCallInfo(_ call: CAPPluginCall) {
-        guard let callId = call.getString("callId") else {
-            call.reject("Missing required parameter: callId")
-            return
-        }
-
-        
-        guard let activeCall = streamVideo?.state.activeCall, activeCall.cId == callId else {
-            call.reject("Call ID does not match active call")
-            return
-        }
-
-        Task {
-            let custom = await MainActor.run {
-                activeCall.state.custom
-            }
-
-            // Convert RawJSON dictionary into JSON-serializable dictionary
-            let serializableCustom = toJSONCompatible(custom) as? [String: Any] ?? [:]
+            // Convert RawJSON dictionary to [String: Any] via JSONSerialization
+            let custom: [String: Any]
+            let jsonData = try JSONEncoder().encode(customRaw)
+            custom = try JSONSerialization.jsonObject(with: jsonData) as? [String: Any] ?? [:]
 
             let result: [String: Any] = [
                 "callId": callId,
-                "custom": serializableCustom
+                "custom": custom
             ]
-            print("Debug: Resolving getCallInfo with custom =", serializableCustom)
 
-            call.resolve(result)
+            print("Debug: Resolving getCallInfo with custom =", custom)
+            return result
+        } catch {
+            print("Error resolving getCallInfo:", error)
+            return [
+                "callId": callId,
+                "custom": [:]
+            ]
         }
     }
 
