@@ -161,10 +161,10 @@ class StreamCallPlugin : Plugin() {
     }
 
     fun incomingOnlyRingingConfig(packageName: String): RingingConfig = object : RingingConfig {
-      val ringtoneUri = "android.resource://${packageName}/raw/outgoing".toUri()
+        val ringtoneUri = "android.resource://${packageName}/raw/outgoing".toUri()
 
-      override val incomingCallSoundUri: Uri? = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-      override val outgoingCallSoundUri: Uri? = ringtoneUri
+        override val incomingCallSoundUri: Uri? = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+        override val outgoingCallSoundUri: Uri? = ringtoneUri
     }
 
     private fun runOnMainThread(action: () -> Unit) {
@@ -566,25 +566,25 @@ class StreamCallPlugin : Plugin() {
         }
     }
 
-  object CallUIController {
-    val layoutType = mutableStateOf(LayoutType.GRID)
+    object CallUIController {
+        val layoutType = mutableStateOf(LayoutType.GRID)
 
-    private val layouts = listOf(
-      LayoutType.GRID,
-      LayoutType.SPOTLIGHT,
-      LayoutType.DYNAMIC
-    )
+        private val layouts = listOf(
+            LayoutType.GRID,
+            LayoutType.SPOTLIGHT,
+            LayoutType.DYNAMIC
+        )
 
-    fun toggleLayout() {
-      val currentIndex = layouts.indexOf(layoutType.value)
-      val nextIndex = (currentIndex + 1) % layouts.size
-      layoutType.value = layouts[nextIndex]
+        fun toggleLayout() {
+            val currentIndex = layouts.indexOf(layoutType.value)
+            val nextIndex = (currentIndex + 1) % layouts.size
+            layoutType.value = layouts[nextIndex]
+        }
+
+        fun setLayout(type: LayoutType) {
+            layoutType.value = type
+        }
     }
-
-    fun setLayout(type: LayoutType) {
-      layoutType.value = type
-    }
-  }
 
     /**
      * Centralized function to set the overlay content with call UI.
@@ -695,33 +695,33 @@ class StreamCallPlugin : Plugin() {
 
     @PluginMethod
     fun toggleViews(call: PluginCall) {
-      try {
-        // Check if there's an active call
-        val activeCall = streamVideoClient?.state?.activeCall?.value
-        if (activeCall == null) {
-          call.reject("No active call")
-          return
+        try {
+            // Check if there's an active call
+            val activeCall = streamVideoClient?.state?.activeCall?.value
+            if (activeCall == null) {
+                call.reject("No active call")
+                return
+            }
+
+            // Cycle through layout modes using shared state
+            val layouts = arrayOf(LayoutType.GRID, LayoutType.SPOTLIGHT, LayoutType.DYNAMIC)
+            val current = CallUIController.layoutType.value
+            val currentIndex = layouts.indexOf(current)
+            val nextIndex = (currentIndex + 1) % layouts.size
+            val nextLayout = layouts[nextIndex]
+
+            // Update shared state
+            CallUIController.layoutType.value = nextLayout
+
+            Log.d("StreamCallPlugin", "Layout toggled from ${layouts[currentIndex]} to $nextLayout")
+
+            call.resolve(JSObject().apply {
+                put("newLayout", nextLayout.name.lowercase())
+            })
+        } catch (e: Exception) {
+            Log.e("StreamCallPlugin", "Error toggling views: ${e.message}", e)
+            call.reject("Failed to toggle views: ${e.message}")
         }
-
-        // Cycle through layout modes using shared state
-        val layouts = arrayOf(LayoutType.GRID, LayoutType.SPOTLIGHT, LayoutType.DYNAMIC)
-        val current = CallUIController.layoutType.value
-        val currentIndex = layouts.indexOf(current)
-        val nextIndex = (currentIndex + 1) % layouts.size
-        val nextLayout = layouts[nextIndex]
-
-        // Update shared state
-        CallUIController.layoutType.value = nextLayout
-
-        Log.d("StreamCallPlugin", "Layout toggled from ${layouts[currentIndex]} to $nextLayout")
-
-        call.resolve(JSObject().apply {
-          put("newLayout", nextLayout.name.lowercase())
-        })
-      } catch (e: Exception) {
-        Log.e("StreamCallPlugin", "Error toggling views: ${e.message}", e)
-        call.reject("Failed to toggle views: ${e.message}")
-      }
     }
 
     @PluginMethod
@@ -847,7 +847,7 @@ class StreamCallPlugin : Plugin() {
                 token = savedCredentials.tokenValue,
                 notificationConfig = notificationConfig,
                 sounds = soundsConfig.toSounds(),
-                 loggingLevel = LoggingLevel(priority = Priority.INFO)
+                loggingLevel = LoggingLevel(priority = Priority.INFO)
             ).build()
 
             // don't do event handler registration when activity may be null
@@ -929,7 +929,6 @@ class StreamCallPlugin : Plugin() {
 
                 val eventCid = when (event) {
                     is CallSessionEndedEvent -> event.callCid
-                    is CallCreatedEvent -> event.callCid
                     is CallEndedEvent -> event.callCid
                     is CallAcceptedEvent -> event.callCid
                     is CallRejectedEvent -> event.callCid
@@ -988,73 +987,73 @@ class StreamCallPlugin : Plugin() {
 //                    }
 
                     // Handle CallCreatedEvent differently - only log it but don't try to access members yet
-                    is CallCreatedEvent -> {
-                        val callCid = event.callCid
-                        Log.d("StreamCallPlugin", "CallCreatedEvent: Received for $callCid")
-                        Log.d("StreamCallPlugin", "CallCreatedEvent: All members from event: ${event.members.joinToString { it.user.id + " (role: " + it.user.role + ")" }}")
-                        Log.d("StreamCallPlugin", "CallCreatedEvent: Self user ID from SDK: ${this@StreamCallPlugin.streamVideoClient?.userId}")
+//                    is CallCreatedEvent -> {
+//                        val callCid = event.callCid
+//                        Log.d("StreamCallPlugin", "CallCreatedEvent: Received for $callCid")
+//                        Log.d("StreamCallPlugin", "CallCreatedEvent: All members from event: ${event.members.joinToString { it.user.id + " (role: " + it.user.role + ")" }}")
+//                        Log.d("StreamCallPlugin", "CallCreatedEvent: Self user ID from SDK: ${this@StreamCallPlugin.streamVideoClient?.userId}")
 
-                        // Only send "created" event for outgoing calls (calls created by current user)
-                        // For incoming calls, we'll only send "ringing" event in CallRingEvent handler
-                        kotlinx.coroutines.GlobalScope.launch {
-                            try {
-                                val callIdParts = callCid.split(":")
-                                if (callIdParts.size >= 2) {
-                                    val callType = callIdParts[0]
-                                    val callId = callIdParts[1]
-                                    val call = streamVideoClient?.call(type = callType, id = callId)
-                                    val callInfo = call?.get()
-                                    val createdBy = callInfo?.getOrNull()?.call?.createdBy
-                                    val currentUserId = streamVideoClient?.userId
-
-                                    Log.d("StreamCallPlugin", "CallCreatedEvent: Call created by: ${createdBy?.id}, Current user: $currentUserId")
-
-                                    // Only notify for outgoing calls (where current user is the creator)
-                                    if (createdBy?.id == currentUserId) {
-                                        Log.d("StreamCallPlugin", "CallCreatedEvent: This is an outgoing call, sending created event")
-
-//                                        val callParticipants = event.members.filter {
-//                                            val selfId = this@StreamCallPlugin.streamVideoClient?.userId
-//                                            val memberId = it.user.id
-//                                            val isSelf = memberId == selfId
-//                                            Log.d("StreamCallPlugin", "CallCreatedEvent: Filtering member $memberId. Self ID: $selfId. Is self: $isSelf")
-//                                            !isSelf
-//                                        }.map { it.user.id }
+                    // Only send "created" event for outgoing calls (calls created by current user)
+                    // For incoming calls, we'll only send "ringing" event in CallRingEvent handler
+//                        kotlinx.coroutines.GlobalScope.launch {
+//                            try {
+//                                val callIdParts = callCid.split(":")
+//                                if (callIdParts.size >= 2) {
+//                                    val callType = callIdParts[0]
+//                                    val callId = callIdParts[1]
+//                                    val call = streamVideoClient?.call(type = callType, id = callId)
+//                                    val callInfo = call?.get()
+//                                    val createdBy = callInfo?.getOrNull()?.call?.createdBy
+//                                    val currentUserId = streamVideoClient?.userId
 //
-//                                        Log.d("StreamCallPlugin", "Call created for $callCid with ${callParticipants.size} remote participants: ${callParticipants.joinToString()}.")
-
-                                        // Start tracking this call now that we have the member list
-//                                      // startCallTimeoutMonitor(callCid, callParticipants)
-
-                                        // Extract all members information (including self) for UI display
-//                                        val allMembers = event.members.map { member ->
-//                                            mapOf(
-//                                                "userId" to member.user.id,
-//                                                "name" to (member.user.name ?: ""),
-//                                                "imageURL" to (member.user.image ?: ""),
-//                                                "role" to (member.user.role)
-//                                            )
+//                                    Log.d("StreamCallPlugin", "CallCreatedEvent: Call created by: ${createdBy?.id}, Current user: $currentUserId")
+//
+//                                    // Only notify for outgoing calls (where current user is the creator)
+//                                    if (createdBy?.id == currentUserId) {
+//                                        Log.d("StreamCallPlugin", "CallCreatedEvent: This is an outgoing call, sending created event")
+//
+////                                        val callParticipants = event.members.filter {
+////                                            val selfId = this@StreamCallPlugin.streamVideoClient?.userId
+////                                            val memberId = it.user.id
+////                                            val isSelf = memberId == selfId
+////                                            Log.d("StreamCallPlugin", "CallCreatedEvent: Filtering member $memberId. Self ID: $selfId. Is self: $isSelf")
+////                                            !isSelf
+////                                        }.map { it.user.id }
+////
+////                                        Log.d("StreamCallPlugin", "Call created for $callCid with ${callParticipants.size} remote participants: ${callParticipants.joinToString()}.")
+//
+//                                        // Start tracking this call now that we have the member list
+////                                      // startCallTimeoutMonitor(callCid, callParticipants)
+//
+//                                        // Extract all members information (including self) for UI display
+////                                        val allMembers = event.members.map { member ->
+////                                            mapOf(
+////                                                "userId" to member.user.id,
+////                                                "name" to (member.user.name ?: ""),
+////                                                "imageURL" to (member.user.image ?: ""),
+////                                                "role" to (member.user.role)
+////                                            )
+////                                        }
+//
+//                                        val data = JSObject().apply {
+//                                            put("callId", event.callCid)
+//                                            put("state", "created")
 //                                        }
-
-                                        val data = JSObject().apply {
-                                            put("callId", event.callCid)
-                                            put("state", "created")
-                                        }
-
-                                        notifyListeners("callEvent", data)
-
-//                                        updateCallStatusAndNotify(callCid, "created", null, null, allMembers)
-                                    } else {
-                                        Log.d("StreamCallPlugin", "CallCreatedEvent: This is an incoming call (created by ${createdBy?.id}), not sending created event")
-                                    }
-                                } else {
-                                    Log.w("StreamCallPlugin", "CallCreatedEvent: Invalid call CID format: $callCid")
-                                }
-                            } catch (e: Exception) {
-                                Log.e("StreamCallPlugin", "Error processing CallCreatedEvent", e)
-                            }
-                        }
-                    }
+//
+//                                        notifyListeners("callEvent", data)
+//
+////                                        updateCallStatusAndNotify(callCid, "created", null, null, allMembers)
+//                                    } else {
+//                                        Log.d("StreamCallPlugin", "CallCreatedEvent: This is an incoming call (created by ${createdBy?.id}), not sending created event")
+//                                    }
+//                                } else {
+//                                    Log.w("StreamCallPlugin", "CallCreatedEvent: Invalid call CID format: $callCid")
+//                                }
+//                            } catch (e: Exception) {
+//                                Log.e("StreamCallPlugin", "Error processing CallCreatedEvent", e)
+//                            }
+//                        }
+//                    }
                     // Add handler for CallSessionStartedEvent which contains participant information
 //                    is CallSessionStartedEvent -> {
 //                        val callCid = event.callCid
@@ -1931,6 +1930,15 @@ class StreamCallPlugin : Plugin() {
                     throw (createResult.errorOrNull() ?: RuntimeException("Unknown error creating call")) as Throwable
                 }
 
+
+                if (streamCall != null) {
+                    val data = JSObject().apply {
+                        put("callId", streamCall.cid)
+                        put("state", "created");
+                    }
+                    notifyListeners("callEvent", data)
+                }
+
                 Log.d("StreamCallPlugin", "Setting overlay visible for outgoing call $callId")
                 // Show overlay view
                 activity?.runOnUiThread {
@@ -2323,13 +2331,13 @@ class StreamCallPlugin : Plugin() {
             Log.d("StreamCallPlugin", "Call $callId - Creator: $createdBy, CurrentUser: $currentUserId, IsCreator: $isCreator, TotalParticipants: $totalParticipants")
 
             if (isCreator || totalParticipants <= 1) {
-              // End the call for everyone if I'm the creator or only 1 person
-              Log.d("StreamCallPlugin", "Ending call $callId for all participants (creator: $isCreator, participants: $totalParticipants)")
-              call.end()
+                // End the call for everyone if I'm the creator or only 1 person
+                Log.d("StreamCallPlugin", "Ending call $callId for all participants (creator: $isCreator, participants: $totalParticipants)")
+                call.end()
             } else {
-              // Just leave the call if there are more than 1 person and I'm not the creator
-              Log.d("StreamCallPlugin", "Leaving call $callId (not creator, >1 participants)")
-              call.leave()
+                // Just leave the call if there are more than 1 person and I'm not the creator
+                Log.d("StreamCallPlugin", "Leaving call $callId (not creator, >1 participants)")
+                call.leave()
             }
 
             // Here, we'll also mark the activity as not-visible on lock screen
@@ -2656,6 +2664,10 @@ class StreamCallPlugin : Plugin() {
             callState.timer = null
         }
 
+        currentCallId = ""
+        currentCallState = "left"
+        currentActiveCall = null;
+
         // Remove from callStates
         callStates.remove(callCid)
 
@@ -2947,7 +2959,7 @@ class StreamCallPlugin : Plugin() {
 
     // Helper method to update call status and notify listeners
     private fun updateCallStatusAndNotify(callId: String, state: String, userId: String? = null, reason: String? = null, members: List<Map<String, Any>>? = null, caller: Map<String, Any>? = null) {
-            Log.d("StreamCallPlugin", "updateCallStatusAndNotify called: callId=$callId, state=$state, userId=$userId, reason=$reason")
+        Log.d("StreamCallPlugin", "updateCallStatusAndNotify called: callId=$callId, state=$state, userId=$userId, reason=$reason")
         // Update stored call info
         currentCallId = callId
         currentCallState = state
@@ -3006,18 +3018,18 @@ class StreamCallPlugin : Plugin() {
         val callId = _call.getString("callId")
         val callType = _call.getString("callType")
         if (callId == null || callType == null) {
-          _call.reject("Missing required parameters: callId or callType")
-          return
+            _call.reject("Missing required parameters: callId or callType")
+            return
         }
 
         val call = streamVideoClient?.call(id = callId, type = callType)
         if (call != null) {
-          kotlinx.coroutines.GlobalScope.launch {
-            val isAudioOnly = getIsAudioOnly(call)
-            internalAcceptCall(call, requestPermissionsAfter = !checkPermissions(isAudioOnly), true)
-          }
+            kotlinx.coroutines.GlobalScope.launch {
+                val isAudioOnly = getIsAudioOnly(call)
+                internalAcceptCall(call, requestPermissionsAfter = !checkPermissions(isAudioOnly), true)
+            }
         } else {
-          android.util.Log.e("StreamCallPlugin", "JoinCaaL - Call object is null for cid: $callId")
+            android.util.Log.e("StreamCallPlugin", "JoinCaaL - Call object is null for cid: $callId")
         }
     }
 
