@@ -18,7 +18,7 @@ class CustomStreamIntentResolver(private val context: Application) : StreamInten
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra(NotificationHandler.INTENT_EXTRA_CALL_CID, callId)
             action = "io.getstream.video.android.action.INCOMING_CALL"
-            
+
         } ?: Intent(Intent.ACTION_MAIN).apply {
             setPackage(context.packageName)
             addCategory(Intent.CATEGORY_LAUNCHER)
@@ -58,8 +58,7 @@ class CustomStreamIntentResolver(private val context: Application) : StreamInten
     override fun searchNotificationCallPendingIntent(callId: StreamCallId, notificationId: Int, payload: Map<String, Any?>): PendingIntent? =
         searchActivityPendingIntent(Intent(NotificationHandler.ACTION_NOTIFICATION), callId, notificationId)
 
-    override fun searchMissedCallPendingIntent(callId: StreamCallId, notificationId: Int, payload: Map<String, Any?>): PendingIntent? =
-        searchActivityPendingIntent(Intent(NotificationHandler.ACTION_MISSED_CALL), callId, notificationId)
+    override fun searchMissedCallPendingIntent(callId: StreamCallId, notificationId: Int, payload: Map<String, Any?>): PendingIntent? = null
 
     override fun getDefaultPendingIntent(payload: Map<String, Any?>): PendingIntent {
         val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
@@ -162,4 +161,4 @@ class CustomStreamIntentResolver(private val context: Application) : StreamInten
             putExtra(NotificationHandler.INTENT_EXTRA_NOTIFICATION_ID, NotificationHandler.INCOMING_CALL_NOTIFICATION_ID)
         }
     }
-} 
+}

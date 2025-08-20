@@ -2324,13 +2324,14 @@ class StreamCallPlugin : Plugin() {
             val currentUserId = streamVideoClient?.userId
             val createdBy = callData?.createdBy?.id
             val isCreator = createdBy == currentUserId
+            val forceEnd = call.state.custom.value.get("type") == "direct"
 
             // Use call.state.totalParticipants to get participant count (as per StreamVideo Android SDK docs)
             val totalParticipants = call.state.participants.value.size
 
             Log.d("StreamCallPlugin", "Call $callId - Creator: $createdBy, CurrentUser: $currentUserId, IsCreator: $isCreator, TotalParticipants: $totalParticipants")
 
-            if (isCreator || totalParticipants <= 1) {
+            if (isCreator || forceEnd) {
                 // End the call for everyone if I'm the creator or only 1 person
                 Log.d("StreamCallPlugin", "Ending call $callId for all participants (creator: $isCreator, participants: $totalParticipants)")
                 call.end()

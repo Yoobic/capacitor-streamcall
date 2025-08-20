@@ -832,10 +832,11 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         let isCreator = createdBy == currentUserId
 
                         // Use call.state.participants.count to get participant count (as per StreamVideo iOS SDK docs)
-                        let totalParticipants = await streamCall.state.participants.count
-                        let shouldEnd = isCreator || totalParticipants <= 2
+//                        let totalParticipants = await streamCall.state.participants.count
+                        let forceEnd = await (activeCall?.state.custom["type"]?.stringValue == "direct")
+                        let shouldEnd = isCreator || forceEnd
 
-                        print("Call \(streamCall.cId) - Creator: \(createdBy), CurrentUser: \(currentUserId ?? "nil"), IsCreator: \(isCreator), TotalParticipants: \(totalParticipants), ShouldEnd: \(shouldEnd)")
+                        print("Call \(streamCall.cId) - Creator: \(createdBy), CurrentUser: \(currentUserId ?? "nil"), IsCreator: \(isCreator), ShouldEnd: \(shouldEnd)")
 
                         return shouldEnd
                     } catch {
@@ -913,10 +914,11 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                         let currentUserId = streamVideo?.user.id
                         let createdBy = callInfo.call.createdBy.id
                         let isCreator = createdBy == currentUserId
+                        let forceEnd = await (activeCall?.state.custom["type"]?.stringValue == "direct")
 
                         // Use call.state.participants.count to get participant count (as per StreamVideo iOS SDK docs)
                         let totalParticipants = await streamCall.state.participants.count
-                        let shouldEnd = isCreator || totalParticipants <= 2
+                        let shouldEnd = isCreator || forceEnd
 
                         print("Call \(streamCall.cId) - Creator: \(createdBy), CurrentUser: \(currentUserId ?? "nil"), IsCreator: \(isCreator), TotalParticipants: \(totalParticipants), ShouldEnd: \(shouldEnd)")
 
