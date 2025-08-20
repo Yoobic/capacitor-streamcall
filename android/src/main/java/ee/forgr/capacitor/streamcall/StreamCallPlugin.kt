@@ -1013,30 +1013,37 @@ class StreamCallPlugin : Plugin() {
                                     if (createdBy?.id == currentUserId) {
                                         Log.d("StreamCallPlugin", "CallCreatedEvent: This is an outgoing call, sending created event")
 
-                                        val callParticipants = event.members.filter {
-                                            val selfId = this@StreamCallPlugin.streamVideoClient?.userId
-                                            val memberId = it.user.id
-                                            val isSelf = memberId == selfId
-                                            Log.d("StreamCallPlugin", "CallCreatedEvent: Filtering member $memberId. Self ID: $selfId. Is self: $isSelf")
-                                            !isSelf
-                                        }.map { it.user.id }
-
-                                        Log.d("StreamCallPlugin", "Call created for $callCid with ${callParticipants.size} remote participants: ${callParticipants.joinToString()}.")
+//                                        val callParticipants = event.members.filter {
+//                                            val selfId = this@StreamCallPlugin.streamVideoClient?.userId
+//                                            val memberId = it.user.id
+//                                            val isSelf = memberId == selfId
+//                                            Log.d("StreamCallPlugin", "CallCreatedEvent: Filtering member $memberId. Self ID: $selfId. Is self: $isSelf")
+//                                            !isSelf
+//                                        }.map { it.user.id }
+//
+//                                        Log.d("StreamCallPlugin", "Call created for $callCid with ${callParticipants.size} remote participants: ${callParticipants.joinToString()}.")
 
                                         // Start tracking this call now that we have the member list
 //                                      // startCallTimeoutMonitor(callCid, callParticipants)
 
                                         // Extract all members information (including self) for UI display
-                                        val allMembers = event.members.map { member ->
-                                            mapOf(
-                                                "userId" to member.user.id,
-                                                "name" to (member.user.name ?: ""),
-                                                "imageURL" to (member.user.image ?: ""),
-                                                "role" to (member.user.role)
-                                            )
+//                                        val allMembers = event.members.map { member ->
+//                                            mapOf(
+//                                                "userId" to member.user.id,
+//                                                "name" to (member.user.name ?: ""),
+//                                                "imageURL" to (member.user.image ?: ""),
+//                                                "role" to (member.user.role)
+//                                            )
+//                                        }
+
+                                        val data = JSObject().apply {
+                                            put("callId", event.callCid)
+                                            put("state", "created")
                                         }
 
-                                        updateCallStatusAndNotify(callCid, "created", null, null, allMembers)
+                                        notifyListeners("callEvent", data)
+
+//                                        updateCallStatusAndNotify(callCid, "created", null, null, allMembers)
                                     } else {
                                         Log.d("StreamCallPlugin", "CallCreatedEvent: This is an incoming call (created by ${createdBy?.id}), not sending created event")
                                     }
