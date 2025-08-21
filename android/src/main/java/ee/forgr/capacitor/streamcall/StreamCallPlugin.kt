@@ -1172,7 +1172,13 @@ class StreamCallPlugin : Plugin() {
                         val currentUserId = streamVideoClient?.userId
 
                         if (userId == currentUserId) {
-                            updateCallStatusAndNotify(callCid, "accepted", userId)
+//                            updateCallStatusAndNotify(callCid, "accepted", userId)
+                          val data = JSObject().apply {
+                            put("callId", event.callCid)
+                            put("state", "accepted")
+                            put("userId", userId)
+                          }
+                          notifyListeners("callEvent", data)
                         }
                     }
 
@@ -2624,7 +2630,7 @@ class StreamCallPlugin : Plugin() {
                     if (memberId !in callState.participantResponses) {
                         callState.participantResponses[memberId] = "missed"
 
-                        updateCallStatusAndNotify(callCid, "missed", memberId)
+//                        updateCallStatusAndNotify(callCid, "missed", memberId)
                     }
                 }
 

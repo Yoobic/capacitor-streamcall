@@ -58,7 +58,8 @@ class CustomStreamIntentResolver(private val context: Application) : StreamInten
     override fun searchNotificationCallPendingIntent(callId: StreamCallId, notificationId: Int, payload: Map<String, Any?>): PendingIntent? =
         searchActivityPendingIntent(Intent(NotificationHandler.ACTION_NOTIFICATION), callId, notificationId)
 
-    override fun searchMissedCallPendingIntent(callId: StreamCallId, notificationId: Int, payload: Map<String, Any?>): PendingIntent? = null
+    override fun searchMissedCallPendingIntent(callId: StreamCallId, notificationId: Int, payload: Map<String, Any?>): PendingIntent? =
+        searchActivityPendingIntent(Intent(NotificationHandler.ACTION_MISSED_CALL), callId, notificationId)
 
     override fun getDefaultPendingIntent(payload: Map<String, Any?>): PendingIntent {
         val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
