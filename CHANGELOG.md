@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [7.1.8](https://github.com/Cap-go/capacitor-streamcall/compare/7.1.7...7.1.8) (2025-09-04)
+
+
+### Bug Fixes
+
+* **deps:** update dependency hono to v4.9.6 [security] ([#33](https://github.com/Cap-go/capacitor-streamcall/issues/33)) ([c6ce112](https://github.com/Cap-go/capacitor-streamcall/commit/c6ce11213edae12dbcfa20c8fb3d717efc667fe2))
+
 ## [7.1.7](https://github.com/Cap-go/capacitor-streamcall/compare/7.1.6...7.1.7) (2025-09-03)
 
 ## [7.1.6](https://github.com/Cap-go/capacitor-streamcall/compare/7.1.5...7.1.6) (2025-09-03)
