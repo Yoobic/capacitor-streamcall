@@ -99,6 +99,7 @@ import io.getstream.video.android.core.RingingState
 import io.getstream.video.android.core.events.CallEndedSfuEvent
 import io.getstream.video.android.core.logging.LoggingLevel
 import io.getstream.video.android.core.socket.common.scope.user.UserId
+import io.getstream.video.android.model.StreamCallId
 import kotlinx.coroutines.flow.collectLatest
 
 // I am not a religious pearson, but at this point, I am not sure even god himself would understand this code
@@ -800,6 +801,42 @@ class StreamCallPlugin : Plugin() {
             // unsafe cast, add better handling
             val application = contextToUse.applicationContext as Application
             Log.d("StreamCallPlugin", "No existing StreamVideo singleton client, creating new one")
+
+            val myNotificationHandler = object: CompatibilityStreamNotificationHandler(
+                application = application,
+                intentResolver = CustomStreamIntentResolver(application),
+                initialNotificationBuilderInterceptor = object : StreamNotificationBuilderInterceptors() {
+                    override fun onBuildIncomingCallNotification(
+                        builder: NotificationCompat.Builder,
+                        fullScreenPendingIntent: PendingIntent,
+                        acceptCallPendingIntent: PendingIntent,
+                        rejectCallPendingIntent: PendingIntent,
+                        callerName: String?,
+                        shouldHaveContentIntent: Boolean
+                    ): NotificationCompat.Builder {
+                        val keyguardManager = application.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+                        val isLocked = keyguardManager.isKeyguardLocked
+
+                        return if (isLocked) {
+                            // Only full-screen intent when locked to avoid double notification
+                            builder.setFullScreenIntent(fullScreenPendingIntent, true)
+                        } else {
+                            // Both intents when unlocked for clickable notification
+                            builder.setContentIntent(fullScreenPendingIntent)
+                                .setFullScreenIntent(fullScreenPendingIntent, true)
+                        }
+                    }
+                }
+            ) {
+              override fun onMissedCall(
+                callId: StreamCallId,
+                callDisplayName: String,
+                payload: Map<String, Any?>
+              ) {
+                Log.v("StreamCallPlugin", "Ignore missed call")
+              }
+            }
+
             val notificationConfig = NotificationConfig(
                 pushDeviceGenerators = listOf(
                     FirebasePushDeviceGenerator(
@@ -808,32 +845,7 @@ class StreamCallPlugin : Plugin() {
                     )
                 ),
                 requestPermissionOnAppLaunch = { true },
-                notificationHandler = CompatibilityStreamNotificationHandler(
-                    application = application,
-                    intentResolver = CustomStreamIntentResolver(application),
-                    initialNotificationBuilderInterceptor = object : StreamNotificationBuilderInterceptors() {
-                        override fun onBuildIncomingCallNotification(
-                            builder: NotificationCompat.Builder,
-                            fullScreenPendingIntent: PendingIntent,
-                            acceptCallPendingIntent: PendingIntent,
-                            rejectCallPendingIntent: PendingIntent,
-                            callerName: String?,
-                            shouldHaveContentIntent: Boolean
-                        ): NotificationCompat.Builder {
-                            val keyguardManager = application.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-                            val isLocked = keyguardManager.isKeyguardLocked
-
-                            return if (isLocked) {
-                                // Only full-screen intent when locked to avoid double notification
-                                builder.setFullScreenIntent(fullScreenPendingIntent, true)
-                            } else {
-                                // Both intents when unlocked for clickable notification
-                                builder.setContentIntent(fullScreenPendingIntent)
-                                    .setFullScreenIntent(fullScreenPendingIntent, true)
-                            }
-                        }
-                    }
-                )
+                notificationHandler = myNotificationHandler
             )
 
             val soundsConfig = incomingOnlyRingingConfig(contextToUse.packageName)
