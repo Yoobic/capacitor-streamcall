@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [7.1.16](https://github.com/Cap-go/capacitor-streamcall/compare/7.1.15...7.1.16) (2025-09-22)
+
+
+### Bug Fixes
+
+* **deps:** update dependency @capacitor/status-bar to v7.0.3 ([#41](https://github.com/Cap-go/capacitor-streamcall/issues/41)) ([a7a32b7](https://github.com/Cap-go/capacitor-streamcall/commit/a7a32b77d02cf9a42931f872f7f21b976450014a))
+
 ## [7.1.15](https://github.com/Cap-go/capacitor-streamcall/compare/7.1.14...7.1.15) (2025-09-22)
 
 ## [7.1.14](https://github.com/Cap-go/capacitor-streamcall/compare/7.1.13...7.1.14) (2025-09-16)
