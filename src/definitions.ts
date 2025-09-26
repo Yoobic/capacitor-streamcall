@@ -56,6 +56,7 @@ export type CallState =
   | 'speaker_disabled'
   | 'microphone_enabled'
   | 'microphone_disabled'
+  | 'outgoing_call_ended'
   | 'unknown';
 
 /**

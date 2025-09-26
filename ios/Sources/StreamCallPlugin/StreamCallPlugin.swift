@@ -62,6 +62,7 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
     private var currentCallId: String = ""
     private var currentCallState: String = ""
     private var hasNotifiedCallJoined: Bool = false
+    private var previousCallingState: CallingState?
 
     @Injected(\.callKitAdapter) var callKitAdapter
     @Injected(\.callKitPushNotificationAdapter) var callKitPushNotificationAdapter
@@ -331,6 +332,50 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
                     do {
                         try self.requireInitialized()
                         print("Call State Update: \(newState)")
+                        // Check if transitioning from outgoing to idle
+                        if newState == .idle,
+                           let previousState = self.previousCallingState,
+                           case .outgoing = previousState {
+                            print("Call state changed from outgoing to idle. Ending call with ID: \(self.currentCallId)")
+                            
+                            // End the call using the stored call ID and type
+                            if !self.currentCallId.isEmpty {
+                                Task {
+                                    do {
+                                        // Parse call type and id from currentCallId format "type:id"
+                                        let components = self.currentCallId.components(separatedBy: ":")
+                                        if components.count >= 2 {
+                                            let callType = components[0]
+                                            let callId = components[1]
+                                            
+                                            // Try to get the call and end it using the parsed call type
+                                            if let streamVideo = self.streamVideo {
+                                                let call = streamVideo.call(callType: callType, callId: callId)
+                                                try await call.end()
+                                                print("Successfully ended outgoing call: \(callId) with type: \(callType)")
+                                              
+                                                let data: [String: Any] = [
+                                                    "callId": call.cId,
+                                                    "state": "outgoing_call_ended"
+                                                ]
+
+                                                self.notifyListeners("callEvent", data: data)
+                                            }
+                                        } else {
+                                            print("Invalid call ID format: \(self.currentCallId)")
+                                        }
+                                    } catch {
+                                        print("Error ending outgoing call \(self.currentCallId): \(error)")
+                                    }
+                                    
+                                    // Clean up stored call information
+                                    DispatchQueue.main.async {
+                                        self.currentCallId = ""
+                                        print("Cleaned up call information after ending outgoing call")
+                                    }
+                                }
+                            }
+                        }
 
                         if newState == .inCall {
                             print("- In call state detected")
@@ -410,10 +455,14 @@ public class StreamCallPlugin: CAPPlugin, CAPBridgedPlugin {
 
                                 // Remove the call overlay view and touch intercept view when not in a call
                                 self.ensureViewRemoved()
+                              
                             } else {
                                 print("Not sending left event - CurrentCallId: \(self.currentCallId), ActiveCall exists: \(self.streamVideo?.state.activeCall != nil)")
                             }
                         }
+                        
+                        // Update the previous state for next comparison
+                        self.previousCallingState = newState
                     } catch {
                         log.error("Error handling call state update: \(String(describing: error))")
                     }
