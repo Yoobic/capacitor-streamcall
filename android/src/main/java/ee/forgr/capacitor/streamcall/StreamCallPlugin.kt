@@ -834,6 +834,10 @@ class StreamCallPlugin : Plugin() {
           payload: Map<String, Any?>
         ) {
           Log.v("StreamCallPlugin", "Ignore missed call")
+          val call = streamVideoClient?.call(id = callId.id, type = callId.type)
+          if (call != null) {
+            call.leave()
+          }
         }
       }
 
