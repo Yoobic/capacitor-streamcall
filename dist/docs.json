@@ -1,0 +1,1950 @@
+{
+  "api": {
+    "name": "StreamCallPlugin",
+    "slug": "streamcallplugin",
+    "docs": "",
+    "tags": [
+      {
+        "text": "StreamCallPlugin",
+        "name": "interface"
+      },
+      {
+        "text": "Capacitor plugin for Stream Video calling functionality",
+        "name": "description"
+      }
+    ],
+    "methods": [
+      {
+        "name": "login",
+        "signature": "(options: LoginOptions) => Promise<SuccessResponse>",
+        "parameters": [
+          {
+            "name": "options",
+            "docs": "- Login configuration",
+            "type": "LoginOptions"
+          }
+        ],
+        "returns": "Promise<SuccessResponse>",
+        "tags": [
+          {
+            "name": "param",
+            "text": "options - Login configuration"
+          },
+          {
+            "name": "returns",
+            "text": "Success status"
+          },
+          {
+            "name": "example",
+            "text": "await StreamCall.login({\n  token: 'your-token',\n  userId: 'user-123',\n  name: 'John Doe',\n  apiKey: 'your-api-key'\n});"
+          }
+        ],
+        "docs": "Login to Stream Video service",
+        "complexTypes": [
+          "SuccessResponse",
+          "LoginOptions"
+        ],
+        "slug": "login"
+      },
+      {
+        "name": "logout",
+        "signature": "() => Promise<SuccessResponse>",
+        "parameters": [],
+        "returns": "Promise<SuccessResponse>",
+        "tags": [
+          {
+            "name": "returns",
+            "text": "Success status"
+          },
+          {
+            "name": "example",
+            "text": "await StreamCall.logout();"
+          }
+        ],
+        "docs": "Logout from Stream Video service",
+        "complexTypes": [
+          "SuccessResponse"
+        ],
+        "slug": "logout"
+      },
+      {
+        "name": "call",
+        "signature": "(options: CallOptions) => Promise<SuccessResponse>",
+        "parameters": [
+          {
+            "name": "options",
+            "docs": "- Call configuration",
+            "type": "CallOptions"
+          }
+        ],
+        "returns": "Promise<SuccessResponse>",
+        "tags": [
+          {
+            "name": "param",
+            "text": "options - Call configuration"
+          },
+          {
+            "name": "returns",
+            "text": "Success status"
+          },
+          {
+            "name": "example",
+            "text": "await StreamCall.call({\n  userId: 'user-456',\n  type: 'video',\n  ring: true\n});"
+          }
+        ],
+        "docs": "Initiate a call to another user",
+        "complexTypes": [
+          "SuccessResponse",
+          "CallOptions"
+        ],
+        "slug": "call"
+      },
+      {
+        "name": "endCall",
+        "signature": "() => Promise<SuccessResponse>",
+        "parameters": [],
+        "returns": "Promise<SuccessResponse>",
+        "tags": [
+          {
+            "name": "returns",
+            "text": "Success status"
+          },
+          {
+            "name": "example",
+            "text": "await StreamCall.endCall();"
+          }
+        ],
+        "docs": "End the current call",
+        "complexTypes": [
+          "SuccessResponse"
+        ],
+        "slug": "endcall"
+      },
+      {
+        "name": "joinCall",
+        "signature": "(options: { callId: string; callType: string; }) => Promise<SuccessResponse>",
+        "parameters": [
+          {
+            "name": "options",
+            "docs": "- Microphone state",
+            "type": "{ callId: string; callType: string; }"
+          }
+        ],
+        "returns": "Promise<SuccessResponse>",
+        "tags": [
+          {
+            "name": "param",
+            "text": "options - Microphone state"
+          },
+          {
+            "name": "returns",
+            "text": "Success status"
+          },
+          {
+            "name": "example",
+            "text": "await StreamCall.joinCall({ callId: 'call001', callType: 'default' });"
+          }
+        ],
+        "docs": "Join an existing call",
+        "complexTypes": [
+          "SuccessResponse"
+        ],
+        "slug": "joincall"
+      },
+      {
+        "name": "setMicrophoneEnabled",
+        "signature": "(options: { enabled: boolean; }) => Promise<SuccessResponse>",
+        "parameters": [
+          {
+            "name": "options",
+            "docs": "- Microphone state",
+            "type": "{ enabled: boolean; }"
+          }
+        ],
+        "returns": "Promise<SuccessResponse>",
+        "tags": [
+          {
+            "name": "param",
+            "text": "options - Microphone state"
+          },
+          {
+            "name": "returns",
+            "text": "Success status"
+          },
+          {
+            "name": "example",
+            "text": "await StreamCall.setMicrophoneEnabled({ enabled: false });"
+          }
+        ],
+        "docs": "Enable or disable microphone",
+        "complexTypes": [
+          "SuccessResponse"
+        ],
+        "slug": "setmicrophoneenabled"
+      },
+      {
+        "name": "setCameraEnabled",
+        "signature": "(options: { enabled: boolean; }) => Promise<SuccessResponse>",
+        "parameters": [
+          {
+            "name": "options",
+            "docs": "- Camera state",
+            "type": "{ enabled: boolean; }"
+          }
+        ],
+        "returns": "Promise<SuccessResponse>",
+        "tags": [
+          {
+            "name": "param",
+            "text": "options - Camera state"
+          },
+          {
+            "name": "returns",
+            "text": "Success status"
+          },
+          {
+            "name": "example",
+            "text": "await StreamCall.setCameraEnabled({ enabled: false });"
+          }
+        ],
+        "docs": "Enable or disable camera",
+        "complexTypes": [
+          "SuccessResponse"
+        ],
+        "slug": "setcameraenabled"
+      },
+      {
+        "name": "addListener",
+        "signature": "(eventName: 'callEvent', listenerFunc: (event: CallEvent) => void) => Promise<{ remove: () => Promise<void>; }>",
+        "parameters": [
+          {
+            "name": "eventName",
+            "docs": "- Name of the event to listen for",
+            "type": "'callEvent'"
+          },
+          {
+            "name": "listenerFunc",
+            "docs": "- Callback function",
+            "type": "(event: CallEvent) => void"
+          }
+        ],
+        "returns": "Promise<{ remove: () => Promise<void>; }>",
+        "tags": [
+          {
+            "name": "param",
+            "text": "eventName - Name of the event to listen for"
+          },
+          {
+            "name": "param",
+            "text": "listenerFunc - Callback function"
+          },
+          {
+            "name": "returns",
+            "text": "Function to remove listener"
+          },
+          {
+            "name": "example",
+            "text": "const listener = await StreamCall.addListener('callEvent', (event) => {\n  console.log(`Call ${event.callId} is now ${event.state}`);\n});"
+          }
+        ],
+        "docs": "Add listener for call events",
+        "complexTypes": [
+          "CallEvent"
+        ],
+        "slug": "addlistenercallevent-"
+      },
+      {
+        "name": "addListener",
+        "signature": "(eventName: 'incomingCall', listenerFunc: (event: IncomingCallPayload) => void) => Promise<{ remove: () => Promise<void>; }>",
+        "parameters": [
+          {
+            "name": "eventName",
+            "docs": "",
+            "type": "'incomingCall'"
+          },
+          {
+            "name": "listenerFunc",
+            "docs": "",
+            "type": "(event: IncomingCallPayload) => void"
+          }
+        ],
+        "returns": "Promise<{ remove: () => Promise<void>; }>",
+        "tags": [],
+        "docs": "Listen for lock-screen incoming call (Android only).\nFired when the app is shown by full-screen intent before user interaction.",
+        "complexTypes": [
+          "IncomingCallPayload"
+        ],
+        "slug": "addlistenerincomingcall-"
+      },
+      {
+        "name": "removeAllListeners",
+        "signature": "() => Promise<void>",
+        "parameters": [],
+        "returns": "Promise<void>",
+        "tags": [
+          {
+            "name": "returns"
+          },
+          {
+            "name": "example",
+            "text": "await StreamCall.removeAllListeners();"
+          }
+        ],
+        "docs": "Remove all event listeners",
+        "complexTypes": [],
+        "slug": "removealllisteners"
+      },
+      {
+        "name": "enableBluetooth",
+        "signature": "() => Promise<SuccessResponse>",
+        "parameters": [],
+        "returns": "Promise<SuccessResponse>",
+        "tags": [
+          {
+            "name": "returns",
+            "text": "Success status"
+          },
+          {
+            "name": "example",
+            "text": "await StreamCall.enableBluetooth();"
+          }
+        ],
+        "docs": "Enable bluetooth audio",
+        "complexTypes": [
+          "SuccessResponse"
+        ],
+        "slug": "enablebluetooth"
+      },
+      {
+        "name": "acceptCall",
+        "signature": "() => Promise<SuccessResponse>",
+        "parameters": [],
+        "returns": "Promise<SuccessResponse>",
+        "tags": [
+          {
+            "name": "returns",
+            "text": "Success status"
+          },
+          {
+            "name": "example",
+            "text": "await StreamCall.acceptCall();"
+          }
+        ],
+        "docs": "Accept an incoming call",
+        "complexTypes": [
+          "SuccessResponse"
+        ],
+        "slug": "acceptcall"
+      },
+      {
+        "name": "rejectCall",
+        "signature": "() => Promise<SuccessResponse>",
+        "parameters": [],
+        "returns": "Promise<SuccessResponse>",
+        "tags": [
+          {
+            "name": "returns",
+            "text": "Success status"
+          },
+          {
+            "name": "example",
+            "text": "await StreamCall.rejectCall();"
+          }
+        ],
+        "docs": "Reject an incoming call",
+        "complexTypes": [
+          "SuccessResponse"
+        ],
+        "slug": "rejectcall"
+      },
+      {
+        "name": "isCameraEnabled",
+        "signature": "() => Promise<CameraEnabledResponse>",
+        "parameters": [],
+        "returns": "Promise<CameraEnabledResponse>",
+        "tags": [
+          {
+            "name": "returns",
+            "text": "Camera enabled status"
+          },
+          {
+            "name": "example",
+            "text": "const isCameraEnabled = await StreamCall.isCameraEnabled();\nconsole.log(isCameraEnabled);"
+          }
+        ],
+        "docs": "Check if camera is enabled",
+        "complexTypes": [
+          "CameraEnabledResponse"
+        ],
+        "slug": "iscameraenabled"
+      },
+      {
+        "name": "getCallStatus",
+        "signature": "() => Promise<CallEvent>",
+        "parameters": [],
+        "returns": "Promise<CallEvent>",
+        "tags": [
+          {
+            "name": "returns",
+            "text": "Current call status as a CallEvent"
+          },
+          {
+            "name": "example",
+            "text": "const callStatus = await StreamCall.getCallStatus();\nconsole.log(callStatus);"
+          }
+        ],
+        "docs": "Get the current call status",
+        "complexTypes": [
+          "CallEvent"
+        ],
+        "slug": "getcallstatus"
+      },
+      {
+        "name": "getRingingCall",
+        "signature": "() => Promise<CallEvent>",
+        "parameters": [],
+        "returns": "Promise<CallEvent>",
+        "tags": [
+          {
+            "name": "returns",
+            "text": "Current ringing call status as a CallEvent"
+          },
+          {
+            "name": "example",
+            "text": "const ringingCall = await StreamCall.getRingingCall();\nconsole.log(ringingCall);"
+          }
+        ],
+        "docs": "Get the current ringing call",
+        "complexTypes": [
+          "CallEvent"
+        ],
+        "slug": "getringingcall"
+      },
+      {
+        "name": "toggleViews",
+        "signature": "() => Promise<{ newLayout: string; }>",
+        "parameters": [],
+        "returns": "Promise<{ newLayout: string; }>",
+        "tags": [
+          {
+            "name": "returns",
+            "text": "Current call status as a CallEvent"
+          },
+          {
+            "name": "example",
+            "text": "const callStatus = await StreamCall.getCallStatus();\nconsole.log(callStatus);"
+          }
+        ],
+        "docs": "Get the current call status",
+        "complexTypes": [],
+        "slug": "toggleviews"
+      },
+      {
+        "name": "toggleCamera",
+        "signature": "() => Promise<{ status: 'enabled' | 'disable'; }>",
+        "parameters": [],
+        "returns": "Promise<{ status: 'enabled' | 'disable'; }>",
+        "tags": [],
+        "docs": "",
+        "complexTypes": [],
+        "slug": "togglecamera"
+      },
+      {
+        "name": "toggleMicrophone",
+        "signature": "() => Promise<{ status: 'enabled' | 'disable'; }>",
+        "parameters": [],
+        "returns": "Promise<{ status: 'enabled' | 'disable'; }>",
+        "tags": [],
+        "docs": "",
+        "complexTypes": [],
+        "slug": "togglemicrophone"
+      },
+      {
+        "name": "setSpeaker",
+        "signature": "(options: { name: string; }) => Promise<SuccessResponse>",
+        "parameters": [
+          {
+            "name": "options",
+            "docs": "- Speakerphone name",
+            "type": "{ name: string; }"
+          }
+        ],
+        "returns": "Promise<SuccessResponse>",
+        "tags": [
+          {
+            "name": "param",
+            "text": "options - Speakerphone name"
+          },
+          {
+            "name": "returns",
+            "text": "Success status"
+          },
+          {
+            "name": "example",
+            "text": "await StreamCall.setSpeaker({ name: 'speaker' });"
+          }
+        ],
+        "docs": "Set speakerphone on",
+        "complexTypes": [
+          "SuccessResponse"
+        ],
+        "slug": "setspeaker"
+      },
+      {
+        "name": "switchCamera",
+        "signature": "(options: { camera: 'front' | 'back'; }) => Promise<SuccessResponse>",
+        "parameters": [
+          {
+            "name": "options",
+            "docs": "- Camera to switch to",
+            "type": "{ camera: 'front' | 'back'; }"
+          }
+        ],
+        "returns": "Promise<SuccessResponse>",
+        "tags": [
+          {
+            "name": "param",
+            "text": "options - Camera to switch to"
+          },
+          {
+            "name": "returns",
+            "text": "Success status"
+          },
+          {
+            "name": "example",
+            "text": "await StreamCall.switchCamera({ camera: 'back' });"
+          }
+        ],
+        "docs": "Switch camera",
+        "complexTypes": [
+          "SuccessResponse"
+        ],
+        "slug": "switchcamera"
+      },
+      {
+        "name": "getCallInfo",
+        "signature": "(options: { callId: string; }) => Promise<CallEvent>",
+        "parameters": [
+          {
+            "name": "options",
+            "docs": "- Options containing the call ID",
+            "type": "{ callId: string; }"
+          }
+        ],
+        "returns": "Promise<CallEvent>",
+        "tags": [
+          {
+            "name": "param",
+            "text": "options - Options containing the call ID"
+          }
+        ],
+        "docs": "Get detailed information about an active call including caller details",
+        "complexTypes": [
+          "CallEvent"
+        ],
+        "slug": "getcallinfo"
+      },
+      {
+        "name": "setDynamicStreamVideoApikey",
+        "signature": "(options: { apiKey: string; }) => Promise<SuccessResponse>",
+        "parameters": [
+          {
+            "name": "options",
+            "docs": "- The API key to set",
+            "type": "{ apiKey: string; }"
+          }
+        ],
+        "returns": "Promise<SuccessResponse>",
+        "tags": [
+          {
+            "name": "param",
+            "text": "options - The API key to set"
+          },
+          {
+            "name": "returns",
+            "text": "Success status"
+          },
+          {
+            "name": "example",
+            "text": "await StreamCall.setDynamicStreamVideoApikey({ apiKey: 'new-api-key' });"
+          }
+        ],
+        "docs": "Set a dynamic Stream Video API key that overrides the static one",
+        "complexTypes": [
+          "SuccessResponse"
+        ],
+        "slug": "setdynamicstreamvideoapikey"
+      },
+      {
+        "name": "getDynamicStreamVideoApikey",
+        "signature": "() => Promise<DynamicApiKeyResponse>",
+        "parameters": [],
+        "returns": "Promise<DynamicApiKeyResponse>",
+        "tags": [
+          {
+            "name": "returns",
+            "text": "The dynamic API key and whether it's set"
+          },
+          {
+            "name": "example",
+            "text": "const result = await StreamCall.getDynamicStreamVideoApikey();\nif (result.hasDynamicKey) {\n  console.log('Dynamic API key:', result.apiKey);\n} else {\n  console.log('Using static API key from resources');\n}"
+          }
+        ],
+        "docs": "Get the currently set dynamic Stream Video API key",
+        "complexTypes": [
+          "DynamicApiKeyResponse"
+        ],
+        "slug": "getdynamicstreamvideoapikey"
+      },
+      {
+        "name": "getCurrentUser",
+        "signature": "() => Promise<CurrentUserResponse>",
+        "parameters": [],
+        "returns": "Promise<CurrentUserResponse>",
+        "tags": [
+          {
+            "name": "returns",
+            "text": "Current user information"
+          },
+          {
+            "name": "example",
+            "text": "const currentUser = await StreamCall.getCurrentUser();\nconsole.log(currentUser);"
+          }
+        ],
+        "docs": "Get the current user's information",
+        "complexTypes": [
+          "CurrentUserResponse"
+        ],
+        "slug": "getcurrentuser"
+      }
+    ],
+    "properties": []
+  },
+  "interfaces": [
+    {
+      "name": "SuccessResponse",
+      "slug": "successresponse",
+      "docs": "",
+      "tags": [
+        {
+          "text": "SuccessResponse",
+          "name": "interface"
+        },
+        {
+          "text": "Standard response indicating operation success/failure",
+          "name": "description"
+        },
+        {
+          "text": "{boolean} success - Whether the operation succeeded",
+          "name": "property"
+        }
+      ],
+      "methods": [],
+      "properties": [
+        {
+          "name": "success",
+          "tags": [],
+          "docs": "Whether the operation was successful",
+          "complexTypes": [],
+          "type": "boolean"
+        },
+        {
+          "name": "callId",
+          "tags": [],
+          "docs": "",
+          "complexTypes": [],
+          "type": "string | undefined"
+        }
+      ]
+    },
+    {
+      "name": "LoginOptions",
+      "slug": "loginoptions",
+      "docs": "",
+      "tags": [
+        {
+          "text": "LoginOptions",
+          "name": "interface"
+        },
+        {
+          "text": "Configuration options for logging into the Stream Video service",
+          "name": "description"
+        },
+        {
+          "text": "{string} token - Stream Video API token for authentication",
+          "name": "property"
+        },
+        {
+          "text": "{string} userId - Unique identifier for the current user",
+          "name": "property"
+        },
+        {
+          "text": "{string} name - Display name for the current user",
+          "name": "property"
+        },
+        {
+          "text": "{string} [imageURL] - Avatar URL for the current user",
+          "name": "property"
+        },
+        {
+          "text": "{string} apiKey - Stream Video API key for your application",
+          "name": "property"
+        },
+        {
+          "text": "{string} [magicDivId] - DOM element ID where video will be rendered",
+          "name": "property"
+        }
+      ],
+      "methods": [],
+      "properties": [
+        {
+          "name": "token",
+          "tags": [],
+          "docs": "Stream Video API token",
+          "complexTypes": [],
+          "type": "string"
+        },
+        {
+          "name": "userId",
+          "tags": [],
+          "docs": "User ID for the current user",
+          "complexTypes": [],
+          "type": "string"
+        },
+        {
+          "name": "name",
+          "tags": [],
+          "docs": "Display name for the current user",
+          "complexTypes": [],
+          "type": "string"
+        },
+        {
+          "name": "imageURL",
+          "tags": [],
+          "docs": "Optional avatar URL for the current user",
+          "complexTypes": [],
+          "type": "string | undefined"
+        },
+        {
+          "name": "apiKey",
+          "tags": [],
+          "docs": "Stream Video API key",
+          "complexTypes": [],
+          "type": "string"
+        },
+        {
+          "name": "magicDivId",
+          "tags": [],
+          "docs": "ID of the HTML element where the video will be rendered",
+          "complexTypes": [],
+          "type": "string | undefined"
+        },
+        {
+          "name": "pushNotificationsConfig",
+          "tags": [],
+          "docs": "",
+          "complexTypes": [
+            "PushNotificationsConfig"
+          ],
+          "type": "PushNotificationsConfig"
+        }
+      ]
+    },
+    {
+      "name": "PushNotificationsConfig",
+      "slug": "pushnotificationsconfig",
+      "docs": "",
+      "tags": [],
+      "methods": [],
+      "properties": [
+        {
+          "name": "pushProviderName",
+          "tags": [],
+          "docs": "",
+          "complexTypes": [],
+          "type": "string"
+        },
+        {
+          "name": "voipProviderName",
+          "tags": [],
+          "docs": "",
+          "complexTypes": [],
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "CallOptions",
+      "slug": "calloptions",
+      "docs": "",
+      "tags": [
+        {
+          "text": "CallOptions",
+          "name": "interface"
+        },
+        {
+          "text": "Options for initiating a video call",
+          "name": "description"
+        },
+        {
+          "text": "{string[]} userIds - IDs of the users to call",
+          "name": "property"
+        },
+        {
+          "text": "{CallType} [type=default] - Type of call",
+          "name": "property"
+        },
+        {
+          "text": "{boolean} [ring=true] - Whether to send ring notification",
+          "name": "property"
+        },
+        {
+          "text": "{string} [team] - Team name to call",
+          "name": "property"
+        }
+      ],
+      "methods": [],
+      "properties": [
+        {
+          "name": "userIds",
+          "tags": [],
+          "docs": "User ID of the person to call",
+          "complexTypes": [],
+          "type": "string[]"
+        },
+        {
+          "name": "type",
+          "tags": [],
+          "docs": "Type of call, defaults to 'default'",
+          "complexTypes": [
+            "CallType"
+          ],
+          "type": "CallType"
+        },
+        {
+          "name": "ring",
+          "tags": [],
+          "docs": "Whether to ring the other user, defaults to true",
+          "complexTypes": [],
+          "type": "boolean | undefined"
+        },
+        {
+          "name": "team",
+          "tags": [],
+          "docs": "Team name to call",
+          "complexTypes": [],
+          "type": "string | undefined"
+        },
+        {
+          "name": "video",
+          "tags": [],
+          "docs": "Whether to start the call with video enabled, defaults to false",
+          "complexTypes": [],
+          "type": "boolean | undefined"
+        },
+        {
+          "name": "custom",
+          "tags": [],
+          "docs": "Custom data to be passed to the call",
+          "complexTypes": [
+            "Record"
+          ],
+          "type": "Record<\n    string,\n    | string\n    | boolean\n    | number\n    | null\n    | Record<string, string | boolean | number | null>\n    | string[]\n    | boolean[]\n    | number[]\n  >"
+        }
+      ]
+    },
+    {
+      "name": "CallEvent",
+      "slug": "callevent",
+      "docs": "",
+      "tags": [
+        {
+          "text": "CallEvent",
+          "name": "interface"
+        },
+        {
+          "text": "Event emitted when call state changes",
+          "name": "description"
+        },
+        {
+          "text": "{string} callId - Unique identifier of the call",
+          "name": "property"
+        },
+        {
+          "text": "{CallState} state - Current state of the call",
+          "name": "property"
+        },
+        {
+          "text": "{string} [userId] - User ID of the participant who triggered the event",
+          "name": "property"
+        },
+        {
+          "text": "{string} [reason] - Reason for the call state change",
+          "name": "property"
+        },
+        {
+          "text": "{CallMember} [caller] - Information about the caller (for incoming calls)",
+          "name": "property"
+        },
+        {
+          "text": "{CallMember[]} [members] - List of call members",
+          "name": "property"
+        }
+      ],
+      "methods": [],
+      "properties": [
+        {
+          "name": "callId",
+          "tags": [],
+          "docs": "ID of the call",
+          "complexTypes": [],
+          "type": "string"
+        },
+        {
+          "name": "state",
+          "tags": [],
+          "docs": "Current state of the call",
+          "complexTypes": [
+            "CallState"
+          ],
+          "type": "CallState"
+        },
+        {
+          "name": "userId",
+          "tags": [],
+          "docs": "User ID of the participant in the call who triggered the event",
+          "complexTypes": [],
+          "type": "string | undefined"
+        },
+        {
+          "name": "reason",
+          "tags": [],
+          "docs": "Reason for the call state change, if applicable",
+          "complexTypes": [],
+          "type": "string | undefined"
+        },
+        {
+          "name": "caller",
+          "tags": [],
+          "docs": "Information about the caller (for incoming calls)",
+          "complexTypes": [
+            "CallMember"
+          ],
+          "type": "CallMember"
+        },
+        {
+          "name": "members",
+          "tags": [],
+          "docs": "List of call members",
+          "complexTypes": [
+            "CallMember"
+          ],
+          "type": "CallMember[] | undefined"
+        },
+        {
+          "name": "custom",
+          "tags": [],
+          "docs": "",
+          "complexTypes": [
+            "Record"
+          ],
+          "type": "Record<\n    string,\n    | string\n    | boolean\n    | number\n    | null\n    | Record<string, string | boolean | number | null>\n    | string[]\n    | boolean[]\n    | number[]\n  >"
+        },
+        {
+          "name": "count",
+          "tags": [],
+          "docs": "",
+          "complexTypes": [],
+          "type": "number | undefined"
+        }
+      ]
+    },
+    {
+      "name": "CallState",
+      "slug": "callstate",
+      "docs": "CallState is the current state of the call\nas seen by an SFU.",
+      "tags": [
+        {
+          "text": "from protobuf message stream.video.sfu.models.CallState",
+          "name": "generated"
+        },
+        {
+          "text": "MessageType for protobuf message stream.video.sfu.models.CallState",
+          "name": "generated"
+        }
+      ],
+      "methods": [],
+      "properties": [
+        {
+          "name": "participants",
+          "tags": [
+            {
+              "text": "from protobuf field: repeated stream.video.sfu.models.Participant participants = 1;",
+              "name": "generated"
+            }
+          ],
+          "docs": "participants is the list of participants in the call.\nIn large calls, the list could be truncated in which\ncase, the list of participants contains fewer participants\nthan the counts returned in participant_count. Anonymous\nparticipants are **NOT** included in the list.",
+          "complexTypes": [
+            "Participant"
+          ],
+          "type": "Participant[]"
+        },
+        {
+          "name": "startedAt",
+          "tags": [
+            {
+              "text": "from protobuf field: google.protobuf.Timestamp started_at = 2;",
+              "name": "generated"
+            }
+          ],
+          "docs": "started_at is the time the call session actually started.",
+          "complexTypes": [
+            "Timestamp"
+          ],
+          "type": "Timestamp"
+        },
+        {
+          "name": "participantCount",
+          "tags": [
+            {
+              "text": "from protobuf field: stream.video.sfu.models.ParticipantCount participant_count = 3;",
+              "name": "generated"
+            }
+          ],
+          "docs": "participant_count contains the summary of the counts.",
+          "complexTypes": [
+            "ParticipantCount"
+          ],
+          "type": "ParticipantCount"
+        },
+        {
+          "name": "pins",
+          "tags": [
+            {
+              "text": "from protobuf field: repeated stream.video.sfu.models.Pin pins = 4;",
+              "name": "generated"
+            }
+          ],
+          "docs": "the list of pins in the call.\nPins are ordered in descending order (most important first).",
+          "complexTypes": [
+            "Pin"
+          ],
+          "type": "Pin[]"
+        }
+      ]
+    },
+    {
+      "name": "Participant",
+      "slug": "participant",
+      "docs": "those who are online in the call",
+      "tags": [
+        {
+          "text": "from protobuf message stream.video.sfu.models.Participant",
+          "name": "generated"
+        },
+        {
+          "text": "MessageType for protobuf message stream.video.sfu.models.Participant",
+          "name": "generated"
+        }
+      ],
+      "methods": [],
+      "properties": [
+        {
+          "name": "userId",
+          "tags": [
+            {
+              "text": "from protobuf field: string user_id = 1;",
+              "name": "generated"
+            }
+          ],
+          "docs": "",
+          "complexTypes": [],
+          "type": "string"
+        },
+        {
+          "name": "sessionId",
+          "tags": [
+            {
+              "text": "from protobuf field: string session_id = 2;",
+              "name": "generated"
+            }
+          ],
+          "docs": "",
+          "complexTypes": [],
+          "type": "string"
+        },
+        {
+          "name": "publishedTracks",
+          "tags": [
+            {
+              "text": "from protobuf field: repeated stream.video.sfu.models.TrackType published_tracks = 3;",
+              "name": "generated"
+            }
+          ],
+          "docs": "map of track id to track type",
+          "complexTypes": [
+            "TrackType"
+          ],
+          "type": "TrackType[]"
+        },
+        {
+          "name": "joinedAt",
+          "tags": [
+            {
+              "text": "from protobuf field: google.protobuf.Timestamp joined_at = 4;",
+              "name": "generated"
+            }
+          ],
+          "docs": "",
+          "complexTypes": [
+            "Timestamp"
+          ],
+          "type": "Timestamp"
+        },
+        {
+          "name": "trackLookupPrefix",
+          "tags": [
+            {
+              "text": "from protobuf field: string track_lookup_prefix = 5;",
+              "name": "generated"
+            }
+          ],
+          "docs": "",
+          "complexTypes": [],
+          "type": "string"
+        },
+        {
+          "name": "connectionQuality",
+          "tags": [
+            {
+              "text": "from protobuf field: stream.video.sfu.models.ConnectionQuality connection_quality = 6;",
+              "name": "generated"
+            }
+          ],
+          "docs": "",
+          "complexTypes": [
+            "ConnectionQuality"
+          ],
+          "type": "ConnectionQuality"
+        },
+        {
+          "name": "isSpeaking",
+          "tags": [
+            {
+              "text": "from protobuf field: bool is_speaking = 7;",
+              "name": "generated"
+            }
+          ],
+          "docs": "",
+          "complexTypes": [],
+          "type": "boolean"
+        },
+        {
+          "name": "isDominantSpeaker",
+          "tags": [
+            {
+              "text": "from protobuf field: bool is_dominant_speaker = 8;",
+              "name": "generated"
+            }
+          ],
+          "docs": "",
+          "complexTypes": [],
+          "type": "boolean"
+        },
+        {
+          "name": "audioLevel",
+          "tags": [
+            {
+              "text": "from protobuf field: float audio_level = 9;",
+              "name": "generated"
+            }
+          ],
+          "docs": "",
+          "complexTypes": [],
+          "type": "number"
+        },
+        {
+          "name": "name",
+          "tags": [
+            {
+              "text": "from protobuf field: string name = 10;",
+              "name": "generated"
+            }
+          ],
+          "docs": "",
+          "complexTypes": [],
+          "type": "string"
+        },
+        {
+          "name": "image",
+          "tags": [
+            {
+              "text": "from protobuf field: string image = 11;",
+              "name": "generated"
+            }
+          ],
+          "docs": "",
+          "complexTypes": [],
+          "type": "string"
+        },
+        {
+          "name": "custom",
+          "tags": [
+            {
+              "text": "from protobuf field: google.protobuf.Struct custom = 12;",
+              "name": "generated"
+            }
+          ],
+          "docs": "",
+          "complexTypes": [
+            "Struct"
+          ],
+          "type": "Struct"
+        },
+        {
+          "name": "roles",
+          "tags": [
+            {
+              "text": "from protobuf field: repeated string roles = 13;",
+              "name": "generated"
+            }
+          ],
+          "docs": "",
+          "complexTypes": [],
+          "type": "string[]"
+        }
+      ]
+    },
+    {
+      "name": "Timestamp",
+      "slug": "timestamp",
+      "docs": "A Timestamp represents a point in time independent of any time zone or local\ncalendar, encoded as a count of seconds and fractions of seconds at\nnanosecond resolution. The count is relative to an epoch at UTC midnight on\nJanuary 1, 1970, in the proleptic Gregorian calendar which extends the\nGregorian calendar backwards to year one.\n\nAll minutes are 60 seconds long. Leap seconds are \"smeared\" so that no leap\nsecond table is needed for interpretation, using a [24-hour linear\nsmear](https://developers.google.com/time/smear).\n\nThe range is from 0001-01-01T00:00:00Z to 9999-12-31T23:59:59.999999999Z. By\nrestricting to that range, we ensure that we can convert to and from [RFC\n3339](https://www.ietf.org/rfc/rfc3339.txt) date strings.\n\n# Examples\n\nExample 1: Compute Timestamp from POSIX `time()`.\n\n    Timestamp timestamp;\n    timestamp.set_seconds(time(NULL));\n    timestamp.set_nanos(0);\n\nExample 2: Compute Timestamp from POSIX `gettimeofday()`.\n\n    struct timeval tv;\n    gettimeofday(&tv, NULL);\n\n    Timestamp timestamp;\n    timestamp.set_seconds(tv.tv_sec);\n    timestamp.set_nanos(tv.tv_usec * 1000);\n\nExample 3: Compute Timestamp from Win32 `GetSystemTimeAsFileTime()`.\n\n    FILETIME ft;\n    GetSystemTimeAsFileTime(&ft);\n    UINT64 ticks = (((UINT64)ft.dwHighDateTime) << 32) | ft.dwLowDateTime;\n\n    // A Windows tick is 100 nanoseconds. Windows epoch 1601-01-01T00:00:00Z\n    // is 11644473600 seconds before Unix epoch 1970-01-01T00:00:00Z.\n    Timestamp timestamp;\n    timestamp.set_seconds((INT64) ((ticks / 10000000) - 11644473600LL));\n    timestamp.set_nanos((INT32) ((ticks % 10000000) * 100));\n\nExample 4: Compute Timestamp from Java `System.currentTimeMillis()`.\n\n    long millis = System.currentTimeMillis();\n\n    Timestamp timestamp = Timestamp.newBuilder().setSeconds(millis / 1000)\n        .setNanos((int) ((millis % 1000) * 1000000)).build();\n\n\nExample 5: Compute Timestamp from Java `Instant.now()`.\n\n    Instant now = Instant.now();\n\n    Timestamp timestamp =\n        Timestamp.newBuilder().setSeconds(now.getEpochSecond())\n            .setNanos(now.getNano()).build();\n\n\nExample 6: Compute Timestamp from current time in Python.\n\n    timestamp = Timestamp()\n    timestamp.GetCurrentTime()\n\n# JSON Mapping\n\nIn JSON format, the Timestamp type is encoded as a string in the\n[RFC 3339](https://www.ietf.org/rfc/rfc3339.txt) format. That is, the\nformat is \"{year}-{month}-{day}T{hour}:{min}:{sec}[.{frac_sec}]Z\"\nwhere {year} is always expressed using four digits while {month}, {day},\n{hour}, {min}, and {sec} are zero-padded to two digits each. The fractional\nseconds, which can go up to 9 digits (i.e. up to 1 nanosecond resolution),\nare optional. The \"Z\" suffix indicates the timezone (\"UTC\"); the timezone\nis required. A proto3 JSON serializer should always use UTC (as indicated by\n\"Z\") when printing the Timestamp type and a proto3 JSON parser should be\nable to accept both UTC and other timezones (as indicated by an offset).\n\nFor example, \"2017-01-15T01:30:15.01Z\" encodes 15.01 seconds past\n01:30 UTC on January 15, 2017.\n\nIn JavaScript, one can convert a Date object to this format using the\nstandard\n[toISOString()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toISOString)\nmethod. In Python, a standard `datetime.datetime` object can be converted\nto this format using\n[`strftime`](https://docs.python.org/2/library/time.html#time.strftime) with\nthe time format spec '%Y-%m-%dT%H:%M:%S.%fZ'. Likewise, in Java, one can use\nthe Joda Time's [`ISODateTimeFormat.dateTime()`](\nhttp://www.joda.org/joda-time/apidocs/org/joda/time/format/ISODateTimeFormat.html#dateTime%2D%2D\n) to obtain a formatter capable of generating timestamps in this format.",
+      "tags": [
+        {
+          "text": "from protobuf message google.protobuf.Timestamp",
+          "name": "generated"
+        },
+        {
+          "text": "MessageType for protobuf message google.protobuf.Timestamp",
+          "name": "generated"
+        }
+      ],
+      "methods": [],
+      "properties": [
+        {
+          "name": "seconds",
+          "tags": [
+            {
+              "text": "from protobuf field: int64 seconds = 1;",
+              "name": "generated"
+            }
+          ],
+          "docs": "Represents seconds of UTC time since Unix epoch\n1970-01-01T00:00:00Z. Must be from 0001-01-01T00:00:00Z to\n9999-12-31T23:59:59Z inclusive.",
+          "complexTypes": [],
+          "type": "string"
+        },
+        {
+          "name": "nanos",
+          "tags": [
+            {
+              "text": "from protobuf field: int32 nanos = 2;",
+              "name": "generated"
+            }
+          ],
+          "docs": "Non-negative fractions of a second at nanosecond resolution. Negative\nsecond values with fractions must still have non-negative nanos values\nthat count forward in time. Must be from 0 to 999,999,999\ninclusive.",
+          "complexTypes": [],
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "name": "Struct",
+      "slug": "struct",
+      "docs": "`Struct` represents a structured data value, consisting of fields\nwhich map to dynamically typed values. In some languages, `Struct`\nmight be supported by a native representation. For example, in\nscripting languages like JS a struct is represented as an\nobject. The details of that representation are described together\nwith the proto support for the language.\n\nThe JSON representation for `Struct` is JSON object.",
+      "tags": [
+        {
+          "text": "from protobuf message google.protobuf.Struct",
+          "name": "generated"
+        },
+        {
+          "text": "MessageType for protobuf message google.protobuf.Struct",
+          "name": "generated"
+        }
+      ],
+      "methods": [],
+      "properties": [
+        {
+          "name": "fields",
+          "tags": [
+            {
+              "text": "from protobuf field: map<string, google.protobuf.Value> fields = 1;",
+              "name": "generated"
+            }
+          ],
+          "docs": "Unordered map of dynamically typed values.",
+          "complexTypes": [
+            "Value"
+          ],
+          "type": "{ [key: string]: Value; }"
+        }
+      ]
+    },
+    {
+      "name": "Value",
+      "slug": "value",
+      "docs": "`Value` represents a dynamically typed value which can be either\nnull, a number, a string, a boolean, a recursive struct value, or a\nlist of values. A producer of value is expected to set one of these\nvariants. Absence of any variant indicates an error.\n\nThe JSON representation for `Value` is JSON value.",
+      "tags": [
+        {
+          "text": "from protobuf message google.protobuf.Value",
+          "name": "generated"
+        },
+        {
+          "text": "MessageType for protobuf message google.protobuf.Value",
+          "name": "generated"
+        }
+      ],
+      "methods": [],
+      "properties": [
+        {
+          "name": "kind",
+          "tags": [
+            {
+              "text": "from protobuf oneof: kind",
+              "name": "generated"
+            }
+          ],
+          "docs": "",
+          "complexTypes": [
+            "NullValue",
+            "Struct",
+            "ListValue"
+          ],
+          "type": "{ oneofKind: 'nullValue'; nullValue: NullValue; } | { oneofKind: 'numberValue'; numberValue: number; } | { oneofKind: 'stringValue'; stringValue: string; } | { oneofKind: 'boolValue'; boolValue: boolean; } | { oneofKind: 'structValue'; structValue: Struct; } | { oneofKind: 'listValue'; listValue: ListValue; } | { oneofKind: undefined; }"
+        }
+      ]
+    },
+    {
+      "name": "ListValue",
+      "slug": "listvalue",
+      "docs": "`ListValue` is a wrapper around a repeated field of values.\n\nThe JSON representation for `ListValue` is JSON array.",
+      "tags": [
+        {
+          "text": "from protobuf message google.protobuf.ListValue",
+          "name": "generated"
+        },
+        {
+          "text": "MessageType for protobuf message google.protobuf.ListValue",
+          "name": "generated"
+        }
+      ],
+      "methods": [],
+      "properties": [
+        {
+          "name": "values",
+          "tags": [
+            {
+              "text": "from protobuf field: repeated google.protobuf.Value values = 1;",
+              "name": "generated"
+            }
+          ],
+          "docs": "Repeated field of dynamically typed values.",
+          "complexTypes": [
+            "Value"
+          ],
+          "type": "Value[]"
+        }
+      ]
+    },
+    {
+      "name": "ParticipantCount",
+      "slug": "participantcount",
+      "docs": "",
+      "tags": [
+        {
+          "text": "from protobuf message stream.video.sfu.models.ParticipantCount",
+          "name": "generated"
+        },
+        {
+          "text": "MessageType for protobuf message stream.video.sfu.models.ParticipantCount",
+          "name": "generated"
+        }
+      ],
+      "methods": [],
+      "properties": [
+        {
+          "name": "total",
+          "tags": [
+            {
+              "text": "from protobuf field: uint32 total = 1;",
+              "name": "generated"
+            }
+          ],
+          "docs": "Total number of participants in the call including\nthe anonymous participants.",
+          "complexTypes": [],
+          "type": "number"
+        },
+        {
+          "name": "anonymous",
+          "tags": [
+            {
+              "text": "from protobuf field: uint32 anonymous = 2;",
+              "name": "generated"
+            }
+          ],
+          "docs": "Total number of anonymous participants in the call.",
+          "complexTypes": [],
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "name": "Pin",
+      "slug": "pin",
+      "docs": "",
+      "tags": [
+        {
+          "text": "from protobuf message stream.video.sfu.models.Pin",
+          "name": "generated"
+        },
+        {
+          "text": "MessageType for protobuf message stream.video.sfu.models.Pin",
+          "name": "generated"
+        }
+      ],
+      "methods": [],
+      "properties": [
+        {
+          "name": "userId",
+          "tags": [
+            {
+              "text": "from protobuf field: string user_id = 1;",
+              "name": "generated"
+            }
+          ],
+          "docs": "the user to pin",
+          "complexTypes": [],
+          "type": "string"
+        },
+        {
+          "name": "sessionId",
+          "tags": [
+            {
+              "text": "from protobuf field: string session_id = 2;",
+              "name": "generated"
+            }
+          ],
+          "docs": "the user sesion_id to pin, if not provided, applies to all sessions",
+          "complexTypes": [],
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "CallMember",
+      "slug": "callmember",
+      "docs": "",
+      "tags": [
+        {
+          "text": "CallMember",
+          "name": "interface"
+        },
+        {
+          "text": "Information about a call member/participant",
+          "name": "description"
+        },
+        {
+          "text": "{string} userId - User ID of the member",
+          "name": "property"
+        },
+        {
+          "text": "{string} [name] - Display name of the user",
+          "name": "property"
+        },
+        {
+          "text": "{string} [imageURL] - Profile image URL of the user",
+          "name": "property"
+        },
+        {
+          "text": "{string} [role] - Role of the user in the call",
+          "name": "property"
+        }
+      ],
+      "methods": [],
+      "properties": [
+        {
+          "name": "userId",
+          "tags": [],
+          "docs": "User ID of the member",
+          "complexTypes": [],
+          "type": "string"
+        },
+        {
+          "name": "name",
+          "tags": [],
+          "docs": "Display name of the user",
+          "complexTypes": [],
+          "type": "string | undefined"
+        },
+        {
+          "name": "imageURL",
+          "tags": [],
+          "docs": "Profile image URL of the user",
+          "complexTypes": [],
+          "type": "string | undefined"
+        },
+        {
+          "name": "role",
+          "tags": [],
+          "docs": "Role of the user in the call",
+          "complexTypes": [],
+          "type": "string | undefined"
+        }
+      ]
+    },
+    {
+      "name": "IncomingCallPayload",
+      "slug": "incomingcallpayload",
+      "docs": "",
+      "tags": [
+        {
+          "text": "IncomingCallPayload",
+          "name": "interface"
+        },
+        {
+          "text": "Payload delivered with \"incomingCall\" event (Android lock-screen).",
+          "name": "description"
+        },
+        {
+          "text": "{string} cid - Call CID (type:id)",
+          "name": "property"
+        },
+        {
+          "text": "{string} type - Always \"incoming\" for this event",
+          "name": "property"
+        },
+        {
+          "text": "{CallMember} [caller] - Information about the caller",
+          "name": "property"
+        }
+      ],
+      "methods": [],
+      "properties": [
+        {
+          "name": "cid",
+          "tags": [],
+          "docs": "Full call CID (e.g. default:123)",
+          "complexTypes": [],
+          "type": "string"
+        },
+        {
+          "name": "type",
+          "tags": [],
+          "docs": "Event type (currently always \"incoming\")",
+          "complexTypes": [],
+          "type": "'incoming'"
+        },
+        {
+          "name": "caller",
+          "tags": [],
+          "docs": "Information about the caller",
+          "complexTypes": [
+            "CallMember"
+          ],
+          "type": "CallMember"
+        },
+        {
+          "name": "custom",
+          "tags": [],
+          "docs": "Custom data to be passed to the call",
+          "complexTypes": [
+            "Record"
+          ],
+          "type": "Record<\n    string,\n    | string\n    | boolean\n    | number\n    | null\n    | Record<string, string | boolean | number | null>\n    | string[]\n    | boolean[]\n    | number[]\n  >"
+        }
+      ]
+    },
+    {
+      "name": "CameraEnabledResponse",
+      "slug": "cameraenabledresponse",
+      "docs": "",
+      "tags": [],
+      "methods": [],
+      "properties": [
+        {
+          "name": "enabled",
+          "tags": [],
+          "docs": "",
+          "complexTypes": [],
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "name": "DynamicApiKeyResponse",
+      "slug": "dynamicapikeyresponse",
+      "docs": "",
+      "tags": [
+        {
+          "text": "DynamicApiKeyResponse",
+          "name": "interface"
+        },
+        {
+          "text": "Response from getDynamicStreamVideoApikey",
+          "name": "description"
+        },
+        {
+          "text": "{string|null} apiKey - The dynamic API key if set, null if not",
+          "name": "property"
+        },
+        {
+          "text": "{boolean} hasDynamicKey - Whether a dynamic key is currently set",
+          "name": "property"
+        }
+      ],
+      "methods": [],
+      "properties": [
+        {
+          "name": "apiKey",
+          "tags": [],
+          "docs": "The dynamic API key if set, null if not",
+          "complexTypes": [],
+          "type": "string | null"
+        },
+        {
+          "name": "hasDynamicKey",
+          "tags": [],
+          "docs": "Whether a dynamic key is currently set",
+          "complexTypes": [],
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "name": "CurrentUserResponse",
+      "slug": "currentuserresponse",
+      "docs": "",
+      "tags": [
+        {
+          "text": "CurrentUserResponse",
+          "name": "interface"
+        },
+        {
+          "text": "Response from getCurrentUser containing user information",
+          "name": "description"
+        },
+        {
+          "text": "{string} userId - User ID of the current user",
+          "name": "property"
+        },
+        {
+          "text": "{string} name - Display name of the current user",
+          "name": "property"
+        },
+        {
+          "text": "{string} [imageURL] - Avatar URL of the current user",
+          "name": "property"
+        },
+        {
+          "text": "{boolean} isLoggedIn - Whether the user is currently logged in",
+          "name": "property"
+        }
+      ],
+      "methods": [],
+      "properties": [
+        {
+          "name": "userId",
+          "tags": [],
+          "docs": "User ID of the current user",
+          "complexTypes": [],
+          "type": "string"
+        },
+        {
+          "name": "name",
+          "tags": [],
+          "docs": "Display name of the current user",
+          "complexTypes": [],
+          "type": "string"
+        },
+        {
+          "name": "imageURL",
+          "tags": [],
+          "docs": "Avatar URL of the current user",
+          "complexTypes": [],
+          "type": "string | undefined"
+        },
+        {
+          "name": "isLoggedIn",
+          "tags": [],
+          "docs": "Whether the user is currently logged in",
+          "complexTypes": [],
+          "type": "boolean"
+        }
+      ]
+    }
+  ],
+  "enums": [
+    {
+      "name": "TrackType",
+      "slug": "tracktype",
+      "members": [
+        {
+          "name": "UNSPECIFIED",
+          "value": "0",
+          "tags": [
+            {
+              "text": "from protobuf enum value: TRACK_TYPE_UNSPECIFIED = 0;",
+              "name": "generated"
+            }
+          ],
+          "docs": ""
+        },
+        {
+          "name": "AUDIO",
+          "value": "1",
+          "tags": [
+            {
+              "text": "from protobuf enum value: TRACK_TYPE_AUDIO = 1;",
+              "name": "generated"
+            }
+          ],
+          "docs": ""
+        },
+        {
+          "name": "VIDEO",
+          "value": "2",
+          "tags": [
+            {
+              "text": "from protobuf enum value: TRACK_TYPE_VIDEO = 2;",
+              "name": "generated"
+            }
+          ],
+          "docs": ""
+        },
+        {
+          "name": "SCREEN_SHARE",
+          "value": "3",
+          "tags": [
+            {
+              "text": "from protobuf enum value: TRACK_TYPE_SCREEN_SHARE = 3;",
+              "name": "generated"
+            }
+          ],
+          "docs": ""
+        },
+        {
+          "name": "SCREEN_SHARE_AUDIO",
+          "value": "4",
+          "tags": [
+            {
+              "text": "from protobuf enum value: TRACK_TYPE_SCREEN_SHARE_AUDIO = 4;",
+              "name": "generated"
+            }
+          ],
+          "docs": ""
+        }
+      ]
+    },
+    {
+      "name": "ConnectionQuality",
+      "slug": "connectionquality",
+      "members": [
+        {
+          "name": "UNSPECIFIED",
+          "value": "0",
+          "tags": [
+            {
+              "text": "from protobuf enum value: CONNECTION_QUALITY_UNSPECIFIED = 0;",
+              "name": "generated"
+            }
+          ],
+          "docs": ""
+        },
+        {
+          "name": "POOR",
+          "value": "1",
+          "tags": [
+            {
+              "text": "from protobuf enum value: CONNECTION_QUALITY_POOR = 1;",
+              "name": "generated"
+            }
+          ],
+          "docs": ""
+        },
+        {
+          "name": "GOOD",
+          "value": "2",
+          "tags": [
+            {
+              "text": "from protobuf enum value: CONNECTION_QUALITY_GOOD = 2;",
+              "name": "generated"
+            }
+          ],
+          "docs": ""
+        },
+        {
+          "name": "EXCELLENT",
+          "value": "3",
+          "tags": [
+            {
+              "text": "from protobuf enum value: CONNECTION_QUALITY_EXCELLENT = 3;",
+              "name": "generated"
+            }
+          ],
+          "docs": ""
+        }
+      ]
+    },
+    {
+      "name": "NullValue",
+      "slug": "nullvalue",
+      "members": [
+        {
+          "name": "NULL_VALUE",
+          "value": "0",
+          "tags": [
+            {
+              "text": "from protobuf enum value: NULL_VALUE = 0;",
+              "name": "generated"
+            }
+          ],
+          "docs": "Null value."
+        }
+      ]
+    }
+  ],
+  "typeAliases": [
+    {
+      "name": "CallType",
+      "slug": "calltype",
+      "docs": "",
+      "types": [
+        {
+          "text": "'default'",
+          "complexTypes": []
+        },
+        {
+          "text": "'audio'",
+          "complexTypes": []
+        },
+        {
+          "text": "'audio_room'",
+          "complexTypes": []
+        },
+        {
+          "text": "'livestream'",
+          "complexTypes": []
+        },
+        {
+          "text": "'development'",
+          "complexTypes": []
+        }
+      ]
+    },
+    {
+      "name": "Record",
+      "slug": "record",
+      "docs": "Construct a type with a set of properties K of type T",
+      "types": [
+        {
+          "text": "{\r\n    [P in K]: T;\r\n}",
+          "complexTypes": [
+            "K",
+            "T"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "CallState",
+      "slug": "callstate",
+      "docs": "",
+      "types": [
+        {
+          "text": "'idle'",
+          "complexTypes": []
+        },
+        {
+          "text": "'ringing'",
+          "complexTypes": []
+        },
+        {
+          "text": "'joining'",
+          "complexTypes": []
+        },
+        {
+          "text": "'reconnecting'",
+          "complexTypes": []
+        },
+        {
+          "text": "'joined'",
+          "complexTypes": []
+        },
+        {
+          "text": "'leaving'",
+          "complexTypes": []
+        },
+        {
+          "text": "'left'",
+          "complexTypes": []
+        },
+        {
+          "text": "'created'",
+          "complexTypes": []
+        },
+        {
+          "text": "'session_started'",
+          "complexTypes": []
+        },
+        {
+          "text": "'rejected'",
+          "complexTypes": []
+        },
+        {
+          "text": "'participant_counts'",
+          "complexTypes": []
+        },
+        {
+          "text": "'missed'",
+          "complexTypes": []
+        },
+        {
+          "text": "'accepted'",
+          "complexTypes": []
+        },
+        {
+          "text": "'ended'",
+          "complexTypes": []
+        },
+        {
+          "text": "'camera_enabled'",
+          "complexTypes": []
+        },
+        {
+          "text": "'camera_disabled'",
+          "complexTypes": []
+        },
+        {
+          "text": "'speaker_enabled'",
+          "complexTypes": []
+        },
+        {
+          "text": "'speaker_disabled'",
+          "complexTypes": []
+        },
+        {
+          "text": "'microphone_enabled'",
+          "complexTypes": []
+        },
+        {
+          "text": "'microphone_disabled'",
+          "complexTypes": []
+        },
+        {
+          "text": "'unknown'",
+          "complexTypes": []
+        }
+      ]
+    }
+  ],
+  "pluginConfigs": []
+}
