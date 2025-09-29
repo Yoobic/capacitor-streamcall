@@ -947,7 +947,7 @@ Construct a type with a set of properties K of type T
 
 #### CallState
 
-<code>'idle' | 'ringing' | 'joining' | 'reconnecting' | 'joined' | 'leaving' | 'left' | 'created' | 'session_started' | 'rejected' | 'participant_counts' | 'missed' | 'accepted' | 'ended' | 'camera_enabled' | 'camera_disabled' | 'speaker_enabled' | 'speaker_disabled' | 'microphone_enabled' | 'microphone_disabled' | 'unknown'</code>
+<code>'idle' | 'ringing' | 'joining' | 'reconnecting' | 'joined' | 'leaving' | 'left' | 'created' | 'session_started' | 'rejected' | 'participant_counts' | 'missed' | 'accepted' | 'ended' | 'camera_enabled' | 'camera_disabled' | 'speaker_enabled' | 'speaker_disabled' | 'microphone_enabled' | 'microphone_disabled' | 'outgoing_call_ended' | 'unknown'</code>
 
 
 ### Enums

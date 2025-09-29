@@ -1940,6 +1940,10 @@
           "complexTypes": []
         },
         {
+          "text": "'outgoing_call_ended'",
+          "complexTypes": []
+        },
+        {
           "text": "'unknown'",
           "complexTypes": []
         }

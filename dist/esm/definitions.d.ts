@@ -31,7 +31,7 @@ export interface PushNotificationsConfig {
  * @typedef CallState
  * @description Represents all possible call states from API and UI
  */
-export type CallState = 'idle' | 'ringing' | 'joining' | 'reconnecting' | 'joined' | 'leaving' | 'left' | 'created' | 'session_started' | 'rejected' | 'participant_counts' | 'missed' | 'accepted' | 'ended' | 'camera_enabled' | 'camera_disabled' | 'speaker_enabled' | 'speaker_disabled' | 'microphone_enabled' | 'microphone_disabled' | 'unknown';
+export type CallState = 'idle' | 'ringing' | 'joining' | 'reconnecting' | 'joined' | 'leaving' | 'left' | 'created' | 'session_started' | 'rejected' | 'participant_counts' | 'missed' | 'accepted' | 'ended' | 'camera_enabled' | 'camera_disabled' | 'speaker_enabled' | 'speaker_disabled' | 'microphone_enabled' | 'microphone_disabled' | 'outgoing_call_ended' | 'unknown';
 /**
  * @typedef CallType
  * @description Represents the pre-defined types of a call.
