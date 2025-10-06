@@ -1149,26 +1149,34 @@ class StreamCallPlugin : Plugin() {
             val userId = event.user.id
             val callCid = event.callCid
 
-            // Update call state
-            callStates[callCid]?.let { callState ->
-              callState.participantResponses[userId] = "missed"
-            }
+            Log.d("StreamCallPlugin", "call misseed ringing call id is ${ringingCallId}")
+            Log.d("StreamCallPlugin", "call misseed NEW C call id is ${callCid}")
 
-            val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
-            if (keyguardManager.isKeyguardLocked) {
-              Log.d("StreamCallPlugin", "Stop ringing and move to background")
-              moveAllActivitiesToBackgroundOrKill(context)
-            }
+            if (callCid == ringingCallId) {
+              Log.d("StreamCallPlugin", "CLEANING UP CALL ${callCid}")
+
+              // Update call state
+              callStates[callCid]?.let { callState ->
+                callState.participantResponses[userId] = "missed"
+              }
+
+              val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+              if (keyguardManager.isKeyguardLocked) {
+                Log.d("StreamCallPlugin", "Stop ringing and move to background")
+                moveAllActivitiesToBackgroundOrKill(context)
+              }
 
 //                        updateCallStatusAndNotify(callCid, "missed", userId)
 
-            val data = JSObject().apply {
-              put("callId", event.callCid)
-              put("state", "missed")
+              val data = JSObject().apply {
+                put("callId", event.callCid)
+                put("state", "missed")
+              }
+              notifyListeners("callEvent", data)
+              // Check if all participants have responded
+              checkAllParticipantsResponded(callCid)
             }
-            notifyListeners("callEvent", data)
-            // Check if all participants have responded
-            checkAllParticipantsResponded(callCid)
+
           }
 
           is CallAcceptedEvent ->  {
