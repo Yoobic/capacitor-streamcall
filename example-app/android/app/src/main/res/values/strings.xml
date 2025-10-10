@@ -1,8 +1,8 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">StreamCallp</string>
-    <string name="title_activity_main">StreamCall</string>
-    <string name="package_name">io.ionic.starter</string>
-    <string name="custom_url_scheme">io.ionic.starter</string>
+    <string name="app_name">Stream Call Example</string>
+    <string name="title_activity_main">Stream Call Example</string>
+    <string name="package_name">app.capgo.streamcall</string>
+    <string name="custom_url_scheme">app.capgo.streamcall</string>
     <string name="CAPACITOR_STREAM_VIDEO_APIKEY">vq4zdsazqxd7</string>
 </resources>

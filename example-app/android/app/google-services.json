@@ -9,7 +9,7 @@
       "client_info": {
         "mobilesdk_app_id": "1:164495141701:android:b23c1a948af12bffdf6c2c",
         "android_client_info": {
-          "package_name": "io.ionic.starter.magicStreamVideo.capgo.call"
+          "package_name": "app.capgo.streamcall"
         }
       },
       "oauth_client": [],
