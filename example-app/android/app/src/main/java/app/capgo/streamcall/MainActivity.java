@@ -1,4 +1,4 @@
-package io.ionic.starter;
+package app.capgo.streamcall;
 
 import android.os.Bundle;
 import android.content.Intent;

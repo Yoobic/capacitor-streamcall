@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Stream Call Example</string>
-    <string name="title_activity_main">Stream Call Example</string>
+    <string name="app_name">Streamcall Example</string>
+    <string name="title_activity_main">Streamcall Example</string>
     <string name="package_name">app.capgo.streamcall</string>
     <string name="custom_url_scheme">app.capgo.streamcall</string>
     <string name="CAPACITOR_STREAM_VIDEO_APIKEY">vq4zdsazqxd7</string>
