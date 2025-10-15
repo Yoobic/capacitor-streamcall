@@ -69,7 +69,7 @@ class SecureUserRepository: UserRepository, VoipTokenHandler {
 
     func loadCurrentUser() -> UserCredentials? {
         print("SecureUserRepository: Loading current user credentials")
-        
+
         if let savedUser = defaults.object(forKey: userKey) as? Data {
             let decoder = JSONDecoder()
             do {

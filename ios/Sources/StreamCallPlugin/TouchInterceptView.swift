@@ -10,27 +10,27 @@ class TouchInterceptView: UIView {
     private let touchThreshold: CGFloat = 5.0 // pixels
     private let timerDelay: TimeInterval = 0.1 // seconds
     private var hasActiveCallCheck: (() -> Bool)?
-    
+
     func setupWithWebView(_ webView: UIView, overlayView: UIView) {
         self.webView = webView
         self.overlayView = overlayView
-        
+
         // Ensure this view is transparent and doesn't interfere with display
         self.backgroundColor = .clear
         self.isOpaque = false
         // os_log(.debug, "TouchInterceptView: setupWithWebView - webView: %{public}s, overlayView: %{public}s", String(describing: webView), String(describing: overlayView))
     }
-    
+
     func setActiveCallCheck(_ check: @escaping () -> Bool) {
         self.hasActiveCallCheck = check
     }
-    
+
     private func shouldInterceptTouches() -> Bool {
         // Check if there's an active call
         let hasActiveCall = hasActiveCallCheck?() ?? false
         return hasActiveCall
     }
-    
+
     private func isInteractive(_ view: UIView) -> Bool {
         if view is UIControl { return true }
         if let grs = view.gestureRecognizers, !grs.isEmpty { return true }
@@ -61,14 +61,14 @@ class TouchInterceptView: UIView {
             const x = \(x); const y = \(y);
             const el = document.elementFromPoint(x, y);
             if (!el) return 'NO_ELEM';
-            
+
             // iPad fix: Force active state since iPad Safari doesn't handle :active properly
             const isIPad = navigator.userAgent.includes('iPad');
             if (isIPad) {
                 el.classList.add('active');
                 if (el.style.setProperty) el.style.setProperty('opacity', '0.8', 'important');
             }
-            
+
             const eventInit = { bubbles: true, cancelable: true, clientX: x, clientY: y };
             const touchInit = { bubbles: true, cancelable: true, touches: [{ clientX: x, clientY: y }], targetTouches: [], changedTouches: [], shiftKey: false };
             const seq = [];
@@ -84,7 +84,7 @@ class TouchInterceptView: UIView {
             seq.push(new MouseEvent('mouseup', eventInit));
             seq.push(new MouseEvent('click', eventInit));
             seq.forEach(evt => el.dispatchEvent(evt));
-            
+
             // iPad cleanup
             if (isIPad) {
                 setTimeout(() => {
@@ -92,13 +92,13 @@ class TouchInterceptView: UIView {
                     el.style.removeProperty('opacity');
                 }, 100);
             }
-            
+
             console.log('SyntheticClick seq on', el);
             return el.tagName;
         })();
         """
         // os_log(.debug, "TouchInterceptView: forwardClickToWeb - (%{public}d,%{public}d)", x, y)
-        wk.evaluateJavaScript(js) { result, error in
+        wk.evaluateJavaScript(js) { _, error in
             if let error = error {
                 // os_log(.error, "TouchInterceptView: JS error %{public}s", String(describing: error))
             } else {
@@ -108,14 +108,14 @@ class TouchInterceptView: UIView {
     }
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
-        
+
         // Check if we should intercept touches
         if !shouldInterceptTouches() {
             // Cancel any pending timer when not in a call
             forwardTimer?.invalidate()
             forwardTimer = nil
             lastTouchPoint = nil
-            
+
             if let webView = self.webView {
                 let webPoint = self.convert(point, to: webView)
                 let result = webView.hitTest(webPoint, with: event)
@@ -124,9 +124,9 @@ class TouchInterceptView: UIView {
             }
             return nil
         }
-        
+
         print("TouchInterceptView: hitTest intercepting touch at \(point)")
-        
+
         // Check if this is same touch location continuing
         if let lastPoint = lastTouchPoint {
             let distance = sqrt(pow(point.x - lastPoint.x, 2) + pow(point.y - lastPoint.y, 2))
@@ -136,7 +136,7 @@ class TouchInterceptView: UIView {
                 // os_log(.debug, "TouchInterceptView: Touch continuing at %{public}s, cancelling timer", String(describing: point))
             }
         }
-        
+
         // Store current point and start new timer
         lastTouchPoint = point
         forwardTimer?.invalidate()
@@ -148,7 +148,7 @@ class TouchInterceptView: UIView {
             // os_log(.debug, "TouchInterceptView: Timer fired, forwarding click to web at %{public}s", String(describing: point))
             self.forwardClickToWeb(at: point)
         }
-        
+
         // 1. interactive hit on overlay (including root)
         if let overlayView = self.overlayView, !overlayView.isHidden {
             let overlayPoint = self.convert(point, to: overlayView)
@@ -167,7 +167,7 @@ class TouchInterceptView: UIView {
         print("TouchInterceptView: hitTest - No view found for \(point)")
         return nil
     }
-    
+
     override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
         // Check if we should intercept touches
         if !shouldInterceptTouches() {
@@ -179,21 +179,21 @@ class TouchInterceptView: UIView {
             // os_log(.debug, "TouchInterceptView: point(inside) - Not intercepting, WebView only (%{public}s at %{public}s) for original point %{public}s = %s", String(describing: result), String(describing: webViewPoint), String(describing: point), String(describing: result))
             return result
         }
-        
+
         guard let webView = self.webView else {
             // os_log(.debug, "TouchInterceptView: point(inside) - webView is nil for point %{public}s. Checking overlay or deferring to super.", String(describing: point))
             if let overlayView = self.overlayView, !overlayView.isHidden {
                 let overlayPoint = self.convert(point, to: overlayView)
                 let overlayViewConsidersPointInside = overlayView.point(inside: overlayPoint, with: event)
-                //os_log(.debug, "TouchInterceptView: point(inside) - webView nil. Overlay (%{public}s) for converted point %{public}s = %s", String(describing: overlayViewConsidersPointInside), String(describing: overlayPoint), String(describing: overlayViewConsidersPointInside))
+                // os_log(.debug, "TouchInterceptView: point(inside) - webView nil. Overlay (%{public}s) for converted point %{public}s = %s", String(describing: overlayViewConsidersPointInside), String(describing: overlayPoint), String(describing: overlayViewConsidersPointInside))
                 return overlayViewConsidersPointInside
             }
             return super.point(inside: point, with: event)
         }
-        
+
         let webViewPoint = self.convert(point, to: webView)
         let webViewConsidersPointInside = webView.point(inside: webViewPoint, with: event)
-        
+
         if let overlayView = self.overlayView, !overlayView.isHidden {
             let overlayPoint = self.convert(point, to: overlayView)
             let overlayViewConsidersPointInside = overlayView.point(inside: overlayPoint, with: event)
@@ -202,11 +202,11 @@ class TouchInterceptView: UIView {
             return result
         } else {
             if self.overlayView == nil {
-                 // os_log(.debug, "TouchInterceptView: point(inside) - Overlay nil. WebView (%{public}s at %{public}s) for original point %{public}s = %s", String(describing: webViewConsidersPointInside), String(describing: webViewPoint), String(describing: point), String(describing: webViewConsidersPointInside))
+                // os_log(.debug, "TouchInterceptView: point(inside) - Overlay nil. WebView (%{public}s at %{public}s) for original point %{public}s = %s", String(describing: webViewConsidersPointInside), String(describing: webViewPoint), String(describing: point), String(describing: webViewConsidersPointInside))
             } else {
-                 // os_log(.debug, "TouchInterceptView: point(inside) - Overlay hidden. WebView (%{public}s at %{public}s) for original point %{public}s = %s", String(describing: webViewConsidersPointInside), String(describing: webViewPoint), String(describing: point), String(describing: webViewConsidersPointInside))
+                // os_log(.debug, "TouchInterceptView: point(inside) - Overlay hidden. WebView (%{public}s at %{public}s) for original point %{public}s = %s", String(describing: webViewConsidersPointInside), String(describing: webViewPoint), String(describing: point), String(describing: webViewConsidersPointInside))
             }
             return webViewConsidersPointInside
         }
     }
-} 
+}
