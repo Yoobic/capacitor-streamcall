@@ -79,6 +79,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import io.getstream.video.android.core.sounds.RingingConfig
 import io.getstream.video.android.core.sounds.toSounds
+import io.getstream.video.android.core.sounds.enableRingingCallVibrationConfig
 import io.getstream.video.android.model.Device
 import io.getstream.video.android.model.User
 import io.getstream.video.android.model.streamCallId
