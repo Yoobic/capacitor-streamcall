@@ -863,7 +863,8 @@ class StreamCallPlugin : Plugin() {
         token = savedCredentials.tokenValue,
         notificationConfig = notificationConfig,
         sounds = soundsConfig.toSounds(),
-        loggingLevel = LoggingLevel(priority = Priority.INFO)
+        loggingLevel = LoggingLevel(priority = Priority.INFO),
+        vibrationConfig = enableRingingCallVibrationConfig()
       ).build()
 
       // don't do event handler registration when activity may be null
