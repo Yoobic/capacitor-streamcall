@@ -70,6 +70,12 @@ export type CallState =
 export type CallType = 'default' | 'audio' | 'audio_room' | 'livestream' | 'development';
 
 /**
+ * @typedef StreamCallLayout
+ * @description Layout modes matching the Stream React SDK; includes native aliases.
+ */
+export type StreamCallLayout = 'grid' | 'spotlight' | 'dynamic' | 'fullScreen' | 'fullscreen';
+
+/**
  * @interface CallMember
  * @description Information about a call member/participant
  * @property {string} userId - User ID of the member
@@ -369,16 +375,13 @@ export interface StreamCallPlugin {
 
 
   /**
-   * Get the current call status
-   * @returns {Promise<CallEvent>} Current call status as a CallEvent
+   * Cycle through the available video layouts
+   * @returns {Promise<{ newLayout: StreamCallLayout }>} The layout that is now active
    * @example
-   * const callStatus = await StreamCall.getCallStatus();
-   * console.log(callStatus);
+   * const { newLayout } = await StreamCall.toggleViews();
+   * console.log(`Layout switched to ${newLayout}`);
    */
-  toggleViews?(): Promise<{ newLayout: string}>;
-
-  toggleCamera?(): Promise<{ status: 'enabled' | 'disable' }>;
-  toggleMicrophone?(): Promise<{ status: 'enabled' | 'disable' }>;
+  toggleViews?(): Promise<{ newLayout: StreamCallLayout }>;
 
   /**
    * Set speakerphone on

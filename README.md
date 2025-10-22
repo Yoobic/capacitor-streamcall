@@ -253,8 +253,6 @@ export class CallService {
 * [`getCallStatus()`](#getcallstatus)
 * [`getRingingCall()`](#getringingcall)
 * [`toggleViews()`](#toggleviews)
-* [`toggleCamera()`](#togglecamera)
-* [`toggleMicrophone()`](#togglemicrophone)
 * [`setSpeaker(...)`](#setspeaker)
 * [`switchCamera(...)`](#switchcamera)
 * [`getCallInfo(...)`](#getcallinfo)
@@ -510,34 +508,12 @@ Get the current ringing call
 ### toggleViews()
 
 ```typescript
-toggleViews() => Promise<{ newLayout: string; }>
+toggleViews() => Promise<{ newLayout: StreamCallLayout; }>
 ```
 
-Get the current call status
+Cycle through the available video layouts
 
-**Returns:** <code>Promise&lt;{ newLayout: string; }&gt;</code>
-
---------------------
-
-
-### toggleCamera()
-
-```typescript
-toggleCamera() => Promise<{ status: 'enabled' | 'disable'; }>
-```
-
-**Returns:** <code>Promise&lt;{ status: 'enabled' | 'disable'; }&gt;</code>
-
---------------------
-
-
-### toggleMicrophone()
-
-```typescript
-toggleMicrophone() => Promise<{ status: 'enabled' | 'disable'; }>
-```
-
-**Returns:** <code>Promise&lt;{ status: 'enabled' | 'disable'; }&gt;</code>
+**Returns:** <code>Promise&lt;{ newLayout: <a href="#streamcalllayout">StreamCallLayout</a>; }&gt;</code>
 
 --------------------
 
@@ -948,6 +924,11 @@ Construct a type with a set of properties K of type T
 #### CallState
 
 <code>'idle' | 'ringing' | 'joining' | 'reconnecting' | 'joined' | 'leaving' | 'left' | 'created' | 'session_started' | 'rejected' | 'participant_counts' | 'missed' | 'accepted' | 'ended' | 'camera_enabled' | 'camera_disabled' | 'speaker_enabled' | 'speaker_disabled' | 'microphone_enabled' | 'microphone_disabled' | 'outgoing_call_ended' | 'unknown'</code>
+
+
+#### StreamCallLayout
+
+<code>'grid' | 'spotlight' | 'dynamic' | 'fullScreen' | 'fullscreen'</code>
 
 
 ### Enums
