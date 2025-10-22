@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [7.2.1](https://github.com/Cap-go/capacitor-streamcall/compare/7.2.0...7.2.1) (2025-10-22)
+
+
+### Bug Fixes
+
+* definition ([b301a28](https://github.com/Cap-go/capacitor-streamcall/commit/b301a28ca013f63a21814f71a34c066ec7c3d084))
+
 ## [7.2.0](https://github.com/Cap-go/capacitor-streamcall/compare/7.1.31...7.2.0) (2025-10-22)
 
 
