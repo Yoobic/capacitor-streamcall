@@ -46,13 +46,17 @@ export type CallState =
   | 'created'
   | 'session_started'
   | 'rejected'
+  | 'participant_counts'
   | 'missed'
   | 'accepted'
   | 'ended'
   | 'camera_enabled'
   | 'camera_disabled'
+  | 'speaker_enabled'
+  | 'speaker_disabled'
   | 'microphone_enabled'
   | 'microphone_disabled'
+  | 'outgoing_call_ended'
   | 'unknown';
 
 /**
@@ -63,7 +67,7 @@ export type CallState =
  * - `livestream`: For one-to-many streaming. Backstage enabled (requires `goLive`), access granted to all authenticated users.
  * - `development`: For testing ONLY. All permissions enabled, backstage disabled. **Not recommended for production.**
  */
-export type CallType = 'default' | 'audio_room' | 'livestream' | 'development';
+export type CallType = 'default' | 'audio' | 'audio_room' | 'livestream' | 'development';
 
 /**
  * @interface CallMember
@@ -107,6 +111,20 @@ export interface CallEvent {
   caller?: CallMember;
   /** List of call members */
   members?: CallMember[];
+
+  custom?: Record<
+    string,
+    | string
+    | boolean
+    | number
+    | null
+    | Record<string, string | boolean | number | null>
+    | string[]
+    | boolean[]
+    | number[]
+  >;
+
+  count?: number;
 }
 
 export interface CameraEnabledResponse {
@@ -153,6 +171,7 @@ export interface CurrentUserResponse {
 export interface SuccessResponse {
   /** Whether the operation was successful */
   success: boolean;
+  callId?: string;
 }
 
 /**
@@ -236,6 +255,17 @@ export interface StreamCallPlugin {
    */
   endCall(): Promise<SuccessResponse>;
 
+
+  /**
+   * Join an existing call
+   * @param {{  callId: string, callType: string  }} options - Microphone state
+   * @returns {Promise<SuccessResponse>} Success status
+   * @example
+   * await StreamCall.joinCall({ callId: 'call001', callType: 'default' });
+   */
+  joinCall?(options: { callId: string, callType: string }): Promise<SuccessResponse>;
+
+
   /**
    * Enable or disable microphone
    * @param {{ enabled: boolean }} options - Microphone state
@@ -287,6 +317,14 @@ export interface StreamCallPlugin {
   removeAllListeners(): Promise<void>;
 
   /**
+   * Enable bluetooth audio
+   * @returns {Promise<SuccessResponse>} Success status
+   * @example
+   * await StreamCall.enableBluetooth();
+   */
+  enableBluetooth?(): Promise<SuccessResponse>;
+
+  /**
    * Accept an incoming call
    * @returns {Promise<SuccessResponse>} Success status
    * @example
@@ -319,6 +357,28 @@ export interface StreamCallPlugin {
    * console.log(callStatus);
    */
   getCallStatus(): Promise<CallEvent>;
+
+  /**
+   * Get the current ringing call
+   * @returns {Promise<CallEvent>} Current ringing call status as a CallEvent
+   * @example
+   * const ringingCall = await StreamCall.getRingingCall();
+   * console.log(ringingCall);
+   */
+  getRingingCall?(): Promise<CallEvent>;
+
+
+  /**
+   * Get the current call status
+   * @returns {Promise<CallEvent>} Current call status as a CallEvent
+   * @example
+   * const callStatus = await StreamCall.getCallStatus();
+   * console.log(callStatus);
+   */
+  toggleViews?(): Promise<{ newLayout: string}>;
+
+  toggleCamera?(): Promise<{ status: 'enabled' | 'disable' }>;
+  toggleMicrophone?(): Promise<{ status: 'enabled' | 'disable' }>;
 
   /**
    * Set speakerphone on

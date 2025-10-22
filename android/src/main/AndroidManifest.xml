@@ -1,5 +1,4 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <application>
 
           <service
@@ -13,11 +12,6 @@
                   <category android:name="android.intent.category.DEFAULT" />
               </intent-filter>
           </service>
-
-        <service
-            android:name="ee.forgr.capacitor.streamcall.StreamCallBackgroundService"
-            android:enabled="true"
-            android:exported="false" />
 
         <receiver
             android:name=".AcceptCallReceiver"

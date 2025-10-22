@@ -58,45 +58,50 @@ class TouchInterceptView: UIView {
         let y = Int(locationInWeb.y)
         let js = """
         (() => {
-            const x = \(x); const y = \(y);
+            const x = \(x), y = \(y);
             const el = document.elementFromPoint(x, y);
             if (!el) return 'NO_ELEM';
 
-            // iPad fix: Force active state since iPad Safari doesn't handle :active properly
-            const isIPad = navigator.userAgent.includes('iPad');
-            if (isIPad) {
-                el.classList.add('active');
-                if (el.style.setProperty) el.style.setProperty('opacity', '0.8', 'important');
+            const eventInit = {
+                bubbles: true,
+                cancelable: true,
+                clientX: x,
+                clientY: y
+            };
+
+            const events = [];
+
+            if (typeof TouchEvent === 'function') {
+                try {
+                    const touchObj = { identifier: Date.now(), target: el, clientX: x, clientY: y };
+                    const touchInit = {
+                        bubbles: true,
+                        cancelable: true,
+                        touches: [touchObj],
+                        targetTouches: [],
+                        changedTouches: [touchObj],
+                        shiftKey: false
+                    };
+                    events.push(new TouchEvent('touchstart', touchInit));
+                    events.push(new TouchEvent('touchend', touchInit));
+                } catch (e) {
+                    console.log('TouchEvent creation failed', e);
+                }
             }
 
-            const eventInit = { bubbles: true, cancelable: true, clientX: x, clientY: y };
-            const touchInit = { bubbles: true, cancelable: true, touches: [{ clientX: x, clientY: y }], targetTouches: [], changedTouches: [], shiftKey: false };
-            const seq = [];
-            try {
-                seq.push(new TouchEvent('touchstart', touchInit));
-            } catch(e) { console.log('TouchEvent not supported', e); }
-            seq.push(new PointerEvent('pointerdown', { ...eventInit, pointerType: 'touch' }));
-            seq.push(new MouseEvent('mousedown', eventInit));
-            try {
-                seq.push(new TouchEvent('touchend', touchInit));
-            } catch(e) { }
-            seq.push(new PointerEvent('pointerup', { ...eventInit, pointerType: 'touch' }));
-            seq.push(new MouseEvent('mouseup', eventInit));
-            seq.push(new MouseEvent('click', eventInit));
-            seq.forEach(evt => el.dispatchEvent(evt));
+            events.push(new PointerEvent('pointerdown', { ...eventInit, pointerType: 'touch' }));
+            events.push(new MouseEvent('mousedown', eventInit));
+            events.push(new PointerEvent('pointerup', { ...eventInit, pointerType: 'touch' }));
+            events.push(new MouseEvent('mouseup', eventInit));
+            events.push(new MouseEvent('click', eventInit));
 
-            // iPad cleanup
-            if (isIPad) {
-                setTimeout(() => {
-                    el.classList.remove('active');
-                    el.style.removeProperty('opacity');
-                }, 100);
-            }
+            events.forEach(evt => el.dispatchEvent(evt));
 
-            console.log('SyntheticClick seq on', el);
+            console.log('Synthetic click sequence dispatched to', el);
             return el.tagName;
         })();
         """
+
         // os_log(.debug, "TouchInterceptView: forwardClickToWeb - (%{public}d,%{public}d)", x, y)
         wk.evaluateJavaScript(js) { _, error in
             if let error = error {

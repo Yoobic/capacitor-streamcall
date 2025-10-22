@@ -240,15 +240,21 @@ export class CallService {
 * [`logout()`](#logout)
 * [`call(...)`](#call)
 * [`endCall()`](#endcall)
+* [`joinCall(...)`](#joincall)
 * [`setMicrophoneEnabled(...)`](#setmicrophoneenabled)
 * [`setCameraEnabled(...)`](#setcameraenabled)
 * [`addListener('callEvent', ...)`](#addlistenercallevent-)
 * [`addListener('incomingCall', ...)`](#addlistenerincomingcall-)
 * [`removeAllListeners()`](#removealllisteners)
+* [`enableBluetooth()`](#enablebluetooth)
 * [`acceptCall()`](#acceptcall)
 * [`rejectCall()`](#rejectcall)
 * [`isCameraEnabled()`](#iscameraenabled)
 * [`getCallStatus()`](#getcallstatus)
+* [`getRingingCall()`](#getringingcall)
+* [`toggleViews()`](#toggleviews)
+* [`toggleCamera()`](#togglecamera)
+* [`toggleMicrophone()`](#togglemicrophone)
 * [`setSpeaker(...)`](#setspeaker)
 * [`switchCamera(...)`](#switchcamera)
 * [`getCallInfo(...)`](#getcallinfo)
@@ -318,6 +324,23 @@ endCall() => Promise<SuccessResponse>
 ```
 
 End the current call
+
+**Returns:** <code>Promise&lt;<a href="#successresponse">SuccessResponse</a>&gt;</code>
+
+--------------------
+
+
+### joinCall(...)
+
+```typescript
+joinCall(options: { callId: string; callType: string; }) => Promise<SuccessResponse>
+```
+
+Join an existing call
+
+| Param         | Type                                               | Description        |
+| ------------- | -------------------------------------------------- | ------------------ |
+| **`options`** | <code>{ callId: string; callType: string; }</code> | - Microphone state |
 
 **Returns:** <code>Promise&lt;<a href="#successresponse">SuccessResponse</a>&gt;</code>
 
@@ -406,6 +429,19 @@ Remove all event listeners
 --------------------
 
 
+### enableBluetooth()
+
+```typescript
+enableBluetooth() => Promise<SuccessResponse>
+```
+
+Enable bluetooth audio
+
+**Returns:** <code>Promise&lt;<a href="#successresponse">SuccessResponse</a>&gt;</code>
+
+--------------------
+
+
 ### acceptCall()
 
 ```typescript
@@ -454,6 +490,54 @@ getCallStatus() => Promise<CallEvent>
 Get the current call status
 
 **Returns:** <code>Promise&lt;<a href="#callevent">CallEvent</a>&gt;</code>
+
+--------------------
+
+
+### getRingingCall()
+
+```typescript
+getRingingCall() => Promise<CallEvent>
+```
+
+Get the current ringing call
+
+**Returns:** <code>Promise&lt;<a href="#callevent">CallEvent</a>&gt;</code>
+
+--------------------
+
+
+### toggleViews()
+
+```typescript
+toggleViews() => Promise<{ newLayout: string; }>
+```
+
+Get the current call status
+
+**Returns:** <code>Promise&lt;{ newLayout: string; }&gt;</code>
+
+--------------------
+
+
+### toggleCamera()
+
+```typescript
+toggleCamera() => Promise<{ status: 'enabled' | 'disable'; }>
+```
+
+**Returns:** <code>Promise&lt;{ status: 'enabled' | 'disable'; }&gt;</code>
+
+--------------------
+
+
+### toggleMicrophone()
+
+```typescript
+toggleMicrophone() => Promise<{ status: 'enabled' | 'disable'; }>
+```
+
+**Returns:** <code>Promise&lt;{ status: 'enabled' | 'disable'; }&gt;</code>
 
 --------------------
 
@@ -560,6 +644,7 @@ Get the current user's information
 | Prop          | Type                 | Description                          |
 | ------------- | -------------------- | ------------------------------------ |
 | **`success`** | <code>boolean</code> | Whether the operation was successful |
+| **`callId`**  | <code>string</code>  |                                      |
 
 
 #### LoginOptions
@@ -597,14 +682,16 @@ Get the current user's information
 
 #### CallEvent
 
-| Prop          | Type                                              | Description                                                    |
-| ------------- | ------------------------------------------------- | -------------------------------------------------------------- |
-| **`callId`**  | <code>string</code>                               | ID of the call                                                 |
-| **`state`**   | <code><a href="#callstate">CallState</a></code>   | Current state of the call                                      |
-| **`userId`**  | <code>string</code>                               | User ID of the participant in the call who triggered the event |
-| **`reason`**  | <code>string</code>                               | Reason for the call state change, if applicable                |
-| **`caller`**  | <code><a href="#callmember">CallMember</a></code> | Information about the caller (for incoming calls)              |
-| **`members`** | <code>CallMember[]</code>                         | List of call members                                           |
+| Prop          | Type                                                                                                                                                                                                                      | Description                                                    |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| **`callId`**  | <code>string</code>                                                                                                                                                                                                       | ID of the call                                                 |
+| **`state`**   | <code><a href="#callstate">CallState</a></code>                                                                                                                                                                           | Current state of the call                                      |
+| **`userId`**  | <code>string</code>                                                                                                                                                                                                       | User ID of the participant in the call who triggered the event |
+| **`reason`**  | <code>string</code>                                                                                                                                                                                                       | Reason for the call state change, if applicable                |
+| **`caller`**  | <code><a href="#callmember">CallMember</a></code>                                                                                                                                                                         | Information about the caller (for incoming calls)              |
+| **`members`** | <code>CallMember[]</code>                                                                                                                                                                                                 | List of call members                                           |
+| **`custom`**  | <code><a href="#record">Record</a>&lt; string, \| string \| boolean \| number \| null \| <a href="#record">Record</a>&lt;string, string \| boolean \| number \| null&gt; \| string[] \| boolean[] \| number[] &gt;</code> |                                                                |
+| **`count`**   | <code>number</code>                                                                                                                                                                                                       |                                                                |
 
 
 #### CallState
@@ -848,7 +935,7 @@ The JSON representation for <a href="#listvalue">`ListValue`</a> is JSON array.
 
 #### CallType
 
-<code>'default' | 'audio_room' | 'livestream' | 'development'</code>
+<code>'default' | 'audio' | 'audio_room' | 'livestream' | 'development'</code>
 
 
 #### Record
@@ -860,7 +947,7 @@ Construct a type with a set of properties K of type T
 
 #### CallState
 
-<code>'idle' | 'ringing' | 'joining' | 'reconnecting' | 'joined' | 'leaving' | 'left' | 'created' | 'session_started' | 'rejected' | 'missed' | 'accepted' | 'ended' | 'camera_enabled' | 'camera_disabled' | 'microphone_enabled' | 'microphone_disabled' | 'unknown'</code>
+<code>'idle' | 'ringing' | 'joining' | 'reconnecting' | 'joined' | 'leaving' | 'left' | 'created' | 'session_started' | 'rejected' | 'participant_counts' | 'missed' | 'accepted' | 'ended' | 'camera_enabled' | 'camera_disabled' | 'speaker_enabled' | 'speaker_disabled' | 'microphone_enabled' | 'microphone_disabled' | 'outgoing_call_ended' | 'unknown'</code>
 
 
 ### Enums
